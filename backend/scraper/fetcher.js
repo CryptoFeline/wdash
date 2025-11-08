@@ -1,6 +1,16 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
+// Cache the executable path to avoid ETXTBSY errors when launching multiple browsers
+let cachedExecutablePath = null;
+
+async function getExecutablePath() {
+  if (!cachedExecutablePath) {
+    cachedExecutablePath = await chromium.executablePath();
+  }
+  return cachedExecutablePath;
+}
+
 /**
  * Fetch GMGN.ai wallet data using Puppeteer with browser context
  * @param {Object} options - Fetch options
@@ -15,7 +25,7 @@ export async function fetchGMGNData({ chain = 'eth', timeframe = '7d', tag = '',
   const launchOptions = {
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath(),
+    executablePath: await getExecutablePath(),
     headless: chromium.headless,
   };
 
@@ -76,16 +86,34 @@ export async function fetchAllTags(chain = 'eth', timeframe = '7d', limit = 200)
 
   console.log(`[Multi-Fetch] Fetching ${TAGS.length} tags in parallel...`);
 
-  // Fetch all tags in parallel
-  const promises = TAGS.map(tag =>
-    fetchGMGNData({ chain, timeframe, tag, limit })
-      .catch(err => {
-        console.error(`[Multi-Fetch] Failed to fetch tag "${tag}":`, err.message);
-        return { data: { rank: [] } }; // Return empty on error
-      })
-  );
+  // On production (Render), fetch sequentially to avoid ETXTBSY errors with @sparticuz/chromium
+  // In development, fetch in parallel for speed
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  const results = await Promise.all(promises);
+  let results;
+  if (isProduction) {
+    console.log('[Multi-Fetch] Running sequentially (production mode)');
+    results = [];
+    for (const tag of TAGS) {
+      try {
+        const result = await fetchGMGNData({ chain, timeframe, tag, limit });
+        results.push(result);
+      } catch (err) {
+        console.error(`[Multi-Fetch] Failed to fetch tag "${tag}":`, err.message);
+        results.push({ data: { rank: [] } });
+      }
+    }
+  } else {
+    // Fetch all tags in parallel (development)
+    const promises = TAGS.map(tag =>
+      fetchGMGNData({ chain, timeframe, tag, limit })
+        .catch(err => {
+          console.error(`[Multi-Fetch] Failed to fetch tag "${tag}":`, err.message);
+          return { data: { rank: [] } }; // Return empty on error
+        })
+    );
+    results = await Promise.all(promises);
+  }
 
   // Combine all results
   const allWallets = results.flatMap(r => r.data?.rank || []);
