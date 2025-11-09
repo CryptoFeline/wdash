@@ -113,12 +113,28 @@ router.get('/stats', async (req, res) => {
     const chain = req.query.chain || 'eth';
     const timeframe = req.query.timeframe || '7d';
     const tag = req.query.tag || 'all';
+    const cacheOnly = req.query.cacheOnly === 'true';
 
-    console.log(`[API] GET /api/wallets/stats - chain: ${chain}, timeframe: ${timeframe}, tag: ${tag}`);
+    console.log(`[API] GET /api/wallets/stats - chain: ${chain}, timeframe: ${timeframe}, tag: ${tag}${cacheOnly ? ' (cache-only)' : ''}`);
 
     // Get cached data or fetch
     const cacheKey = getCacheKey(chain, timeframe, tag);
     let wallets = getCache(cacheKey);
+
+    if (!wallets && cacheOnly) {
+      // Cache-only mode: return empty stats if not cached
+      return res.json({
+        stats: {
+          totalWallets: 0,
+          avgPnL: 0,
+          avgWinRate: 0,
+          avgROI: 0,
+          topPerformer: null
+        },
+        cached: false,
+        message: 'Data not in cache. Try again later or disable cache-only mode.'
+      });
+    }
 
     if (!wallets) {
       // Acquire lock to prevent concurrent fetches
