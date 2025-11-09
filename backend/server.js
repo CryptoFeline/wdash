@@ -7,6 +7,7 @@ dotenv.config();
 
 import walletsRouter from './routes/wallets.js';
 import healthRouter from './routes/health.js';
+import prefetchRouter from './routes/prefetch.js';
 import { requireApiKey } from './middleware/auth.js';
 
 const app = express();
@@ -45,6 +46,7 @@ app.use(requireApiKey);
 
 // Routes
 app.use('/api/wallets', walletsRouter);
+app.use('/api/prefetch', prefetchRouter);
 app.use('/api', healthRouter);
 
 // Root endpoint
@@ -84,6 +86,18 @@ app.listen(PORT, () => {
 ║   - GET /api/health                      ║
 ║   - GET /api/chains                      ║
 ║   - GET /api/tags                        ║
+║   - GET /api/prefetch                    ║
+║   - GET /api/prefetch/status             ║
 ╚══════════════════════════════════════════╝
   `);
+  
+  // Auto-prefetch cache on startup (background)
+  if (process.env.AUTO_PREFETCH !== 'false') {
+    console.log('[Server] Triggering background cache warming...');
+    fetch(`http://localhost:${PORT}/api/prefetch`, {
+      headers: { 'x-api-key': process.env.API_KEY }
+    }).catch(err => {
+      console.error('[Server] Prefetch trigger failed:', err.message);
+    });
+  }
 });

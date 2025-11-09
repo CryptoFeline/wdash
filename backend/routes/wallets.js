@@ -1,6 +1,6 @@
 import express from 'express';
 import { filterQualityWallets, rankWallets } from '../scraper/fetcher.js';
-import { getCacheKey, getCache, setCache } from '../scraper/cache.js';
+import { getCacheKey, getCache, setCache, acquireLock, releaseLock } from '../scraper/cache.js';
 
 const router = express.Router();
 
@@ -16,37 +16,70 @@ router.get('/', async (req, res) => {
     const tag = req.query.tag || 'all';
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
+    const cacheOnly = req.query.cacheOnly === 'true'; // Don't fetch if not cached
 
-    console.log(`[API] GET /api/wallets - chain: ${chain}, timeframe: ${timeframe}, tag: ${tag}, page: ${page}`);
+    console.log(`[API] GET /api/wallets - chain: ${chain}, timeframe: ${timeframe}, tag: ${tag}, page: ${page}${cacheOnly ? ' (cache-only)' : ''}`);
 
     // Check cache
     const cacheKey = getCacheKey(chain, timeframe, tag);
     let allWallets = getCache(cacheKey);
 
+    if (!allWallets && cacheOnly) {
+      // Cache-only mode: return empty if not cached
+      return res.json({
+        data: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+        message: 'Data not cached yet. Trigger /api/prefetch to warm cache.'
+      });
+    }
+
     if (!allWallets) {
-      // Fetch from GMGN.ai
-      console.log(`[API] Fetching fresh data for tag: ${tag}...`);
+      // Acquire lock to prevent concurrent fetches (ETXTBSY)
+      const waitPromise = await acquireLock(cacheKey);
       
-      // Import fetchGMGNData for single tag fetches
-      const { fetchGMGNData } = await import('../scraper/fetcher.js');
-      
-      if (tag === 'all') {
-        // Fetch unfiltered data (no tag parameter)
-        const response = await fetchGMGNData({ chain, timeframe, tag: null, limit: 200 });
-        allWallets = response.data?.rank || [];
-      } else {
-        // Fetch only the requested tag
-        const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
-        allWallets = response.data?.rank || [];
+      if (waitPromise) {
+        // Another request is fetching, wait for it
+        await waitPromise;
+        // Check cache again after waiting
+        allWallets = getCache(cacheKey);
+        if (allWallets) {
+          console.log(`[API] Got data from concurrent fetch`);
+        }
       }
+      
+      // If still no data, fetch it (we have the lock)
+      if (!allWallets) {
+        try {
+          console.log(`[API] Fetching fresh data for tag: ${tag}...`);
+          
+          // Import fetchGMGNData for single tag fetches
+          const { fetchGMGNData } = await import('../scraper/fetcher.js');
+          
+          if (tag === 'all') {
+            // Fetch unfiltered data (no tag parameter)
+            const response = await fetchGMGNData({ chain, timeframe, tag: null, limit: 200 });
+            allWallets = response.data?.rank || [];
+          } else {
+            // Fetch only the requested tag
+            const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
+            allWallets = response.data?.rank || [];
+          }
 
-      // Apply quality filters and ranking
-      const qualityWallets = filterQualityWallets(allWallets);
-      const rankedWallets = rankWallets(qualityWallets);
+          // Apply quality filters and ranking
+          const qualityWallets = filterQualityWallets(allWallets);
+          const rankedWallets = rankWallets(qualityWallets);
 
-      // Cache the results
-      setCache(cacheKey, rankedWallets);
-      allWallets = rankedWallets;
+          // Cache the results
+          setCache(cacheKey, rankedWallets);
+          allWallets = rankedWallets;
+        } finally {
+          // Always release lock
+          releaseLock(cacheKey);
+        }
+      }
     }
 
     // Paginate
@@ -88,21 +121,39 @@ router.get('/stats', async (req, res) => {
     let wallets = getCache(cacheKey);
 
     if (!wallets) {
-      const { fetchGMGNData } = await import('../scraper/fetcher.js');
+      // Acquire lock to prevent concurrent fetches
+      const waitPromise = await acquireLock(cacheKey);
       
-      if (tag === 'all') {
-        // Fetch unfiltered data
-        const response = await fetchGMGNData({ chain, timeframe, tag: null, limit: 200 });
-        wallets = response.data?.rank || [];
-      } else {
-        // Fetch only requested tag
-        const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
-        wallets = response.data?.rank || [];
+      if (waitPromise) {
+        // Wait for concurrent fetch
+        await waitPromise;
+        wallets = getCache(cacheKey);
+        if (wallets) {
+          console.log(`[API] Got data from concurrent fetch`);
+        }
       }
       
-      const qualityWallets = filterQualityWallets(wallets);
-      wallets = rankWallets(qualityWallets);
-      setCache(cacheKey, wallets);
+      if (!wallets) {
+        try {
+          const { fetchGMGNData } = await import('../scraper/fetcher.js');
+          
+          if (tag === 'all') {
+            // Fetch unfiltered data
+            const response = await fetchGMGNData({ chain, timeframe, tag: null, limit: 200 });
+            wallets = response.data?.rank || [];
+          } else {
+            // Fetch only requested tag
+            const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
+            wallets = response.data?.rank || [];
+          }
+          
+          const qualityWallets = filterQualityWallets(wallets);
+          wallets = rankWallets(qualityWallets);
+          setCache(cacheKey, wallets);
+        } finally {
+          releaseLock(cacheKey);
+        }
+      }
     }
 
     // Calculate stats

@@ -10,6 +10,45 @@ const cache = new NodeCache({
   useClones: false // Performance optimization
 });
 
+// Mutex for preventing concurrent fetch requests (ETXTBSY prevention)
+const fetchLocks = new Map();
+
+/**
+ * Acquire lock for a cache key to prevent concurrent fetches
+ * @param {string} key - Cache key
+ * @returns {Promise<boolean>} True if lock acquired, false if already locked
+ */
+export async function acquireLock(key) {
+  if (fetchLocks.has(key)) {
+    // Lock exists, return the existing promise
+    console.log(`[Lock] WAIT: ${key} - Another fetch in progress`);
+    return fetchLocks.get(key);
+  }
+  
+  // Create new lock promise
+  let resolver;
+  const promise = new Promise((resolve) => {
+    resolver = resolve;
+  });
+  promise.resolve = resolver;
+  fetchLocks.set(key, promise);
+  console.log(`[Lock] ACQUIRED: ${key}`);
+  return null; // Null means we acquired the lock
+}
+
+/**
+ * Release lock for a cache key
+ * @param {string} key - Cache key
+ */
+export function releaseLock(key) {
+  const promise = fetchLocks.get(key);
+  if (promise) {
+    fetchLocks.delete(key);
+    promise.resolve?.(); // Resolve waiting promises
+    console.log(`[Lock] RELEASED: ${key}`);
+  }
+}
+
 /**
  * Generate cache key
  * @param {string} chain - Blockchain
