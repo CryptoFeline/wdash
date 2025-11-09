@@ -7,6 +7,7 @@ import { Wallet, PaginatedResponse, StatsResponse } from '@/types/wallet';
 import WalletTable from '@/components/WalletTable';
 import FilterBar from '@/components/FilterBar';
 import StatsCards from '@/components/StatsCards';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Home() {
   const [chain, setChain] = useState('sol');
@@ -57,7 +58,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 space-y-8">
+      <ThemeToggle />
+      <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-4xl font-bold tracking-tight">
