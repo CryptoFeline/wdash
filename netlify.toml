@@ -8,3 +8,5 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  API_URL = "https://dashboard-backend-mo1j.onrender.com/api"
+  API_KEY = "88c090fb868f171d322e9cea5a8484dd10c05975e789a28238f2bb2428b06e84"

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const page = searchParams.get('page') || '1';
   const limit = searchParams.get('limit') || '50';
 
-  const url = `${API_BASE_URL}/wallets?chain=${chain}&timeframe=${timeframe}&tag=${tag}&page=${page}&limit=${limit}`;
+  const url = `${API_BASE_URL}/wallets?chain=${chain}&timeframe=${timeframe}&tag=${tag}&page=${page}&limit=${limit}&cacheOnly=true`;
 
   try {
     const response = await fetch(url, {

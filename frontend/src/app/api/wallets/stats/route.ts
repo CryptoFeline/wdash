@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const timeframe = searchParams.get('timeframe') || '7d';
   const tag = searchParams.get('tag') || 'all';
 
-  const url = `${API_BASE_URL}/wallets/stats?chain=${chain}&timeframe=${timeframe}&tag=${tag}`;
+  const url = `${API_BASE_URL}/wallets/stats?chain=${chain}&timeframe=${timeframe}&tag=${tag}&cacheOnly=true`;
 
   try {
     const response = await fetch(url, {

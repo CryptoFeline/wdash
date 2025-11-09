@@ -14,6 +14,11 @@ const PREFETCH_CONFIGS = [
   { chain: 'eth', timeframe: '7d', tag: 'smart_degen' },
 ];
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 5000; // 5 seconds
+const DELAY_BETWEEN_CONFIGS = 3000; // 3 seconds between different configs
+
 /**
  * GET /api/prefetch
  * Pre-warm cache by fetching common queries in background
@@ -68,9 +73,16 @@ router.get('/status', async (req, res) => {
 async function prefetchAll() {
   console.log('[Prefetch] Starting background cache warming...');
   
-  for (const config of PREFETCH_CONFIGS) {
+  for (let i = 0; i < PREFETCH_CONFIGS.length; i++) {
+    const config = PREFETCH_CONFIGS[i];
     try {
       await prefetchOne(config);
+      
+      // Add delay between configs to avoid rate limiting
+      if (i < PREFETCH_CONFIGS.length - 1) {
+        console.log(`[Prefetch] Waiting ${DELAY_BETWEEN_CONFIGS}ms before next config...`);
+        await sleep(DELAY_BETWEEN_CONFIGS);
+      }
     } catch (err) {
       console.error(`[Prefetch] Failed to prefetch ${config.chain}:${config.timeframe}:${config.tag}:`, err.message);
     }
@@ -80,7 +92,7 @@ async function prefetchAll() {
 }
 
 /**
- * Prefetch a single configuration
+ * Prefetch a single configuration with retry logic
  */
 async function prefetchOne({ chain, timeframe, tag }) {
   const cacheKey = getCacheKey(chain, timeframe, tag === null ? 'all' : tag);
@@ -100,19 +112,47 @@ async function prefetchOne({ chain, timeframe, tag }) {
     return;
   }
 
+  let lastError;
+  
   try {
-    console.log(`[Prefetch] FETCHING: ${cacheKey}`);
-    const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
-    const wallets = response.data?.rank || [];
+    // Retry loop with exponential backoff
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[Prefetch] FETCHING: ${cacheKey} (attempt ${attempt}/${MAX_RETRIES})`);
+        const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
+        const wallets = response.data?.rank || [];
+        
+        const qualityWallets = filterQualityWallets(wallets);
+        const rankedWallets = rankWallets(qualityWallets);
+        
+        setCache(cacheKey, rankedWallets);
+        console.log(`[Prefetch] SUCCESS: ${cacheKey} (${rankedWallets.length} wallets)`);
+        return; // Success - exit retry loop
+      } catch (err) {
+        lastError = err;
+        console.error(`[Prefetch] Attempt ${attempt}/${MAX_RETRIES} failed for ${cacheKey}:`, err.message);
+        
+        // If not last attempt, wait before retrying with exponential backoff
+        if (attempt < MAX_RETRIES) {
+          const delay = INITIAL_RETRY_DELAY * Math.pow(2, attempt - 1); // 5s, 10s, 20s
+          console.log(`[Prefetch] Retrying ${cacheKey} in ${delay}ms...`);
+          await sleep(delay);
+        }
+      }
+    }
     
-    const qualityWallets = filterQualityWallets(wallets);
-    const rankedWallets = rankWallets(qualityWallets);
-    
-    setCache(cacheKey, rankedWallets);
-    console.log(`[Prefetch] SUCCESS: ${cacheKey} (${rankedWallets.length} wallets)`);
+    // All retries exhausted
+    throw new Error(`Failed after ${MAX_RETRIES} attempts: ${lastError.message}`);
   } finally {
     releaseLock(cacheKey);
   }
+}
+
+/**
+ * Sleep utility
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export default router;
