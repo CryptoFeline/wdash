@@ -28,6 +28,8 @@ import {
   ExternalLink,
   Download,
   FileJson,
+  Rocket,
+  Star
 } from 'lucide-react';
 import {
   formatNumber,
@@ -39,6 +41,7 @@ import {
   copyToClipboard,
 } from '@/lib/export';
 import { exportToCSV, exportToJSON } from '@/lib/export';
+import { WalletDetailsModal } from './WalletDetailsModal';
 
 interface WalletTableProps {
   wallets: Wallet[];
@@ -56,9 +59,30 @@ export default function WalletTable({
   isLoading,
 }: WalletTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
-    { id: 'score', desc: true },
+    { id: 'pnl_7d', desc: true },
   ]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleRowClick = (wallet: Wallet) => {
+    setSelectedWallet(wallet);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedWallet(null);
+  };
+
+  // Check if wallet is a good candidate for copy trading
+  const isGoodCandidate = (wallet: Wallet) => {
+    return (
+      wallet.winrate_7d >= 0.7 && 
+      wallet.pnl_2x_5x_num_7d_ratio >= 0.3 &&
+      wallet.realized_profit_7d > 1000
+    );
+  };
 
   /**
    * HOW TO ADD/REMOVE COLUMNS:
@@ -114,7 +138,14 @@ export default function WalletTable({
     {
       id: 'rank',
       header: '#',
-      cell: ({ row }) => <div className="font-medium">{row.index + 1}</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          <span className="font-medium">{row.index + 1}</span>
+          {isGoodCandidate(row.original) && (
+            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+          )}
+        </div>
+      ),
       enableSorting: false,
     },
     {
@@ -345,28 +376,183 @@ export default function WalletTable({
       },
       cell: ({ row }) => {
         const tokens = row.original.token_num_7d;
+        const moonshots = row.original.pnl_gt_5x_num_7d;
+        
         if (tokens === null || tokens === undefined) {
           return <span className="text-gray-400">N/A</span>;
         }
-        return <span>{tokens}</span>;
-      },
-    },
-    {
-      accessorKey: 'pnl_gt_5x_num_7d',
-      header: 'Moonshots',
-      cell: ({ row }) => {
-        const moonshots = row.original.pnl_gt_5x_num_7d;
-        if (moonshots === null || moonshots === undefined) {
-          return <span className="text-gray-400">N/A</span>;
-        }
+        
         return (
-          <span className="font-semibold text-green-600">{moonshots}</span>
+          <div className="flex items-center gap-2">
+            <span>{tokens} /</span>
+            {moonshots > 0 && (
+              <span className="text-green-600 font-semibold flex items-center gap-1">
+                {moonshots}<Rocket className="h-4 w-4" />
+              </span>
+            )}
+          </div>
         );
       },
     },
     {
-      id: 'risk',
-      header: 'Risk',
+      accessorKey: 'balance',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Balance
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const balance = row.original.balance;
+        const balanceNum = typeof balance === 'string' ? parseFloat(balance) : balance;
+        
+        if (balanceNum === null || balanceNum === undefined || isNaN(balanceNum)) {
+          return <span className="text-gray-400">N/A</span>;
+        }
+        
+        return <span className="font-medium">{balanceNum.toFixed(4)} SOL</span>;
+      },
+    },
+    {
+      accessorKey: 'last_active',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Last Active
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const lastActive = row.original.last_active;
+        
+        if (!lastActive) {
+          return <span className="text-gray-400">N/A</span>;
+        }
+        
+        const now = Math.floor(Date.now() / 1000);
+        const diff = now - lastActive;
+        
+        if (diff < 3600) {
+          const mins = Math.floor(diff / 60);
+          return <span className="text-xs text-green-600">{mins}m ago</span>;
+        } else if (diff < 86400) {
+          const hours = Math.floor(diff / 3600);
+          return <span className="text-xs text-yellow-600">{hours}h ago</span>;
+        } else {
+          const days = Math.floor(diff / 86400);
+          return <span className="text-xs text-gray-500">{days}d ago</span>;
+        }
+      },
+    },
+    {
+      accessorKey: 'follow_count',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Followers
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const followCount = row.original.follow_count;
+        
+        if (followCount === null || followCount === undefined) {
+          return <span className="text-gray-400">0</span>;
+        }
+        
+        return (
+          <span className={followCount > 10 ? 'font-semibold text-blue-600' : ''}>
+            {formatNumber(followCount)}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: 'tag_rank',
+      header: 'Tag Rank',
+      cell: ({ row }) => {
+        const tagRank = row.original.tag_rank;
+        const tag = row.original.tag;
+        
+        if (!tagRank || !tag || !tagRank[tag]) {
+          return <span className="text-gray-400">N/A</span>;
+        }
+        
+        const rank = tagRank[tag];
+        const isTopRank = rank <= 100;
+        
+        return (
+          <span className={`text-xs font-medium ${isTopRank ? 'text-yellow-600' : 'text-gray-600'}`}>
+            #{rank}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'honeypot',
+      header: 'Honeypot',
+      cell: ({ row }) => {
+        const ratio = row.original.risk?.token_honeypot_ratio || 0;
+        const color = ratio > 0.3 ? 'text-red-500' : ratio > 0.1 ? 'text-yellow-600' : 'text-green-600';
+        return (
+          <span className={`font-medium ${color}`}>
+            {formatPercentage(ratio * 100)}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'rug_pull',
+      header: 'Rug Pull',
+      cell: ({ row }) => {
+        const ratio = row.original.risk?.sell_pass_buy_ratio || 0;
+        const color = ratio > 0.3 ? 'text-red-500' : ratio > 0.1 ? 'text-yellow-600' : 'text-green-600';
+        return (
+          <span className={`font-medium ${color}`}>
+            {formatPercentage(ratio * 100)}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'fast_tx',
+      header: 'Fast TX',
+      cell: ({ row }) => {
+        const ratio = row.original.risk?.fast_tx_ratio || 0;
+        const color = ratio > 0.5 ? 'text-red-500' : ratio > 0.2 ? 'text-yellow-600' : 'text-green-600';
+        return (
+          <span className={`font-medium ${color}`}>
+            {formatPercentage(ratio * 100)}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'risk_score',
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Risk
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
       cell: ({ row }) => {
         const riskScore =
           (row.original.risk?.token_honeypot_ratio || 0) * 0.4 +
@@ -379,29 +565,6 @@ export default function WalletTable({
           <Badge className={color} variant="outline">
             {label}
           </Badge>
-        );
-      },
-    },
-    {
-      accessorKey: 'score',
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Score
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        );
-      },
-      cell: ({ row }) => {
-        const score = row.original.score;
-        if (score === null || score === undefined || isNaN(score)) {
-          return <span className="text-gray-400">N/A</span>;
-        }
-        return (
-          <span className="font-mono text-sm">{score.toFixed(3)}</span>
         );
       },
     },
@@ -483,9 +646,19 @@ export default function WalletTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
+                  onClick={() => handleRowClick(row.original)}
+                  className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                    isGoodCandidate(row.original) ? 'bg-green-50 dark:bg-green-950/20' : ''
+                  }`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} onClick={(e) => {
+                      // Prevent row click when clicking on checkbox, buttons, etc.
+                      if (cell.column.id === 'select' || 
+                          (e.target as HTMLElement).closest('button')) {
+                        e.stopPropagation();
+                      }
+                    }}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -516,6 +689,14 @@ export default function WalletTable({
           </Button>
         </div>
       )}
+
+      {/* Wallet Details Modal */}
+      <WalletDetailsModal
+        wallet={selectedWallet}
+        chain={chain}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+      />
     </div>
   );
 }

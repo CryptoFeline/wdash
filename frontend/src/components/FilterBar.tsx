@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import { AdvancedFilters, AdvancedFilterValues } from '@/components/AdvancedFilters';
 
 interface FilterBarProps {
   chain: string;
@@ -20,6 +21,8 @@ interface FilterBarProps {
   onTagChange: (value: string) => void;
   onRefresh: () => void;
   isLoading?: boolean;
+  advancedFilters: AdvancedFilterValues;
+  onAdvancedFiltersChange: (filters: AdvancedFilterValues) => void;
 }
 
 export default function FilterBar({
@@ -31,6 +34,8 @@ export default function FilterBar({
   onTagChange,
   onRefresh,
   isLoading,
+  advancedFilters,
+  onAdvancedFiltersChange,
 }: FilterBarProps) {
   const chains = [
     { id: 'eth', name: 'Ethereum' },
@@ -105,6 +110,12 @@ export default function FilterBar({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Advanced Filters Modal - Icon only */}
+      <AdvancedFilters
+        filters={advancedFilters}
+        onFiltersChange={onAdvancedFiltersChange}
+      />
 
       <Button
         variant="outline"

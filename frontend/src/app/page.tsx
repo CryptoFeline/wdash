@@ -1,13 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchWallets, fetchStats } from '@/lib/api';
 import { Wallet, PaginatedResponse, StatsResponse } from '@/types/wallet';
 import WalletTable from '@/components/WalletTable';
 import FilterBar from '@/components/FilterBar';
 import StatsCards from '@/components/StatsCards';
+import { AdvancedFilterValues } from '@/components/AdvancedFilters';
 import { ThemeToggle } from '@/components/ThemeToggle';
+
+const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
+  pnlMin: -100,
+  pnlMax: 1000,
+  roiMin: 0,
+  roiMax: 10000,
+  tokensMin: 0,
+  tokensMax: 500,
+  holdTimeMin: 0,
+  holdTimeMax: 168,
+  rugPullMax: 100,
+};
 
 export default function Home() {
   const [chain, setChain] = useState('sol');
@@ -15,7 +28,7 @@ export default function Home() {
   const [tag, setTag] = useState('all');
   const [page, setPage] = useState(1);
   const [allWallets, setAllWallets] = useState<Wallet[]>([]);
-  const [showWinnersOnly, setShowWinnersOnly] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterValues>(DEFAULT_ADVANCED_FILTERS);
 
   // Fetch wallets
   const { data: walletsData, isLoading: walletsLoading, refetch: refetchWallets } = useQuery<PaginatedResponse>({
@@ -56,6 +69,38 @@ export default function Home() {
     refetchWallets();
   };
 
+  // Apply all filters
+  const filteredWallets = useMemo(() => {
+    let filtered = allWallets;
+
+    // Advanced filters
+    filtered = filtered.filter(w => {
+      // PnL filter
+      const pnl = typeof w.pnl_7d === 'string' ? parseFloat(w.pnl_7d) : w.pnl_7d;
+      if (pnl < advancedFilters.pnlMin || pnl > advancedFilters.pnlMax) return false;
+
+      // ROI (Realized Profit) filter
+      const profit = typeof w.realized_profit_7d === 'string' ? parseFloat(w.realized_profit_7d) : w.realized_profit_7d;
+      if (profit < advancedFilters.roiMin || profit > advancedFilters.roiMax) return false;
+
+      // Tokens filter
+      const tokens = w.token_num_7d || 0;
+      if (tokens < advancedFilters.tokensMin || tokens > advancedFilters.tokensMax) return false;
+
+      // Hold time filter (convert to hours)
+      const holdTime = (w.avg_holding_period_7d || 0) / 3600; // seconds to hours
+      if (holdTime < advancedFilters.holdTimeMin || holdTime > advancedFilters.holdTimeMax) return false;
+
+      // Rug pull filter
+      const rugPullRatio = (w.risk?.sell_pass_buy_ratio || 0) * 100;
+      if (rugPullRatio > advancedFilters.rugPullMax) return false;
+
+      return true;
+    });
+
+    return filtered;
+  }, [allWallets, advancedFilters]);
+
   return (
     <div className="min-h-screen bg-background">
       <ThemeToggle />
@@ -80,37 +125,20 @@ export default function Home() {
           onTagChange={setTag}
           onRefresh={handleRefresh}
           isLoading={walletsLoading}
+          advancedFilters={advancedFilters}
+          onAdvancedFiltersChange={setAdvancedFilters}
         />
 
-        {/* Winners Filter Toggle */}
-        <div className="flex items-center gap-4 mb-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showWinnersOnly}
-              onChange={(e) => setShowWinnersOnly(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300"
-            />
-            <span className="text-sm font-medium">
-              50%+ PnL Only
-            </span>
-          </label>
-          {showWinnersOnly && (
-            <span className="text-xs text-gray-500">
-              Showing {allWallets.filter(w => {
-                const pnl = typeof w.pnl_7d === 'string' ? parseFloat(w.pnl_7d) : w.pnl_7d;
-                return pnl >= 0.5;
-              }).length} winners
-            </span>
-          )}
-        </div>
+        {/* Filter Status */}
+        {filteredWallets.length < allWallets.length && (
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredWallets.length} of {allWallets.length} wallets
+          </div>
+        )}
 
         {/* Table */}
         <WalletTable
-          wallets={showWinnersOnly ? allWallets.filter(w => {
-            const pnl = typeof w.pnl_7d === 'string' ? parseFloat(w.pnl_7d) : w.pnl_7d;
-            return pnl >= 0.5;
-          }) : allWallets}
+          wallets={filteredWallets}
           chain={chain}
           onLoadMore={handleLoadMore}
           hasMore={walletsData?.hasMore || false}
