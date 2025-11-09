@@ -6,9 +6,34 @@ let cachedExecutablePath = null;
 
 async function getExecutablePath() {
   if (!cachedExecutablePath) {
-    cachedExecutablePath = await chromium.executablePath();
+    // Use local Chrome in development, @sparticuz/chromium in production
+    if (process.env.NODE_ENV === 'production') {
+      cachedExecutablePath = await chromium.executablePath();
+    } else {
+      // macOS Chrome paths
+      cachedExecutablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    }
   }
   return cachedExecutablePath;
+}
+
+async function getLaunchOptions() {
+  if (process.env.NODE_ENV === 'production') {
+    // Production: use @sparticuz/chromium
+    return {
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await getExecutablePath(),
+      headless: chromium.headless,
+    };
+  } else {
+    // Development: use local Chrome
+    return {
+      executablePath: await getExecutablePath(),
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    };
+  }
 }
 
 /**
@@ -16,18 +41,13 @@ async function getExecutablePath() {
  * @param {Object} options - Fetch options
  * @param {string} options.chain - Blockchain (eth, sol, bsc, etc.)
  * @param {string} options.timeframe - Time period (1d, 7d, 30d)
- * @param {string} options.tag - Tag filter (smart_degen, pump_smart, renowned, snipe_bot, etc.)
+ * @param {string|null} options.tag - Tag filter (smart_degen, pump_smart, renowned, snipe_bot, null for unfiltered)
  * @param {number} options.limit - Max results (default 200)
  * @returns {Promise<Object>} API response with wallet data
  */
-export async function fetchGMGNData({ chain = 'eth', timeframe = '7d', tag = '', limit = 200 }) {
+export async function fetchGMGNData({ chain = 'eth', timeframe = '7d', tag = null, limit = 200 }) {
   // Browser configuration
-  const launchOptions = {
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await getExecutablePath(),
-    headless: chromium.headless,
-  };
+  const launchOptions = await getLaunchOptions();
 
   const browser = await puppeteer.launch(launchOptions);
 
@@ -50,10 +70,9 @@ export async function fetchGMGNData({ chain = 'eth', timeframe = '7d', tag = '',
     console.log('[Fetcher] Waiting for Cloudflare...');
     await page.waitForTimeout(8000);
 
-    // Build API URL
-    const tagParam = tag ? `?tag=${tag}` : '';
-    const limitParam = tag ? `&limit=${limit}` : `?limit=${limit}`;
-    const apiUrl = `https://gmgn.ai/defi/quotation/v1/rank/${chain}/wallets/${timeframe}${tagParam}${limitParam}`;
+    // Build API URL - tag=null means no tag filter (all wallets)
+    const tagParam = tag ? `?tag=${tag}&limit=${limit}` : `?limit=${limit}`;
+    const apiUrl = `https://gmgn.ai/defi/quotation/v1/rank/${chain}/wallets/${timeframe}${tagParam}`;
 
     console.log(`[Fetcher] Fetching data from API: ${apiUrl}`);
 
@@ -63,7 +82,7 @@ export async function fetchGMGNData({ chain = 'eth', timeframe = '7d', tag = '',
       return await response.json();
     }, apiUrl);
 
-    console.log(`[Fetcher] Successfully fetched ${data.data?.rank?.length || 0} wallets (tag: ${tag || 'all'})`);
+    console.log(`[Fetcher] Successfully fetched ${data.data?.rank?.length || 0} wallets (tag: ${tag || 'unfiltered'})`);
 
     return data;
   } catch (error) {
@@ -94,10 +113,18 @@ export async function fetchAllTags(chain = 'eth', timeframe = '7d', limit = 200)
   if (isProduction) {
     console.log('[Multi-Fetch] Running sequentially (production mode)');
     results = [];
-    for (const tag of TAGS) {
+    for (let i = 0; i < TAGS.length; i++) {
+      const tag = TAGS[i];
       try {
         const result = await fetchGMGNData({ chain, timeframe, tag, limit });
         results.push(result);
+        
+        // Add random delay between requests (10-20s) to avoid Cloudflare rate limiting
+        if (i < TAGS.length - 1) {
+          const delay = 10000 + Math.floor(Math.random() * 10000); // 10-20 seconds
+          console.log(`[Multi-Fetch] Waiting ${(delay/1000).toFixed(1)}s before next tag...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       } catch (err) {
         console.error(`[Multi-Fetch] Failed to fetch tag "${tag}":`, err.message);
         results.push({ data: { rank: [] } });

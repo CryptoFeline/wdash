@@ -1,5 +1,5 @@
 import express from 'express';
-import { fetchAllTags, filterQualityWallets, rankWallets } from '../scraper/fetcher.js';
+import { filterQualityWallets, rankWallets } from '../scraper/fetcher.js';
 import { getCacheKey, getCache, setCache } from '../scraper/cache.js';
 
 const router = express.Router();
@@ -25,16 +25,19 @@ router.get('/', async (req, res) => {
 
     if (!allWallets) {
       // Fetch from GMGN.ai
-      console.log('[API] Fetching fresh data...');
+      console.log(`[API] Fetching fresh data for tag: ${tag}...`);
+      
+      // Import fetchGMGNData for single tag fetches
+      const { fetchGMGNData } = await import('../scraper/fetcher.js');
       
       if (tag === 'all') {
-        // Fetch all tags and deduplicate
-        allWallets = await fetchAllTags(chain, timeframe, 200);
+        // Fetch unfiltered data (no tag parameter)
+        const response = await fetchGMGNData({ chain, timeframe, tag: null, limit: 200 });
+        allWallets = response.data?.rank || [];
       } else {
-        // Fetch single tag (future implementation)
-        // For now, fetch all and filter
-        allWallets = await fetchAllTags(chain, timeframe, 200);
-        allWallets = allWallets.filter(w => w.tags.includes(tag));
+        // Fetch only the requested tag
+        const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
+        allWallets = response.data?.rank || [];
       }
 
       // Apply quality filters and ranking
@@ -85,12 +88,18 @@ router.get('/stats', async (req, res) => {
     let wallets = getCache(cacheKey);
 
     if (!wallets) {
+      const { fetchGMGNData } = await import('../scraper/fetcher.js');
+      
       if (tag === 'all') {
-        wallets = await fetchAllTags(chain, timeframe, 200);
+        // Fetch unfiltered data
+        const response = await fetchGMGNData({ chain, timeframe, tag: null, limit: 200 });
+        wallets = response.data?.rank || [];
       } else {
-        wallets = await fetchAllTags(chain, timeframe, 200);
-        wallets = wallets.filter(w => w.tags.includes(tag));
+        // Fetch only requested tag
+        const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
+        wallets = response.data?.rank || [];
       }
+      
       const qualityWallets = filterQualityWallets(wallets);
       wallets = rankWallets(qualityWallets);
       setCache(cacheKey, wallets);
