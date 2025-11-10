@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "echo 'No build needed - using serverless Chromium'",
+    "build": "cd backend && npm install",
     "start": "cd backend && npm start"
   }
 }
