@@ -9,7 +9,7 @@
  */
 
 import express from 'express';
-import { solveTurnstile } from '../scraper/solver-turnstile.js';
+import { solveTurnstile } from '../scraper/solver-turnstile-test.js';
 import { scrapeParallel } from '../scraper/scraper-parallel.js';
 
 const router = express.Router();
