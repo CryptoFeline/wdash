@@ -1,7 +1,8 @@
-const puppeteer = require('puppeteer');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+import puppeteer from 'puppeteer';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import puppeteerExtra from 'puppeteer-extra';
 
-const pup = require('puppeteer-extra');
+const pup = puppeteerExtra;
 pup.use(StealthPlugin());
 
 /**
@@ -391,10 +392,14 @@ async function solveTurnstile(customUrl = null) {
 
 // Execute
 // Export function for module usage
-module.exports = { solveTurnstile };
+export { solveTurnstile };
 
 // Only run directly if this is the main script
-if (require.main === module) {
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const isMainModule = process.argv[1] === __filename;
+
+if (isMainModule) {
   solveTurnstile()
     .then(() => process.exit(0))
     .catch(err => {

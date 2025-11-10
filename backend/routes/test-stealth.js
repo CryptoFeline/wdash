@@ -9,12 +9,10 @@
  */
 
 import express from 'express';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { solveTurnstile } from '../scraper/solver-turnstile.js';
+import { scrapeParallel } from '../scraper/scraper-parallel.js';
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 /**
  * GET /api/test-stealth
@@ -25,16 +23,8 @@ router.get('/', async (req, res) => {
     const testUrl = req.query.url || 'https://gmgn.ai/defi/quotation/v1/rank/sol/wallets/7d?orderby=pnl_7d&direction=desc&limit=200';
     
     console.log('[Test-Stealth] Starting test with URL:', testUrl);
-    
-    // Import the exact solver-turnstile.js using dynamic import
-    // Note: solver-turnstile.js is CommonJS, we need to use createRequire
-    const { createRequire } = await import('module');
-    const require = createRequire(import.meta.url);
-    
-    const solverPath = join(__dirname, '../scraper/solver-turnstile.js');
-    const { solveTurnstile } = require(solverPath);
-    
     console.log('[Test-Stealth] Calling solveTurnstile...');
+    
     const result = await solveTurnstile(testUrl);
     
     console.log('[Test-Stealth] Result:', {
@@ -76,13 +66,6 @@ router.get('/', async (req, res) => {
 router.get('/parallel', async (req, res) => {
   try {
     console.log('[Test-Stealth-Parallel] Starting parallel test...');
-    
-    // Import scraper-parallel.js
-    const { createRequire } = await import('module');
-    const require = createRequire(import.meta.url);
-    
-    const scraperPath = join(__dirname, '../scraper/scraper-parallel.js');
-    const { scrapeParallel } = require(scraperPath);
     
     // Test URLs
     const urls = [

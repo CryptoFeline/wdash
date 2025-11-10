@@ -15,7 +15,7 @@
  *     "https://gmgn.ai/defi/quotation/v1/rank/sol/wallets/30d?orderby=pnl_30d&direction=desc&limit=200"
  */
 
-const { solveTurnstile } = require('./solver-turnstile');
+import { solveTurnstile } from './solver-turnstile.js';
 
 async function scrapeParallel(urls) {
   const startTime = Date.now();
@@ -124,4 +124,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { scrapeParallel };
+export { scrapeParallel };
