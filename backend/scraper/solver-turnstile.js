@@ -245,110 +245,6 @@ async function solveTurnstile(customUrl = null) {
     log(`❌ Fatal error: ${error.message}`);
   }
 
-  // =============== SESSION REUSE TEST: Fetch second URL ===============
-  if (browser && result.success) {
-    try {
-      log('\n🔐 SESSION REUSE: Fetching second URL on warm session...');
-      
-      const url2Start = Date.now();
-      
-      // Reset responseData - the ORIGINAL listener from line 69 is still active!
-      responseData = null;
-      
-      const url2 = 'https://gmgn.ai/defi/quotation/v1/rank/sol/wallets/7d?&orderby=pnl_7d&direction=desc&limit=200&tag=smart_degen';
-      
-      log(`🌐 Navigating to URL2 (original listener will capture)...`);
-      
-      try {
-        const response = await page.goto(url2, {
-          waitUntil: 'networkidle0',
-          timeout: 60000
-        });
-        log(`  URL2 Status: ${response.status()}`);
-      } catch (e) {
-        log(`  URL2 Navigation error: ${e.message}`);
-      }
-
-      // Wait for page load
-      await page.waitForTimeout(3000);
-      
-      // URL2 shows MANUAL Turnstile challenge - need to click the checkbox
-      log(`� Looking for Turnstile checkbox on URL2...`);
-      
-      try {
-        // Wait for the Cloudflare Turnstile iframe to appear
-        await page.waitForSelector('iframe[src*="challenges.cloudflare.com"]', { timeout: 5000 });
-        log(`✅ Found Turnstile iframe`);
-        
-        // Get the iframe
-        const turnstileFrame = await page.frames().find(frame => 
-          frame.url().includes('challenges.cloudflare.com')
-        );
-        
-        if (turnstileFrame) {
-          log(`🖱️  Clicking Turnstile checkbox...`);
-          
-          // Wait for and click the checkbox inside the iframe
-          await turnstileFrame.waitForSelector('input[type="checkbox"]', { timeout: 5000 });
-          await turnstileFrame.click('input[type="checkbox"]');
-          
-          log(`✅ Clicked Turnstile checkbox - waiting for verification...`);
-          await page.waitForTimeout(3000);
-        }
-      } catch (e) {
-        log(`⚠️  Could not interact with Turnstile: ${e.message}`);
-      }
-
-      // Wait for second response (should come after checkbox click)
-      let waitCount = 0;
-      while (!responseData && waitCount < 30) {  // 30s max after clicking
-        await page.waitForTimeout(1000);
-        waitCount++;
-        if (waitCount % 5 === 0) {
-          log(`  Waiting for warm response... ${waitCount}s`);
-        }
-      }
-
-      const url2Duration = Date.now() - url2Start;
-
-      console.log('\n' + '═'.repeat(80));
-      console.log('SESSION REUSE TEST RESULTS');
-      console.log('═'.repeat(80));
-      
-      console.log('\n� URL1 (Cold Start):');
-      console.log(`   Time: ${(result.timing.completed ? (new Date(result.timing.completed) - new Date(result.timing.started)) / 1000 : 'N/A')}s`);
-      if (result.response.body) {
-        console.log(`   Code: ${result.response.body.code}`);
-        console.log(`   Wallets: ${result.response.body.data?.rank?.length || 0}`);
-      }
-      
-      console.log('\n📊 URL2 (Warm Session):');
-      console.log(`   Time: ${(url2Duration / 1000).toFixed(1)}s`);
-      
-      if (responseData && responseData.code === 0) {
-        console.log(`   Code: ${responseData.code}`);
-        console.log(`   Wallets: ${responseData.data?.rank?.length || 0}`);
-        
-        const speedup = result.timing.completed ? 
-          ((new Date(result.timing.completed) - new Date(result.timing.started)) / url2Duration).toFixed(1) : 'N/A';
-        
-        console.log('\n📈 Speedup:');
-        console.log(`   Cold: ${(result.timing.completed ? (new Date(result.timing.completed) - new Date(result.timing.started)) / 1000 : 'N/A')}s`);
-        console.log(`   Warm: ${(url2Duration / 1000).toFixed(1)}s`);
-        console.log(`   Speedup: ${speedup}x`);
-        
-        console.log('\n✅ SESSION REUSE TEST PASSED');
-      } else {
-        console.log(`   ❌ Failed to capture URL2 response`);
-      }
-      
-      console.log('═'.repeat(80));
-      
-    } catch (e) {
-      log(`⚠️  Session reuse test error: ${e.message}`);
-    }
-  }
-
   // Close browser
   if (browser) {
     try {
@@ -386,13 +282,6 @@ async function solveTurnstile(customUrl = null) {
     console.log('\n📊 RESPONSE PREVIEW:');
     console.log(JSON.stringify(result.response.body, null, 2).substring(0, 1000));
   }
-
-  // Save result
-  const fs = require('fs');
-  fs.writeFileSync(
-    '/Users/majsai/Desktop/gmgn-scraper/test/result.json',
-    JSON.stringify(result, null, 2)
-  );
 
   return result;
 }
