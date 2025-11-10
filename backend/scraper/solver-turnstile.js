@@ -1,9 +1,8 @@
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { addExtra } from 'puppeteer-extra';
 
-// Add stealth plugin to puppeteer-core
+// Add stealth plugin to puppeteer
 const pup = addExtra(puppeteer);
 pup.use(StealthPlugin());
 
@@ -47,14 +46,10 @@ async function solveTurnstile(customUrl = null) {
   try {
     log('🚀 Starting Puppeteer with Stealth...');
     
-    // Use @sparticuz/chromium for Render deployment
-    const executablePath = await chromium.executablePath();
-    
+    // Use bundled Chromium from full puppeteer package
     browser = await pup.launch({
-      executablePath,
-      headless: chromium.headless,
+      headless: true,
       args: [
-        ...chromium.args,
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-background-networking',
