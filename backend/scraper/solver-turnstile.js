@@ -55,8 +55,7 @@ async function solveTurnstile(customUrl = null) {
         '--disable-background-networking',
         '--disable-sync',
         '--disable-extensions'
-      ],
-      defaultViewport: chromium.defaultViewport
+      ]
     });
 
     page = await browser.newPage();
