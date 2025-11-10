@@ -1,39 +1,19 @@
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
-
-// Cache the executable path to avoid ETXTBSY errors when launching multiple browsers
-let cachedExecutablePath = null;
-
-async function getExecutablePath() {
-  if (!cachedExecutablePath) {
-    // Use local Chrome in development, @sparticuz/chromium in production
-    if (process.env.NODE_ENV === 'production') {
-      cachedExecutablePath = await chromium.executablePath();
-    } else {
-      // macOS Chrome paths
-      cachedExecutablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-    }
-  }
-  return cachedExecutablePath;
-}
+import puppeteer from 'puppeteer';
 
 async function getLaunchOptions() {
-  if (process.env.NODE_ENV === 'production') {
-    // Production: use @sparticuz/chromium
-    return {
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await getExecutablePath(),
-      headless: chromium.headless,
-    };
-  } else {
-    // Development: use local Chrome
-    return {
-      executablePath: await getExecutablePath(),
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    };
-  }
+  // Use bundled Chromium from full puppeteer package
+  return {
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu'
+    ]
+  };
 }
 
 /**
