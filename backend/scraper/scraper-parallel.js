@@ -99,8 +99,15 @@ async function scrapeParallel(urls) {
   return results;
 }
 
-// Command line execution
-if (require.main === module) {
+// Export function for module usage
+export { scrapeParallel };
+
+// Only run directly if this is the main script
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const isMainModule = process.argv[1] === __filename;
+
+if (isMainModule) {
   const urls = process.argv.slice(2);
   
   if (urls.length === 0) {
@@ -123,5 +130,3 @@ if (require.main === module) {
       process.exit(1);
     });
 }
-
-export { scrapeParallel };
