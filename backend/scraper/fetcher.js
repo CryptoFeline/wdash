@@ -1,10 +1,13 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 
 async function getLaunchOptions() {
-  // Use bundled Chromium from full puppeteer package
+  // Use @sparticuz/chromium for serverless deployment
   return {
-    headless: true,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
     args: [
+      ...chromium.args,
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
