@@ -14,7 +14,7 @@ echo "🧪 Testing Netlify Function: test-stealth"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Netlify URL (update once deployed)
-NETLIFY_URL="https://gmgn-dashboard.netlify.app"
+NETLIFY_URL="https://wdashboard.netlify.app"
 # Or use local testing: netlify dev
 # LOCAL_URL="http://localhost:8888"
 
