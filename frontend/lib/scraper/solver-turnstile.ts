@@ -94,7 +94,7 @@ export async function solveTurnstile(customUrl: string | null = null): Promise<T
     // Intercept requests to get the API data once we bypass the challenge
     let responseData: any = null;
     
-    await page.on('response', async (response) => {
+    await page.on('response', async (response: any) => {
       const url = response.url();
       
       if (url.includes('gmgn.ai/defi/quotation/v1/rank/sol/wallets')) {
@@ -144,7 +144,7 @@ export async function solveTurnstile(customUrl: string | null = null): Promise<T
     try {
       await page.waitForFunction(
         () => {
-          const iframe = document.querySelector('iframe[src*="challenges.cloudflare.com"]');
+          const iframe = document.querySelector('iframe[src*="challenges.cloudflare.com"]') as HTMLIFrameElement | null;
           return iframe && iframe.offsetHeight > 0;
         },
         { timeout: 15000 }
@@ -157,9 +157,9 @@ export async function solveTurnstile(customUrl: string | null = null): Promise<T
       
       // Try alternative detection
       const checkForTurnstile = await page.evaluate(() => {
-        const iframe = document.querySelector('iframe[src*="challenges.cloudflare.com"]');
+        const iframe = document.querySelector('iframe[src*="challenges.cloudflare.com"]') as HTMLIFrameElement | null;
         const template = document.querySelector('template[shadowrootmode="closed"]');
-        const input = document.querySelector('input[type="checkbox"]');
+        const input = document.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
         
         return {
           iframeExists: !!iframe,
@@ -180,7 +180,7 @@ export async function solveTurnstile(customUrl: string | null = null): Promise<T
     try {
       await page.waitForFunction(
         () => {
-          const token = document.querySelector('#cf-chl-widget-*_response');
+          const token = document.querySelector('#cf-chl-widget-*_response') as HTMLInputElement | null;
           const tokenValue = token?.value;
           return tokenValue && tokenValue.length > 0;
         },
@@ -188,7 +188,7 @@ export async function solveTurnstile(customUrl: string | null = null): Promise<T
       );
       
       const tokenValue = await page.evaluate(() => {
-        const token = document.querySelector('input[id$="_response"]');
+        const token = document.querySelector('input[id$="_response"]') as HTMLInputElement | null;
         return token?.value || null;
       });
       
@@ -224,13 +224,13 @@ export async function solveTurnstile(customUrl: string | null = null): Promise<T
       // CHECK COOKIES AFTER SUCCESS
       const cookies = await page.cookies();
       log(`🍪 Total cookies: ${cookies.length}`);
-      const cfCookie = cookies.find(c => c.name === 'cf_clearance');
+      const cfCookie = cookies.find((c: any) => c.name === 'cf_clearance');
       if (cfCookie) {
         log(`✅ cf_clearance found: ${cfCookie.value.substring(0, 30)}...`);
         log(`   Domain: ${cfCookie.domain}, Expires: ${new Date(cfCookie.expires * 1000).toISOString()}`);
       } else {
         log(`⚠️  No cf_clearance in cookies`);
-        log(`   Available cookies: ${cookies.map(c => c.name).join(', ')}`);
+        log(`   Available cookies: ${cookies.map((c: any) => c.name).join(', ')}`);
       }
     } else {
       // Try to extract from page
