@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: dashboard-backend
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: cd .. && ./render-build.sh
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: NODE_ENV
+        value: production
+      - key: PUPPETEER_CACHE_DIR
+        value: /opt/render/project/.cache/puppeteer
+      - key: API_KEY
+        sync: false
+    autoDeploy: true

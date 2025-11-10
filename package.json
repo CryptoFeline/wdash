@@ -1,0 +1,9 @@
+{
+  "name": "gmgn-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd backend && npm install && npx puppeteer browsers install chrome",
+    "start": "cd backend && npm start"
+  }
+}
