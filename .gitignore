@@ -37,3 +37,6 @@ docs/
 
 # .history folder
 .history/
+
+# Test folder
+test/
