@@ -18,7 +18,7 @@ NETLIFY_URL="https://wdashboard.netlify.app"
 # Or use local testing: netlify dev
 # LOCAL_URL="http://localhost:8888"
 
-TEST_URL="${NETLIFY_URL}/api/test-stealth"
+TEST_URL="${NETLIFY_URL}/.netlify/functions/test-stealth"
 
 echo ""
 echo -e "${YELLOW}📡 Endpoint:${NC} $TEST_URL"
