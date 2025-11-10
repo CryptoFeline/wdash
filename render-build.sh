@@ -14,7 +14,7 @@ export PUPPETEER_CACHE_DIR=/opt/render/project/.cache/puppeteer
 echo "🗂️  Puppeteer cache directory: $PUPPETEER_CACHE_DIR"
 
 # Check if Chromium is already cached
-if [ -d "$PUPPETEER_CACHE_DIR" ]; then
+if [ -d "$PUPPETEER_CACHE_DIR" ] && [ "$(ls -A $PUPPETEER_CACHE_DIR)" ]; then
   echo "✅ Found cached Chromium (size: $(du -sh $PUPPETEER_CACHE_DIR 2>/dev/null | cut -f1 || echo 'unknown'))"
   ls -lah "$PUPPETEER_CACHE_DIR" || true
 else
@@ -24,6 +24,10 @@ fi
 # Install dependencies with verbose output
 echo "⬇️  Installing dependencies..."
 npm install --verbose
+
+# Explicitly install Chrome for Puppeteer
+echo "🌐 Installing Chrome for Puppeteer..."
+npx puppeteer browsers install chrome
 
 echo "✅ Build complete - using full Puppeteer with bundled Chromium"
 echo "📊 Installed packages:"
