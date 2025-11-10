@@ -1,9 +1,10 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import puppeteerExtra from 'puppeteer-extra';
+import { addExtra } from 'puppeteer-extra';
 
-const pup = puppeteerExtra;
+// Add stealth plugin to puppeteer-core
+const pup = addExtra(puppeteer);
 pup.use(StealthPlugin());
 
 /**
