@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { solveTurnstile } from '@/lib/scraper/solver-turnstile';
+import { solveTurnstile } from '../../../../lib/scraper/solver-turnstile';
 
 /**
  * Next.js API Route: Test Stealth Plugin
