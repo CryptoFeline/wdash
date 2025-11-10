@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs-22_x"]
+
+[phases.install]
+cmds = ["npm install --production=false --prefer-offline --no-audit"]
+
+[phases.build]
+cmds = ["cd backend && npm install --production=false --prefer-offline --no-audit --legacy-peer-deps"]
+
+[start]
+cmd = "cd backend && npm start"
