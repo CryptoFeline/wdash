@@ -2,6 +2,9 @@
 # exit on error
 set -o errexit
 
+# Navigate to backend directory
+cd backend
+
 # Install dependencies
 npm install
 
