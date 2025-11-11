@@ -6,18 +6,17 @@ const router = express.Router();
 
 /**
  * Prefetch configurations - what to warm up
+ * Reduced to only initial load (SOL 7d all)
+ * Other filters will be fetched on-demand when user changes filters
  */
 const PREFETCH_CONFIGS = [
-  { chain: 'sol', timeframe: '7d', tag: null },  // Solana All Wallets
-  { chain: 'eth', timeframe: '7d', tag: null },  // Ethereum All Wallets
-  { chain: 'sol', timeframe: '7d', tag: 'smart_degen' },
-  { chain: 'eth', timeframe: '7d', tag: 'smart_degen' },
+  { chain: 'sol', timeframe: '7d', tag: null },  // Initial load only
 ];
 
 // Retry configuration
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 5000; // 5 seconds
-const DELAY_BETWEEN_CONFIGS = 3000; // 3 seconds between different configs
+const DELAY_BETWEEN_CONFIGS = 30000; // 30 seconds between configs (free tier has 1 concurrent browser limit)
 
 /**
  * GET /api/prefetch

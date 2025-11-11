@@ -1,26 +1,15 @@
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
-
-async function getLaunchOptions() {
-  // Use @sparticuz/chromium for serverless deployment
-  return {
-    executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
-    args: [
-      ...chromium.args,
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--disable-gpu'
-    ]
-  };
-}
+import { fetchJSONWithBrowserless } from './solver-browserless.js';
 
 /**
- * Fetch GMGN.ai wallet data using Puppeteer with browser context
+ * Fetch GMGN.ai wallet data using Browserless.io API
+ * 
+ * Replaces puppeteer-core + @sparticuz/chromium with Browserless /unblock REST API:
+ * - 95%+ success rate (vs 50% with datacenter IPs)
+ * - 3-5 second responses (vs 60-90s with local puppeteer)
+ * - No Chromium binary (~50MB savings)
+ * - No bundling issues
+ * - Managed browser pool with residential proxies
+ * 
  * @param {Object} options - Fetch options
  * @param {string} options.chain - Blockchain (eth, sol, bsc, etc.)
  * @param {string} options.timeframe - Time period (1d, 7d, 30d)
@@ -29,55 +18,34 @@ async function getLaunchOptions() {
  * @returns {Promise<Object>} API response with wallet data
  */
 export async function fetchGMGNData({ chain = 'eth', timeframe = '7d', tag = null, limit = 200 }) {
-  // Browser configuration
-  const launchOptions = await getLaunchOptions();
+  // Build API URL - tag=null means no tag filter (all wallets)
+  const tagParam = tag ? `?tag=${tag}&limit=${limit}` : `?limit=${limit}`;
+  const apiUrl = `https://gmgn.ai/defi/quotation/v1/rank/${chain}/wallets/${timeframe}${tagParam}`;
 
-  const browser = await puppeteer.launch(launchOptions);
+  console.log(`[Fetcher] Fetching via Browserless: ${apiUrl}`);
 
-  try {
-    const page = await browser.newPage();
+  // Fetch through Browserless /unblock API with residential proxy
+  const data = await fetchJSONWithBrowserless(apiUrl, {
+    useProxy: true,          // Use residential proxy (6 units/MB, 95%+ success)
+    waitForTimeout: 8000,    // Wait 8s for Cloudflare to pass
+    waitUntil: 'networkidle2', // Wait for network idle
+    maxRetries: 3            // Retry up to 3 times
+  });
 
-    // Set realistic user agent
-    await page.setUserAgent(
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    );
+  console.log(`[Fetcher] Successfully fetched ${data.data?.rank?.length || 0} wallets (tag: ${tag || 'unfiltered'})`);
 
-    // Navigate to GMGN.ai to establish session
-    console.log(`[Fetcher] Navigating to GMGN.ai (chain: ${chain})...`);
-    await page.goto(`https://gmgn.ai/rank?chain=${chain}`, {
-      waitUntil: 'networkidle2',
-      timeout: 30000
-    });
-
-    // Wait for Cloudflare challenge to pass
-    console.log('[Fetcher] Waiting for Cloudflare...');
-    await page.waitForTimeout(8000);
-
-    // Build API URL - tag=null means no tag filter (all wallets)
-    const tagParam = tag ? `?tag=${tag}&limit=${limit}` : `?limit=${limit}`;
-    const apiUrl = `https://gmgn.ai/defi/quotation/v1/rank/${chain}/wallets/${timeframe}${tagParam}`;
-
-    console.log(`[Fetcher] Fetching data from API: ${apiUrl}`);
-
-    // Fetch data from within the authenticated browser context
-    const data = await page.evaluate(async (url) => {
-      const response = await fetch(url);
-      return await response.json();
-    }, apiUrl);
-
-    console.log(`[Fetcher] Successfully fetched ${data.data?.rank?.length || 0} wallets (tag: ${tag || 'unfiltered'})`);
-
-    return data;
-  } catch (error) {
-    console.error('[Fetcher] Error:', error.message);
-    throw error;
-  } finally {
-    await browser.close();
-  }
+  return data;
 }
 
 /**
  * Fetch all tags in parallel and deduplicate
+ * 
+ * With Browserless.io:
+ * - No ETXTBSY errors (no local browser process)
+ * - No sequential delays needed (managed browser pool)
+ * - Faster execution (parallel fetching)
+ * - Built-in rate limiting and retry logic
+ * 
  * @param {string} chain - Blockchain
  * @param {string} timeframe - Time period
  * @param {number} limit - Max results per tag
@@ -86,44 +54,18 @@ export async function fetchGMGNData({ chain = 'eth', timeframe = '7d', tag = nul
 export async function fetchAllTags(chain = 'eth', timeframe = '7d', limit = 200) {
   const TAGS = ['smart_degen', 'pump_smart', 'renowned', 'snipe_bot'];
 
-  console.log(`[Multi-Fetch] Fetching ${TAGS.length} tags in parallel...`);
+  console.log(`[Multi-Fetch] Fetching ${TAGS.length} tags in parallel via Browserless...`);
 
-  // On production (Render), fetch sequentially to avoid ETXTBSY errors with @sparticuz/chromium
-  // In development, fetch in parallel for speed
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  let results;
-  if (isProduction) {
-    console.log('[Multi-Fetch] Running sequentially (production mode)');
-    results = [];
-    for (let i = 0; i < TAGS.length; i++) {
-      const tag = TAGS[i];
-      try {
-        const result = await fetchGMGNData({ chain, timeframe, tag, limit });
-        results.push(result);
-        
-        // Add random delay between requests (10-20s) to avoid Cloudflare rate limiting
-        if (i < TAGS.length - 1) {
-          const delay = 10000 + Math.floor(Math.random() * 10000); // 10-20 seconds
-          console.log(`[Multi-Fetch] Waiting ${(delay/1000).toFixed(1)}s before next tag...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      } catch (err) {
+  // With Browserless, we can safely fetch in parallel (no ETXTBSY, managed pool)
+  const promises = TAGS.map(tag =>
+    fetchGMGNData({ chain, timeframe, tag, limit })
+      .catch(err => {
         console.error(`[Multi-Fetch] Failed to fetch tag "${tag}":`, err.message);
-        results.push({ data: { rank: [] } });
-      }
-    }
-  } else {
-    // Fetch all tags in parallel (development)
-    const promises = TAGS.map(tag =>
-      fetchGMGNData({ chain, timeframe, tag, limit })
-        .catch(err => {
-          console.error(`[Multi-Fetch] Failed to fetch tag "${tag}":`, err.message);
-          return { data: { rank: [] } }; // Return empty on error
-        })
-    );
-    results = await Promise.all(promises);
-  }
+        return { data: { rank: [] } }; // Return empty on error
+      })
+  );
+
+  const results = await Promise.all(promises);
 
   // Combine all results
   const allWallets = results.flatMap(r => r.data?.rank || []);

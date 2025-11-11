@@ -1,105 +1,198 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchWallets, fetchStats } from '@/lib/api';
 import { Wallet, PaginatedResponse, StatsResponse } from '@/types/wallet';
 import WalletTable from '@/components/WalletTable';
 import FilterBar from '@/components/FilterBar';
 import StatsCards from '@/components/StatsCards';
+import { StalenessIndicator } from '@/components/StalenessIndicator';
 import { AdvancedFilterValues } from '@/components/AdvancedFilters';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useWalletStorage } from '@/hooks/useWalletStorage';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: -100,
-  pnlMax: 1000,
+  pnlMax: 100000, // Increase from 1000 to 100,000% (some wallets have massive gains)
   roiMin: 0,
-  roiMax: 10000,
+  roiMax: 100000000, // Increase from 10,000 to 100M (realized profit can be huge)
   tokensMin: 0,
-  tokensMax: 500,
+  tokensMax: 1000, // Increase from 500 to 1000
   holdTimeMin: 0,
   holdTimeMax: 168,
   rugPullMax: 100,
 };
 
 export default function Home() {
+  // API filters (trigger actual fetch from backend)
   const [chain, setChain] = useState('sol');
   const [timeframe, setTimeframe] = useState('7d');
   const [tag, setTag] = useState('all');
-  const [page, setPage] = useState(1);
-  const [allWallets, setAllWallets] = useState<Wallet[]>([]);
+  
+  // Display filters (client-side only, filter the database)
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterValues>(DEFAULT_ADVANCED_FILTERS);
 
-  // Fetch wallets
-  const { data: walletsData, isLoading: walletsLoading, refetch: refetchWallets } = useQuery<PaginatedResponse>({
-    queryKey: ['wallets', chain, timeframe, tag, page],
-    queryFn: () => fetchWallets({ chain, timeframe, tag, page, limit: 50 }),
+  // Persistent wallet database hook
+  const storage = useWalletStorage();
+  const stats = storage.getStats();
+
+  // Fetch wallets with STATIC queryKey (manual refresh only)
+  const { 
+    data: walletsData, 
+    isLoading: walletsLoading, 
+    refetch: refetchWallets,
+    isFetching: walletsFetching,
+  } = useQuery<PaginatedResponse>({
+    queryKey: ['wallets', 'manual-fetch'], // Static key
+    queryFn: () => fetchWallets({ chain, timeframe, tag, page: 1, limit: 200 }),
+    enabled: false, // Only fetch manually
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
-  // Fetch stats
-  const { data: statsData, isLoading: statsLoading } = useQuery<StatsResponse>({
-    queryKey: ['stats', chain, timeframe, tag],
+  // Fetch stats (separate query, also manual)
+  const { 
+    data: statsData, 
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useQuery<StatsResponse>({
+    queryKey: ['stats', 'manual-fetch'], // Static key
     queryFn: () => fetchStats({ chain, timeframe, tag }),
+    enabled: false,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
-  // Append new wallets when pagination changes
+  // Merge fetched wallets into database when data arrives
   useEffect(() => {
-    if (walletsData?.data) {
-      if (page === 1) {
-        setAllWallets(walletsData.data);
-      } else {
-        setAllWallets((prev) => [...prev, ...walletsData.data]);
-      }
+    if (walletsData?.data && walletsData.data.length > 0) {
+      storage.mergeWallets(walletsData.data);
     }
-  }, [walletsData, page]);
+  }, [walletsData]);
 
-  // Reset page when filters change
+  // Initial fetch on mount OR when API filters change (chain/timeframe/tag)
   useEffect(() => {
-    setPage(1);
-    setAllWallets([]);
-  }, [chain, timeframe, tag]);
+    // Only fetch if database is empty or filter combination not in database
+    const hasDataForFilters = allWallets.length > 0;
+    
+    if (!hasDataForFilters) {
+      console.log('[Debug] Fetching data for', chain, timeframe, tag);
+      refetchWallets();
+      refetchStats();
+    } else {
+      console.log('[Debug] Using cached data, no fetch needed');
+    }
+  }, [chain, timeframe, tag]); // Only when API filters change
 
-  const handleLoadMore = () => {
-    setPage((p) => p + 1);
-  };
+  // Manual refresh handler - fetches fresh data from API
+  const handleManualRefresh = useCallback(async () => {
+    // Fetch fresh data (will auto-merge into database via useEffect above)
+    await Promise.all([
+      refetchWallets(),
+      refetchStats(),
+    ]);
+  }, [refetchWallets, refetchStats]);
 
-  const handleRefresh = () => {
-    setPage(1);
-    setAllWallets([]);
-    refetchWallets();
-  };
+  // Get all wallets from database
+  const allWallets = storage.getAllWallets();
 
-  // Apply all filters
+  // Debug: Log wallet data
+  useEffect(() => {
+    console.log('[Debug] Total wallets in database:', allWallets.length);
+    if (allWallets.length > 0) {
+      const sample = allWallets[0];
+      console.log('[Debug] Sample wallet:', sample);
+      console.log('[Debug] Sample wallet PnL values:', {
+        pnl_7d: sample.pnl_7d,
+        realized_profit_7d: sample.realized_profit_7d,
+        token_num_7d: sample.token_num_7d,
+        avg_holding_period_7d: sample.avg_holding_period_7d,
+        avg_holding_hours: (sample.avg_holding_period_7d || 0) / 3600,
+        risk_rug_ratio: (sample.risk?.sell_pass_buy_ratio || 0) * 100,
+      });
+      console.log('[Debug] Advanced filters:', advancedFilters);
+    }
+  }, [allWallets, advancedFilters]);
+
+  // Apply DISPLAY filters (client-side only - never triggers API call)
   const filteredWallets = useMemo(() => {
     let filtered = allWallets;
 
-    // Advanced filters
-    filtered = filtered.filter(w => {
-      // PnL filter
-      const pnl = typeof w.pnl_7d === 'string' ? parseFloat(w.pnl_7d) : w.pnl_7d;
-      if (pnl < advancedFilters.pnlMin || pnl > advancedFilters.pnlMax) return false;
+    // Advanced filters (DISPLAY ONLY - no API calls)
+    filtered = filtered.filter((w, index) => {
+      // Helper: Parse value that might be string with % or commas
+      const parseValue = (val: any): number => {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+          // Remove %, commas, and whitespace, then parse
+          const cleaned = val.replace(/[%,\s]/g, '');
+          return parseFloat(cleaned);
+        }
+        return NaN;
+      };
 
-      // ROI (Realized Profit) filter
-      const profit = typeof w.realized_profit_7d === 'string' ? parseFloat(w.realized_profit_7d) : w.realized_profit_7d;
-      if (profit < advancedFilters.roiMin || profit > advancedFilters.roiMax) return false;
+      // PnL % filter (matches "PnL 7d %" column)
+      // Note: pnl_7d is stored as decimal (0.5 = 50%), so multiply by 100 for percentage comparison
+      const pnlRaw = parseValue(w.pnl_7d);
+      const pnl = pnlRaw * 100; // Convert decimal to percentage for filter comparison
+      const pnlValid = !isNaN(pnl) && pnl >= advancedFilters.pnlMin && pnl <= advancedFilters.pnlMax;
+      
+      // Profit $ filter (matches "Profit 7d" column - dollar amount)
+      const profit = parseValue(w.realized_profit_7d);
+      const profitValid = !isNaN(profit) && profit >= advancedFilters.roiMin && profit <= advancedFilters.roiMax;
 
-      // Tokens filter
+      // Tokens filter (matches "Tokens 7d" column)
       const tokens = w.token_num_7d || 0;
-      if (tokens < advancedFilters.tokensMin || tokens > advancedFilters.tokensMax) return false;
+      const tokensValid = tokens >= advancedFilters.tokensMin && tokens <= advancedFilters.tokensMax;
 
-      // Hold time filter (convert to hours)
+      // Hold time filter (convert to hours - matches "Avg Hold" column)
       const holdTime = (w.avg_holding_period_7d || 0) / 3600; // seconds to hours
-      if (holdTime < advancedFilters.holdTimeMin || holdTime > advancedFilters.holdTimeMax) return false;
+      const holdTimeValid = holdTime >= advancedFilters.holdTimeMin && holdTime <= advancedFilters.holdTimeMax;
 
-      // Rug pull filter
+      // Rug pull filter (matches "Rug Pull %" column)
       const rugPullRatio = (w.risk?.sell_pass_buy_ratio || 0) * 100;
-      if (rugPullRatio > advancedFilters.rugPullMax) return false;
+      const rugPullValid = rugPullRatio <= advancedFilters.rugPullMax;
 
-      return true;
+      // Debug first wallet that fails
+      if (index === 0) {
+        console.log('[Debug] First wallet filter check:', {
+          wallet_address: w.wallet_address,
+          pnl_7d_raw: w.pnl_7d,
+          pnl_decimal: pnlRaw,
+          pnl_percentage: pnl,
+          pnlValid,
+          pnlRange: [advancedFilters.pnlMin, advancedFilters.pnlMax],
+          realized_profit_raw: w.realized_profit_7d,
+          profit_parsed: profit,
+          profitValid,
+          profitRange: [advancedFilters.roiMin, advancedFilters.roiMax],
+          tokens,
+          tokensValid,
+          tokensRange: [advancedFilters.tokensMin, advancedFilters.tokensMax],
+          holdTime,
+          holdTimeValid,
+          holdTimeRange: [advancedFilters.holdTimeMin, advancedFilters.holdTimeMax],
+          rugPullRatio,
+          rugPullValid,
+          rugPullMax: advancedFilters.rugPullMax,
+        });
+      }
+
+      return pnlValid && profitValid && tokensValid && holdTimeValid && rugPullValid;
     });
 
-    return filtered;
+    console.log('[Debug] After filtering:', filtered.length, 'of', allWallets.length);
+    
+    // Strip last_updated field for table (convert WalletWithMeta[] to Wallet[])
+    return filtered.map(({ last_updated, ...wallet }) => wallet as Wallet);
   }, [allWallets, advancedFilters]);
+
+  const isRefreshing = walletsLoading || walletsFetching || statsLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -110,12 +203,24 @@ export default function Home() {
           <h1 className="text-4xl font-bold tracking-tight">
             Wallet Dashboard
           </h1>
+          <p className="text-sm text-muted-foreground">
+            {stats.totalWallets.toLocaleString()} wallets - {(stats.sizeBytes / 1024).toFixed(1)} KB
+          </p>
         </div>
+
+        {/* Staleness Indicator with Manual Refresh */}
+        <StalenessIndicator
+          oldestTimestamp={stats.oldestUpdate}
+          newestTimestamp={stats.newestUpdate}
+          totalWallets={stats.totalWallets}
+          onRefresh={handleManualRefresh}
+          isRefreshing={isRefreshing}
+        />
 
         {/* Stats Cards */}
         <StatsCards stats={statsData || null} isLoading={statsLoading} />
 
-        {/* Filters */}
+        {/* API Filters (chain/timeframe/tag) - Triggers Backend Fetch */}
         <FilterBar
           chain={chain}
           timeframe={timeframe}
@@ -123,8 +228,8 @@ export default function Home() {
           onChainChange={setChain}
           onTimeframeChange={setTimeframe}
           onTagChange={setTag}
-          onRefresh={handleRefresh}
-          isLoading={walletsLoading}
+          onRefresh={handleManualRefresh}
+          isLoading={isRefreshing}
           advancedFilters={advancedFilters}
           onAdvancedFiltersChange={setAdvancedFilters}
         />
@@ -132,19 +237,20 @@ export default function Home() {
         {/* Filter Status */}
         {filteredWallets.length < allWallets.length && (
           <div className="text-sm text-muted-foreground">
-            Showing {filteredWallets.length} of {allWallets.length} wallets
+            Showing {filteredWallets.length.toLocaleString()} of {allWallets.length.toLocaleString()} wallets (filtered by display filters)
           </div>
         )}
 
-        {/* Table */}
+        {/* Table - Client-side display */}
         <WalletTable
           wallets={filteredWallets}
           chain={chain}
-          onLoadMore={handleLoadMore}
-          hasMore={walletsData?.hasMore || false}
-          isLoading={walletsLoading}
+          onLoadMore={() => {}} // No server-side pagination
+          hasMore={false} // All data loaded from database
+          isLoading={isRefreshing && allWallets.length === 0} // Only show loading if no data yet
         />
       </div>
     </div>
   );
 }
+

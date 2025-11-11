@@ -33,26 +33,26 @@ interface AdvancedFiltersProps {
 
 const DEFAULT_FILTERS: AdvancedFilterValues = {
   pnlMin: -100,
-  pnlMax: 1000,
+  pnlMax: 100000, // 100,000% (some wallets have massive gains)
   roiMin: 0,
-  roiMax: 10000,
+  roiMax: 100000000, // 100M (realized profit can be huge)
   tokensMin: 0,
-  tokensMax: 500,
+  tokensMax: 1000,
   holdTimeMin: 0,
   holdTimeMax: 168, // 7 days in hours
-  rugPullMax: 50,
+  rugPullMax: 100,
 };
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: -100,
-  pnlMax: 1000,
+  pnlMax: 100000,
   roiMin: 0,
-  roiMax: 10000,
+  roiMax: 100000000,
   tokensMin: 0,
-  tokensMax: 500,
+  tokensMax: 1000,
   holdTimeMin: 0,
   holdTimeMax: 168,
-  rugPullMax: 50,
+  rugPullMax: 100,
 };
 
 export function AdvancedFilters({
@@ -106,8 +106,8 @@ export function AdvancedFilters({
                   updateFilter('pnlMax', max);
                 }}
                 min={-100}
-                max={1000}
-                step={10}
+                max={100000}
+                step={100}
                 className="flex-1"
               />
               <Input
@@ -120,10 +120,10 @@ export function AdvancedFilters({
             </div>
           </div>
 
-          {/* ROI Filter */}
+          {/* Profit $ Filter */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">ROI (Realized Profit $)</label>
+              <label className="text-sm font-medium">Profit 7d ($)</label>
               <span className="text-xs text-muted-foreground">
                 ${filters.roiMin.toLocaleString()} - ${filters.roiMax.toLocaleString()}
               </span>
@@ -143,8 +143,8 @@ export function AdvancedFilters({
                   updateFilter('roiMax', max);
                 }}
                 min={0}
-                max={10000}
-                step={100}
+                max={100000000}
+                step={100000}
                 className="flex-1"
               />
               <Input
@@ -180,8 +180,8 @@ export function AdvancedFilters({
                   updateFilter('tokensMax', max);
                 }}
                 min={0}
-                max={500}
-                step={5}
+                max={1000}
+                step={10}
                 className="flex-1"
               />
               <Input

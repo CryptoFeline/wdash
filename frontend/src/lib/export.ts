@@ -159,9 +159,9 @@ export function getPnLColor(pnl: number): string {
  * Get risk color and label
  */
 export function getRiskInfo(risk: number): { color: string; label: string } {
-  if (risk < 0.10) return { color: 'bg-green-100 text-green-800', label: 'Low' };
-  if (risk < 0.25) return { color: 'bg-yellow-100 text-yellow-800', label: 'Medium' };
-  return { color: 'bg-red-100 text-red-800', label: 'High' };
+  if (risk < 0.10) return { color: 'text-green-700 border-green-700', label: 'Low' };
+  if (risk < 0.25) return { color: 'text-yellow-700 border-yellow-700', label: 'Medium' };
+  return { color: 'border-red-700 text-red-700', label: 'High' };
 }
 
 /**

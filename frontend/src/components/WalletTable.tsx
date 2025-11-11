@@ -142,7 +142,7 @@ export default function WalletTable({
         <div className="flex items-center gap-1">
           <span className="font-medium">{row.index + 1}</span>
           {isGoodCandidate(row.original) && (
-            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+            <Star className="h-4 w-4 text-green-500" />
           )}
         </div>
       ),
@@ -470,11 +470,11 @@ export default function WalletTable({
         const followCount = row.original.follow_count;
         
         if (followCount === null || followCount === undefined) {
-          return <span className="text-gray-400">0</span>;
+          return <span className="text-gray-500">0</span>;
         }
         
         return (
-          <span className={followCount > 10 ? 'font-semibold text-blue-600' : ''}>
+          <span className={followCount > 10 ? 'font-semibold' : ''}>
             {formatNumber(followCount)}
           </span>
         );
@@ -506,12 +506,17 @@ export default function WalletTable({
       header: 'Honeypot',
       cell: ({ row }) => {
         const ratio = row.original.risk?.token_honeypot_ratio || 0;
-        const color = ratio > 0.3 ? 'text-red-500' : ratio > 0.1 ? 'text-yellow-600' : 'text-green-600';
-        return (
-          <span className={`font-medium ${color}`}>
-            {formatPercentage(ratio * 100)}
-          </span>
-        );
+        const percentage = ratio * 100;
+        
+        if (ratio === 0) {
+          return <Badge variant="outline" className="text-xs text-green-700 border-green-700">Clean</Badge>;
+        } else if (ratio < 0.1) {
+          return <Badge variant="outline" className="text-xs text-blue-700 border-blue-700">{percentage.toFixed(0)}% risky</Badge>;
+        } else if (ratio < 0.3) {
+          return <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-700">{percentage.toFixed(0)}% risky</Badge>;
+        } else {
+          return <Badge variant="outline" className="text-xs text-red-700 border-red-700">{percentage.toFixed(0)}% risky</Badge>;
+        }
       },
     },
     {
@@ -519,12 +524,17 @@ export default function WalletTable({
       header: 'Rug Pull',
       cell: ({ row }) => {
         const ratio = row.original.risk?.sell_pass_buy_ratio || 0;
-        const color = ratio > 0.3 ? 'text-red-500' : ratio > 0.1 ? 'text-yellow-600' : 'text-green-600';
-        return (
-          <span className={`font-medium ${color}`}>
-            {formatPercentage(ratio * 100)}
-          </span>
-        );
+        const percentage = ratio * 100;
+        
+        if (ratio === 0) {
+          return <Badge variant="outline" className="text-xs text-green-700 border-green-700">No fails</Badge>;
+        } else if (ratio < 0.1) {
+          return <Badge variant="outline" className="text-xs ext-blue-700 border-blue-700">{percentage.toFixed(0)}% failed</Badge>;
+        } else if (ratio < 0.3) {
+          return <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-700">{percentage.toFixed(0)}% failed</Badge>;
+        } else {
+          return <Badge variant="outline" className="text-xs text-red-700 border-red-700">{percentage.toFixed(0)}% failed</Badge>;
+        }
       },
     },
     {
@@ -532,12 +542,17 @@ export default function WalletTable({
       header: 'Fast TX',
       cell: ({ row }) => {
         const ratio = row.original.risk?.fast_tx_ratio || 0;
-        const color = ratio > 0.5 ? 'text-red-500' : ratio > 0.2 ? 'text-yellow-600' : 'text-green-600';
-        return (
-          <span className={`font-medium ${color}`}>
-            {formatPercentage(ratio * 100)}
-          </span>
-        );
+        const percentage = ratio * 100;
+        
+        if (ratio === 0) {
+          return <Badge variant="outline" className="text-xs text-gray-600 border-gray-700">Normal</Badge>;
+        } else if (ratio < 0.2) {
+          return <Badge variant="outline" className="text-xs text-blue-700 border-blue-700">{percentage.toFixed(0)}% fast</Badge>;
+        } else if (ratio < 0.5) {
+          return <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-700">{percentage.toFixed(0)}% fast</Badge>;
+        } else {
+          return <Badge variant="outline" className="text-xs text-red-700 border-red-700">{percentage.toFixed(0)}% fast</Badge>;
+        }
       },
     },
     {
@@ -673,7 +688,7 @@ export default function WalletTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {isLoading ? 'Loading...' : 'No results.'}
+                  No results.
                 </TableCell>
               </TableRow>
             )}
