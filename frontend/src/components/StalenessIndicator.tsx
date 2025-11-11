@@ -53,16 +53,16 @@ export function StalenessIndicator({
   };
 
   // Determine color based on newest data age (most recently fetched)
-  let colorClass = 'text-green-600 bg-green-50 border-green-200';
+  let colorClass = 'text-green-500 border-green-500';
   let statusText = 'Fresh data';
   
   if (newestAge > 10 * 60 * 1000) {
     // > 10 minutes: red (very stale)
-    colorClass = 'text-red-600 bg-red-50 border-red-200';
+    colorClass = 'text-red-500 border-red-500';
     statusText = 'Stale data';
   } else if (newestAge > 5 * 60 * 1000) {
     // 5-10 minutes: yellow (getting stale)
-    colorClass = 'text-yellow-600 bg-yellow-50 border-yellow-200';
+    colorClass = 'text-yellow-500 border-yellow-500';
     statusText = 'Data may be outdated';
   }
 

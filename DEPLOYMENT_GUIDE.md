@@ -65,7 +65,7 @@ git push -u origin main
 2. Click **New +** → **Web Service**
 3. Connect your GitHub repository
 4. Configure service:
-   - **Name:** `gmgn-dashboard-backend` (or your choice)
+   - **Name:** `dashboard-backend` (or your choice)
    - **Region:** Choose closest to you
    - **Branch:** `main`
    - **Root Directory:** `backend`
@@ -82,7 +82,7 @@ Click **Advanced** → **Add Environment Variable**:
 NODE_ENV=production
 PORT=3001
 CACHE_TTL=300
-FRONTEND_URL=https://your-app.netlify.app
+FRONTEND_URL=https://wdashboard.netlify.app
 BROWSERLESS_API_TOKEN=your-browserless-token-here
 API_KEY=your-generated-api-key-here
 ```
@@ -102,7 +102,7 @@ BROWSERLESS_API_TOKEN_3=your-backup-token-2
 
 1. Click **Create Web Service**
 2. Wait for deployment (3-5 minutes)
-3. Copy your backend URL: `https://gmgn-dashboard-backend.onrender.com`
+3. Copy your backend URL: `https://dashboard-backend-mo1j.onrender.com`
 
 **⚠️ Note:** Update `FRONTEND_URL` after Step 3!
 
@@ -125,8 +125,19 @@ Go to **Site settings** → **Environment variables** → **Add a variable**:
 
 ```bash
 NEXT_PUBLIC_API_URL=https://your-backend.onrender.com/api
-API_KEY=same-key-as-backend
+API_KEY=same-backend-api-key-from-step-2
+NEXT_PUBLIC_FRONTEND_API_KEY=your-generated-frontend-key
 ```
+
+**Generate Frontend API Key:**
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+**Important:**
+- `API_KEY`: Same as backend (for server-to-server communication)
+- `NEXT_PUBLIC_FRONTEND_API_KEY`: New key to protect your Next.js API routes
+- Both are required for security
 
 Replace `your-backend.onrender.com` with your actual Render URL from Step 2.3.
 
@@ -134,7 +145,7 @@ Replace `your-backend.onrender.com` with your actual Render URL from Step 2.3.
 
 1. Click **Deploy site**
 2. Wait for deployment (2-3 minutes)
-3. Copy your frontend URL: `https://your-app.netlify.app`
+3. Copy your frontend URL: `https://wdashboard.netlify.app`
 
 ### 3.4 Update Backend CORS
 
@@ -150,7 +161,7 @@ Replace `your-backend.onrender.com` with your actual Render URL from Step 2.3.
 
 ```bash
 # Health check
-curl https://your-backend.onrender.com/api/health
+curl https://dashboard-backend-mo1j.onrender.com/api/health
 
 # Expected response:
 # {"status":"ok","timestamp":"2025-11-11T...","cacheStatus":"..."}
