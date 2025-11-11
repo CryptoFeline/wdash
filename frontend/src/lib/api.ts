@@ -1,19 +1,11 @@
-// Client-side API calls now go through Next.js API routes (server-side)
+// Client-side API calls go through Next.js API routes (server-side proxy)
 // This keeps the backend API key secure and hidden from the browser
-// Frontend routes are protected by middleware in production
-
-// Get frontend API key from public env var (only used in production)
-const FRONTEND_API_KEY = process.env.NEXT_PUBLIC_FRONTEND_API_KEY;
-
-// Helper to add auth header in production
-function getHeaders(): HeadersInit {
-  if (process.env.NODE_ENV === 'production' && FRONTEND_API_KEY) {
-    return {
-      'x-api-key': FRONTEND_API_KEY,
-    };
-  }
-  return {};
-}
+// 
+// Security layers:
+// 1. Same-origin policy: Browser can only call same-domain Next.js routes
+// 2. Next.js server-side: API_KEY stored server-side, never exposed to browser
+// 3. Backend CORS: Only accepts requests from FRONTEND_URL domain
+// 4. Backend API key: Validates X-API-Key header from Next.js
 
 export async function fetchWallets(params: {
   chain?: string;
@@ -24,9 +16,7 @@ export async function fetchWallets(params: {
 }) {
   const { chain = 'eth', timeframe = '7d', tag = 'all', page = 1, limit = 50 } = params;
   const url = `/api/wallets?chain=${chain}&timeframe=${timeframe}&tag=${tag}&page=${page}&limit=${limit}`;
-  const response = await fetch(url, {
-    headers: getHeaders(),
-  });
+  const response = await fetch(url);
   
   if (!response.ok) {
     throw new Error('Failed to fetch wallets');
@@ -43,9 +33,7 @@ export async function fetchStats(params: {
   const { chain = 'eth', timeframe = '7d', tag = 'all' } = params;
   
   const url = `/api/wallets/stats?chain=${chain}&timeframe=${timeframe}&tag=${tag}`;
-  const response = await fetch(url, {
-    headers: getHeaders(),
-  });
+  const response = await fetch(url);
   
   if (!response.ok) {
     throw new Error('Failed to fetch stats');
@@ -55,9 +43,7 @@ export async function fetchStats(params: {
 }
 
 export async function fetchChains() {
-  const response = await fetch(`/api/chains`, {
-    headers: getHeaders(),
-  });
+  const response = await fetch(`/api/chains`);
   
   if (!response.ok) {
     throw new Error('Failed to fetch chains');
@@ -67,9 +53,7 @@ export async function fetchChains() {
 }
 
 export async function fetchTags() {
-  const response = await fetch(`/api/tags`, {
-    headers: getHeaders(),
-  });
+  const response = await fetch(`/api/tags`);
   
   if (!response.ok) {
     throw new Error('Failed to fetch tags');
