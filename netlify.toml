@@ -15,5 +15,9 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "nft"  # Node File Trace - better for large dependencies
-  # Increase timeout for Puppeteer operations
-  included_files = ["netlify/functions/**", "lib/scraper/**"]
+  # Include all puppeteer-extra-plugin-stealth files
+  included_files = [
+    "netlify/functions/**", 
+    "lib/scraper/**",
+    "node_modules/puppeteer-extra-plugin-stealth/**"
+  ]
