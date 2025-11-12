@@ -2,7 +2,7 @@ import express from 'express';
 import { fetchGMGNData } from '../scraper/fetcher.js';
 import { 
   upsertWallet, 
-  createSnapshot, 
+  createSnapshotsBatch,
   getWallet 
 } from '../db/supabase.js';
 
@@ -67,10 +67,12 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Upsert each wallet to Supabase
+    // Prepare batch operations
+    const snapshotsToBatch = [];
     let successCount = 0;
     const errors = [];
     
+    // Upsert each wallet and prepare snapshots for batch insert
     for (const wallet of wallets) {
       try {
         const wallet_address = wallet.address;
@@ -85,8 +87,14 @@ router.post('/', async (req, res) => {
           metadata,
         });
         
-        // Create snapshot for historical tracking
-        await createSnapshot(wallet_address, chain, fullData, metadata);
+        // Prepare snapshot for batch insert
+        snapshotsToBatch.push({
+          wallet_address,
+          chain,
+          snapshot_data: fullData,
+          metrics: metadata,
+          snapped_at: new Date().toISOString(),
+        });
         
         successCount++;
       } catch (error) {
@@ -98,7 +106,18 @@ router.post('/', async (req, res) => {
       }
     }
     
-    console.log(`[Sync] Completed: ${successCount}/${wallets.length} wallets synced`);
+    // Batch insert all snapshots at once (much faster)
+    if (snapshotsToBatch.length > 0) {
+      try {
+        console.log(`[Sync] Batch inserting ${snapshotsToBatch.length} snapshots...`);
+        await createSnapshotsBatch(snapshotsToBatch);
+      } catch (error) {
+        console.error('[Sync] Failed to batch insert snapshots:', error);
+        // Don't fail the whole sync if snapshots fail - wallets were already saved
+      }
+    }
+    
+    console.log(`[Sync] Completed: ${successCount}/${wallets.length} wallets synced, ${snapshotsToBatch.length} snapshots created`);
     
     res.json({
       success: true,

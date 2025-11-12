@@ -125,6 +125,28 @@ export async function createSnapshot(wallet_address, chain = 'eth', snapshotData
 }
 
 /**
+ * Batch create snapshots (much faster than individual inserts)
+ */
+export async function createSnapshotsBatch(snapshots) {
+  const supabaseClient = initSupabase();
+  try {
+    if (snapshots.length === 0) return { success: true, count: 0 };
+    
+    const { error } = await supabaseClient
+      .from('wallet_snapshots')
+      .insert(snapshots);
+    
+    if (error) throw error;
+    
+    console.log(`[Supabase] Created ${snapshots.length} snapshots in batch`);
+    return { success: true, count: snapshots.length };
+  } catch (error) {
+    console.error('[Supabase] Batch snapshot creation failed:', error);
+    throw error;
+  }
+}
+
+/**
  * Get snapshots for a wallet (for trending)
  */
 export async function getSnapshots(wallet_address, chain = 'eth', limit = 30) {
@@ -152,5 +174,6 @@ export default {
   getWallets,
   getWallet,
   createSnapshot,
+  createSnapshotsBatch,
   getSnapshots,
 };
