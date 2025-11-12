@@ -17,6 +17,7 @@ const PORT = process.env.PORT || 3001;
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3002',
   process.env.FRONTEND_URL, // Add your Netlify URL as environment variable
 ].filter(Boolean);
 
@@ -25,7 +26,10 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+    // Allow if in allowedOrigins list, or if localhost (dev), or if Netlify URL
+    if (allowedOrigins.indexOf(origin) !== -1 || 
+        process.env.NODE_ENV === 'development' ||
+        (origin && origin.includes('netlify.app'))) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
