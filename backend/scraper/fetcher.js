@@ -1,4 +1,5 @@
 import { fetchJSONWithBrowserless } from './solver-browserless.js';
+import { browserlessQueue } from './queue.js';
 
 
 /**
@@ -25,13 +26,15 @@ export async function fetchGMGNData({ chain = 'eth', timeframe = '7d', tag = nul
 
   console.log(`[Fetcher] Fetching via Browserless: ${apiUrl}`);
 
-  // Fetch through Browserless /unblock API with residential proxy
-  const data = await fetchJSONWithBrowserless(apiUrl, {
-    useProxy: true,          // Use residential proxy (6 units/MB, 95%+ success)
-    waitForTimeout: 8000,    // Wait 8s for Cloudflare to pass
-    waitUntil: 'networkidle2', // Wait for network idle
-    maxRetries: 3            // Retry up to 3 times
-  });
+  // Use queue to respect Browserless free tier concurrency (1 concurrent browser)
+  const data = await browserlessQueue.run(async () => {
+    return await fetchJSONWithBrowserless(apiUrl, {
+      useProxy: true,          // Use residential proxy (6 units/MB, 95%+ success)
+      waitForTimeout: 8000,    // Wait 8s for Cloudflare to pass
+      waitUntil: 'networkidle2', // Wait for network idle
+      maxRetries: 3            // Retry up to 3 times
+    });
+  }, `GMGN fetch ${chain}/${timeframe}/${tag || 'all'}`);
 
   console.log(`[Fetcher] Successfully fetched ${data.data?.rank?.length || 0} wallets (tag: ${tag || 'unfiltered'})`);
 

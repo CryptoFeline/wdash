@@ -62,7 +62,7 @@ export default function FilterBar({
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card p-4">
+    <div className="flex flex-wrap items-center gap-4 rounded-lg border p-4">
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium">Chain:</label>
         <Select value={chain} onValueChange={onChainChange}>

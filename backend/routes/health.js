@@ -1,5 +1,6 @@
 import express from 'express';
 import { getCacheStats } from '../scraper/cache.js';
+import { browserlessQueue } from '../scraper/queue.js';
 
 const router = express.Router();
 
@@ -12,7 +13,8 @@ router.get('/', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    cache: getCacheStats()
+    cache: getCacheStats(),
+    queue: browserlessQueue.status()
   });
 });
 

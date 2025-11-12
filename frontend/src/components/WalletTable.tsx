@@ -323,7 +323,7 @@ export default function WalletTable({
           <div className="flex flex-col text-sm">
             <span className="font-medium">{formatNumber(txs)}</span>
             <span className="text-xs text-gray-500">
-              <span className="text-green-600">{buy}B</span> / <span className="text-red-600">{sell}S</span>
+              <span className="text-green-500">↗{buy}</span> / <span className="text-red-500">↘{sell}</span>
             </span>
           </div>
         );
@@ -347,7 +347,7 @@ export default function WalletTable({
         const holdTimeNum = typeof holdTime === 'string' ? parseFloat(holdTime) : holdTime;
         
         if (holdTimeNum === null || holdTimeNum === undefined || isNaN(holdTimeNum)) {
-          return <span className="text-gray-400">N/A</span>;
+          return <span className="text-gray-500">N/A</span>;
         }
         
         // Convert seconds to hours
@@ -379,14 +379,14 @@ export default function WalletTable({
         const moonshots = row.original.pnl_gt_5x_num_7d;
         
         if (tokens === null || tokens === undefined) {
-          return <span className="text-gray-400">N/A</span>;
+          return <span className="text-gray-500">N/A</span>;
         }
         
         return (
           <div className="flex items-center gap-2">
             <span>{tokens} /</span>
             {moonshots > 0 && (
-              <span className="text-green-600 font-semibold flex items-center gap-1">
+              <span className="text-green-500 font-semibold flex items-center gap-1">
                 {moonshots}<Rocket className="h-4 w-4" />
               </span>
             )}
@@ -412,7 +412,7 @@ export default function WalletTable({
         const balanceNum = typeof balance === 'string' ? parseFloat(balance) : balance;
         
         if (balanceNum === null || balanceNum === undefined || isNaN(balanceNum)) {
-          return <span className="text-gray-400">N/A</span>;
+          return <span className="text-gray-500">N/A</span>;
         }
         
         return <span className="font-medium">{balanceNum.toFixed(4)} SOL</span>;
@@ -435,7 +435,7 @@ export default function WalletTable({
         const lastActive = row.original.last_active;
         
         if (!lastActive) {
-          return <span className="text-gray-400">N/A</span>;
+          return <span className="text-gray-500">N/A</span>;
         }
         
         const now = Math.floor(Date.now() / 1000);
@@ -443,10 +443,10 @@ export default function WalletTable({
         
         if (diff < 3600) {
           const mins = Math.floor(diff / 60);
-          return <span className="text-xs text-green-600">{mins}m ago</span>;
+          return <span className="text-xs text-green-500">{mins}m ago</span>;
         } else if (diff < 86400) {
           const hours = Math.floor(diff / 3600);
-          return <span className="text-xs text-yellow-600">{hours}h ago</span>;
+          return <span className="text-xs text-yellow-500">{hours}h ago</span>;
         } else {
           const days = Math.floor(diff / 86400);
           return <span className="text-xs text-gray-500">{days}d ago</span>;
@@ -498,7 +498,7 @@ export default function WalletTable({
         const isTopRank = rank <= 100;
         
         return (
-          <span className={`text-xs font-medium ${isTopRank ? 'text-yellow-600' : 'text-gray-600'}`}>
+          <span className={`text-xs font-medium ${isTopRank ? 'text-yellow-500' : 'text-gray-500'}`}>
             #{rank}
           </span>
         );
@@ -512,13 +512,13 @@ export default function WalletTable({
         const percentage = ratio * 100;
         
         if (ratio === 0) {
-          return <Badge variant="outline" className="text-xs text-green-700 border-green-700">Clean</Badge>;
+          return <Badge variant="outline" className="text-xs text-green-500 border-green-500">Clean</Badge>;
         } else if (ratio < 0.1) {
-          return <Badge variant="outline" className="text-xs text-blue-700 border-blue-700">{percentage.toFixed(0)}% risky</Badge>;
+          return <Badge variant="outline" className="text-xs text-blue-500 border-blue-500">{percentage.toFixed(0)}% risky</Badge>;
         } else if (ratio < 0.3) {
-          return <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-700">{percentage.toFixed(0)}% risky</Badge>;
+          return <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500">{percentage.toFixed(0)}% risky</Badge>;
         } else {
-          return <Badge variant="outline" className="text-xs text-red-700 border-red-700">{percentage.toFixed(0)}% risky</Badge>;
+          return <Badge variant="outline" className="text-xs text-red-500 border-red-500">{percentage.toFixed(0)}% risky</Badge>;
         }
       },
     },
@@ -530,13 +530,13 @@ export default function WalletTable({
         const percentage = ratio * 100;
         
         if (ratio === 0) {
-          return <Badge variant="outline" className="text-xs text-green-700 border-green-700">No fails</Badge>;
+          return <Badge variant="outline" className="text-xs text-green-500 border-green-500">No fails</Badge>;
         } else if (ratio < 0.1) {
-          return <Badge variant="outline" className="text-xs text-blue-700 border-blue-700">{percentage.toFixed(0)}% failed</Badge>;
+          return <Badge variant="outline" className="text-xs text-blue-500 border-blue-500">{percentage.toFixed(0)}% failed</Badge>;
         } else if (ratio < 0.3) {
-          return <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-700">{percentage.toFixed(0)}% failed</Badge>;
+          return <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500">{percentage.toFixed(0)}% failed</Badge>;
         } else {
-          return <Badge variant="outline" className="text-xs text-red-700 border-red-700">{percentage.toFixed(0)}% failed</Badge>;
+          return <Badge variant="outline" className="text-xs text-red-500 border-red-500">{percentage.toFixed(0)}% failed</Badge>;
         }
       },
     },
@@ -548,13 +548,13 @@ export default function WalletTable({
         const percentage = ratio * 100;
         
         if (ratio === 0) {
-          return <Badge variant="outline" className="text-xs text-gray-600 border-gray-700">Normal</Badge>;
+          return <Badge variant="outline" className="text-xs text-green-500 border-green-500">Normal</Badge>;
         } else if (ratio < 0.2) {
-          return <Badge variant="outline" className="text-xs text-blue-700 border-blue-700">{percentage.toFixed(0)}% fast</Badge>;
+          return <Badge variant="outline" className="text-xs text-blue-500 border-blue-500">{percentage.toFixed(0)}% fast</Badge>;
         } else if (ratio < 0.5) {
-          return <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-700">{percentage.toFixed(0)}% fast</Badge>;
+          return <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500">{percentage.toFixed(0)}% fast</Badge>;
         } else {
-          return <Badge variant="outline" className="text-xs text-red-700 border-red-700">{percentage.toFixed(0)}% fast</Badge>;
+          return <Badge variant="outline" className="text-xs text-red-500 border-red-500">{percentage.toFixed(0)}% fast</Badge>;
         }
       },
     },
