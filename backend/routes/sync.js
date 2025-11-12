@@ -1,7 +1,7 @@
 import express from 'express';
 import { fetchGMGNData } from '../scraper/fetcher.js';
 import { 
-  upsertWallet, 
+  upsertWalletsBatch,
   createSnapshotsBatch,
   getWallet 
 } from '../db/supabase.js';
@@ -68,19 +68,20 @@ router.post('/', async (req, res) => {
     }
     
     // Prepare batch operations
+    const walletsToBatch = [];
     const snapshotsToBatch = [];
     let successCount = 0;
     const errors = [];
     
-    // Upsert each wallet and prepare snapshots for batch insert
+    // Prepare wallets and snapshots for batch operations
     for (const wallet of wallets) {
       try {
         const wallet_address = wallet.address;
         const metadata = extractMetadata(wallet);
         const fullData = wallet; // Store entire GMGN response
         
-        // Upsert to wallets table
-        await upsertWallet({
+        // Prepare wallet for batch upsert
+        walletsToBatch.push({
           wallet_address,
           chain,
           data: fullData,
@@ -98,11 +99,22 @@ router.post('/', async (req, res) => {
         
         successCount++;
       } catch (error) {
-        console.error(`[Sync] Failed to sync wallet ${wallet.address}:`, error);
+        console.error(`[Sync] Failed to process wallet ${wallet.address}:`, error);
         errors.push({
           wallet: wallet.address,
           error: error.message,
         });
+      }
+    }
+    
+    // Batch upsert all wallets at once (much faster)
+    if (walletsToBatch.length > 0) {
+      try {
+        console.log(`[Sync] Batch upserting ${walletsToBatch.length} wallets...`);
+        await upsertWalletsBatch(walletsToBatch);
+      } catch (error) {
+        console.error('[Sync] Failed to batch upsert wallets:', error);
+        // Don't fail the whole sync - continue to snapshots
       }
     }
     

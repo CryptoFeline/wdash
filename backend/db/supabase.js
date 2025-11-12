@@ -56,8 +56,37 @@ export async function upsertWallet(walletData) {
 }
 
 /**
- * Get all wallets for a chain
+ * Batch upsert wallets (much faster than individual inserts)
  */
+export async function upsertWalletsBatch(wallets) {
+  const supabaseClient = initSupabase();
+  try {
+    if (wallets.length === 0) return { success: true, count: 0 };
+    
+    const now = new Date().toISOString();
+    const formattedWallets = wallets.map(w => ({
+      wallet_address: w.wallet_address,
+      chain: w.chain || 'eth',
+      data: w.data,
+      metadata: w.metadata || {},
+      last_synced: now,
+    }));
+    
+    const { error } = await supabaseClient
+      .from('wallets')
+      .upsert(formattedWallets, {
+        onConflict: 'wallet_address,chain',
+      });
+    
+    if (error) throw error;
+    
+    console.log(`[Supabase] Upserted ${wallets.length} wallets in batch`);
+    return { success: true, count: wallets.length };
+  } catch (error) {
+    console.error('[Supabase] Batch upsert failed:', error);
+    throw error;
+  }
+}
 export async function getWallets(chain = 'eth', limit = 50, offset = 0) {
   const supabaseClient = initSupabase();
   try {
@@ -171,6 +200,7 @@ export async function getSnapshots(wallet_address, chain = 'eth', limit = 30) {
 
 export default {
   upsertWallet,
+  upsertWalletsBatch,
   getWallets,
   getWallet,
   createSnapshot,

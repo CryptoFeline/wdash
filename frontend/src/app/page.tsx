@@ -238,7 +238,11 @@ export default function Home() {
         />
 
         {/* Stats Cards */}
-        <StatsCards stats={statsData || null} isLoading={statsLoading} />
+        <StatsCards 
+          stats={statsData || null} 
+          isLoading={statsLoading}
+          totalWalletsInDB={allWallets.length}
+        />
 
         {/* API Filters (chain/timeframe/tag) - Triggers Backend Fetch */}
         <FilterBar

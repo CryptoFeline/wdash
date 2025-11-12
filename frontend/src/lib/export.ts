@@ -105,7 +105,7 @@ export function formatNumber(num: number | null | undefined): string {
   const value = typeof num === 'string' ? parseFloat(num) : num;
   
   if (value === null || value === undefined || isNaN(value)) {
-    return '0.00';
+    return '0';
   }
   
   if (value >= 1000000) {
@@ -114,11 +114,13 @@ export function formatNumber(num: number | null | undefined): string {
   if (value >= 1000) {
     return `${(value / 1000).toFixed(2)}K`;
   }
-  return value.toFixed(2);
+  
+  // Return as integer if whole number, otherwise 2 decimals
+  return Number.isInteger(value) ? Math.floor(value).toString() : value.toFixed(2);
 }
 
 /**
- * Format percentage
+ * Format percentage with shorthand notation for large values
  */
 export function formatPercentage(value: number | null | undefined): string {
   // Convert to number if string, handle null/undefined
@@ -127,7 +129,15 @@ export function formatPercentage(value: number | null | undefined): string {
   if (num === null || num === undefined || isNaN(num)) {
     return '0.00%';
   }
-  return `${(num * 100).toFixed(2)}%`;
+  
+  const percentValue = num * 100;
+  
+  // Use shorthand for large percentages (>= 1000%)
+  if (percentValue >= 1000) {
+    return `${(percentValue / 1000).toFixed(2)}K%`;
+  }
+  
+  return `${percentValue.toFixed(2)}%`;
 }
 
 /**

@@ -8,9 +8,10 @@ import { TrendingUp, DollarSign, Users, Trophy } from 'lucide-react';
 interface StatsCardsProps {
   stats: StatsResponse | null;
   isLoading?: boolean;
+  totalWalletsInDB?: number; // Override totalWallets with actual DB count
 }
 
-export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
+export default function StatsCards({ stats, isLoading, totalWalletsInDB }: StatsCardsProps) {
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -32,7 +33,8 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
     return null;
   }
 
-  const totalWallets = stats.totalWallets || 0;
+  // Use provided totalWalletsInDB (from accumulated localStorage) or fall back to stats
+  const totalWallets = totalWalletsInDB !== undefined ? totalWalletsInDB : (stats.totalWallets || 0);
   const averagePnL = stats.averagePnL || 0;
   const averageProfit = stats.averageProfit || 0;
   const totalProfit = stats.totalProfit || 0;

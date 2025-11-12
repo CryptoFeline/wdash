@@ -473,9 +473,12 @@ export default function WalletTable({
           return <span className="text-gray-500">0</span>;
         }
         
+        // Format as integer without decimals
+        const countStr = Math.floor(followCount).toString();
+        
         return (
           <span className={followCount > 10 ? 'font-semibold' : ''}>
-            {formatNumber(followCount)}
+            {countStr}
           </span>
         );
       },

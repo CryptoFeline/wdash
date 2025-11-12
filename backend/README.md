@@ -2,14 +2,14 @@
 
 ## Overview
 
-Express.js server providing wallet data from GMGN.ai via Browserless.io with Supabase persistence.
+Express.js server providing wallet data via Browserless.io with Supabase persistence.
 
 ---
 
 ## 🏗 Architecture
 
 ```
-server.js                     # Express setup, CORS, middleware
+server.js                   # Express setup, CORS, middleware
 ├── middleware/
 │   └── auth.js             # X-API-Key validation
 ├── routes/

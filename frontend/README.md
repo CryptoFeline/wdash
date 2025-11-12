@@ -9,8 +9,8 @@ Next.js 16 dashboard for viewing and managing wallet data. Built with React Quer
 ## 🏗 Architecture
 
 ```
-app/                          # Pages + API routes (Next.js)
-├── page.tsx                  # Main dashboard
+app/                         # Pages + API routes (Next.js)
+├── page.tsx                 # Main dashboard
 ├── analytics/
 │   ├── page.tsx             # Analytics dashboard
 │   └── layout.tsx           # Analytics layout
@@ -118,7 +118,7 @@ storage.clear(): void
 
 ---
 
-## �� Security
+## Security
 
 - ✅ Rate limiting: 100/min reads, 20/min writes per IP
 - ✅ Origin/Referer check: Production only allows `wdashboard.netlify.app`
