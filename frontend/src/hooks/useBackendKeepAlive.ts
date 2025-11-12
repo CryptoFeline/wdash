@@ -21,7 +21,7 @@ export function useBackendKeepAlive() {
       } catch (error) {
         console.error('[KeepAlive] Failed to ping backend:', error);
       }
-    }, 10 * 60 * 1000); // 10 minutes
+    }, 14 * 60 * 1000); // 14 minutes
 
     return () => clearInterval(interval);
   }, []);

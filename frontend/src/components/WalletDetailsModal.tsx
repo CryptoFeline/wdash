@@ -217,6 +217,7 @@ export function WalletDetailsModal({
           </Card>
 
           {/* Risk Breakdown */}
+          {wallet.risk ? (
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -228,39 +229,52 @@ export function WalletDetailsModal({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Active Tokens</p>
-                  <p className="text-lg font-semibold">{wallet.risk.token_active}</p>
+                  <p className="text-lg font-semibold">{wallet.risk.token_active || 'N/A'}</p>
                 </div>
                 
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Honeypot Exposure</p>
-                  <p className={`text-lg font-semibold ${wallet.risk.token_honeypot_ratio > 0.3 ? 'text-red-500' : wallet.risk.token_honeypot_ratio > 0.1 ? 'text-yellow-600' : 'text-green-600'}`}>
-                    {wallet.risk.token_honeypot} ({formatPercentage(wallet.risk.token_honeypot_ratio * 100)})
+                  <p className={`text-lg font-semibold ${(wallet.risk.token_honeypot_ratio || 0) > 0.3 ? 'text-red-500' : (wallet.risk.token_honeypot_ratio || 0) > 0.1 ? 'text-yellow-600' : 'text-green-600'}`}>
+                    {wallet.risk.token_honeypot || 0} ({formatPercentage((wallet.risk.token_honeypot_ratio || 0) * 100)})
                   </p>
                 </div>
                 
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Rug Pull Exposure</p>
-                  <p className={`text-lg font-semibold ${wallet.risk.sell_pass_buy_ratio > 0.3 ? 'text-red-500' : wallet.risk.sell_pass_buy_ratio > 0.1 ? 'text-yellow-600' : 'text-green-600'}`}>
-                    {wallet.risk.sell_pass_buy} ({formatPercentage(wallet.risk.sell_pass_buy_ratio * 100)})
+                  <p className={`text-lg font-semibold ${(wallet.risk.sell_pass_buy_ratio || 0) > 0.3 ? 'text-red-500' : (wallet.risk.sell_pass_buy_ratio || 0) > 0.1 ? 'text-yellow-600' : 'text-green-600'}`}>
+                    {wallet.risk.sell_pass_buy || 0} ({formatPercentage((wallet.risk.sell_pass_buy_ratio || 0) * 100)})
                   </p>
                 </div>
                 
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Fast TX Ratio</p>
-                  <p className={`text-lg font-semibold ${wallet.risk.fast_tx_ratio > 0.5 ? 'text-red-500' : wallet.risk.fast_tx_ratio > 0.2 ? 'text-yellow-600' : 'text-green-600'}`}>
-                    {wallet.risk.fast_tx} ({formatPercentage(wallet.risk.fast_tx_ratio * 100)})
+                  <p className={`text-lg font-semibold ${(wallet.risk.fast_tx_ratio || 0) > 0.5 ? 'text-red-500' : (wallet.risk.fast_tx_ratio || 0) > 0.2 ? 'text-yellow-600' : 'text-green-600'}`}>
+                    {wallet.risk.fast_tx || 0} ({formatPercentage((wallet.risk.fast_tx_ratio || 0) * 100)})
                   </p>
                 </div>
                 
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">No Buy/Hold</p>
                   <p className="text-lg font-semibold">
-                    {wallet.risk.no_buy_hold} ({formatPercentage(wallet.risk.no_buy_hold_ratio * 100)})
+                    {wallet.risk.no_buy_hold || 0} ({formatPercentage((wallet.risk.no_buy_hold_ratio || 0) * 100)})
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Risk Analysis
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">Risk data not available for this wallet</p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Additional Info */}
           <Card>
