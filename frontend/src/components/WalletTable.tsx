@@ -529,7 +529,7 @@ export default function WalletTable({
         if (ratio === 0) {
           return <Badge variant="outline" className="text-xs text-green-700 border-green-700">No fails</Badge>;
         } else if (ratio < 0.1) {
-          return <Badge variant="outline" className="text-xs ext-blue-700 border-blue-700">{percentage.toFixed(0)}% failed</Badge>;
+          return <Badge variant="outline" className="text-xs text-blue-700 border-blue-700">{percentage.toFixed(0)}% failed</Badge>;
         } else if (ratio < 0.3) {
           return <Badge variant="outline" className="text-xs text-yellow-700 border-yellow-700">{percentage.toFixed(0)}% failed</Badge>;
         } else {

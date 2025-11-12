@@ -1,15 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 
 const API_BASE_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const API_KEY = process.env.API_KEY;
+const FRONTEND_API_KEY = process.env.FRONTEND_API_KEY;
 
 export async function GET(request: NextRequest) {
+  // Rate limit: 100 requests per minute per IP
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(clientIP, 100, 60 * 1000);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Try again later.' },
+      { 
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((rateLimit.resetTime - Date.now()) / 1000)),
+        }
+      }
+    );
+  }
+
+  // Optional: require frontend API key
+  if (FRONTEND_API_KEY) {
+    const providedKey = request.headers.get('x-api-key');
+    if (providedKey !== FRONTEND_API_KEY) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const chain = searchParams.get('chain') || 'eth';
   const timeframe = searchParams.get('timeframe') || '7d';
   const tag = searchParams.get('tag') || 'all';
 
-  // Don't add cacheOnly=true - let backend decide if it needs to fetch
   const url = `${API_BASE_URL}/wallets/stats?chain=${chain}&timeframe=${timeframe}&tag=${tag}`;
 
   try {

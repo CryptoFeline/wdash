@@ -5,9 +5,21 @@ set -x  # Print each command (verbose)
 
 echo "📦 Starting build process at $(date)..."
 
-# Navigate to backend directory
+# Ensure we're in the root directory
+echo "🏠 Root directory: $(pwd)"
+ls -la | head -20
+
+# Navigate to backend directory if not already there
+if [ ! -f "backend/package.json" ]; then
+  echo "❌ Error: backend/package.json not found in $(pwd)"
+  echo "Current directory contents:"
+  find . -name "package.json" -type f 2>/dev/null | head -10
+  exit 1
+fi
+
 cd backend
 echo "📁 Working directory: $(pwd)"
+echo "backend/package.json: $(ls -la package.json)"
 
 # Set Puppeteer cache directory for persistence between deploys
 export PUPPETEER_CACHE_DIR=/opt/render/project/.cache/puppeteer

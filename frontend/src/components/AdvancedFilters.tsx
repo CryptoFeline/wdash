@@ -32,7 +32,7 @@ interface AdvancedFiltersProps {
 }
 
 const DEFAULT_FILTERS: AdvancedFilterValues = {
-  pnlMin: -100,
+  pnlMin: 50,
   pnlMax: 100000, // 100,000% (some wallets have massive gains)
   roiMin: 0,
   roiMax: 100000000, // 100M (realized profit can be huge)
@@ -40,11 +40,11 @@ const DEFAULT_FILTERS: AdvancedFilterValues = {
   tokensMax: 1000,
   holdTimeMin: 0,
   holdTimeMax: 168, // 7 days in hours
-  rugPullMax: 100,
+  rugPullMax: 10,
 };
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
-  pnlMin: -100,
+  pnlMin: 50,
   pnlMax: 100000,
   roiMin: 0,
   roiMax: 100000000,
@@ -52,7 +52,7 @@ const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   tokensMax: 1000,
   holdTimeMin: 0,
   holdTimeMax: 168,
-  rugPullMax: 100,
+  rugPullMax: 10,
 };
 
 export function AdvancedFilters({

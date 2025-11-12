@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { BarChart3 } from 'lucide-react';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
-  pnlMin: -100,
+  pnlMin: 50,
   pnlMax: 100000, // Increase from 1000 to 100,000% (some wallets have massive gains)
   roiMin: 0,
   roiMax: 100000000, // Increase from 10,000 to 100M (realized profit can be huge)
@@ -25,7 +25,7 @@ const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   tokensMax: 1000, // Increase from 500 to 1000
   holdTimeMin: 0,
   holdTimeMax: 168,
-  rugPullMax: 100,
+  rugPullMax: 10,
 };
 
 export default function Home() {
@@ -85,12 +85,12 @@ export default function Home() {
     const hasDataForFilters = allWallets.length > 0;
     
     if (!hasDataForFilters) {
-      console.log('[Debug] Fetching data for', chain, timeframe, tag);
+      // console.log('[Debug] Fetching data for', chain, timeframe, tag);
       refetchWallets();
       refetchStats();
-    } else {
+    } /* else {
       console.log('[Debug] Using cached data, no fetch needed');
-    }
+    } */
   }, [chain, timeframe, tag]); // Only when API filters change
 
   // Manual refresh handler - fetches fresh data from API
@@ -114,7 +114,7 @@ export default function Home() {
   const allWallets = storage.getAllWallets();
 
   // Debug: Log wallet data
-  useEffect(() => {
+  /* useEffect(() => {
     console.log('[Debug] Total wallets in database:', allWallets.length);
     if (allWallets.length > 0) {
       const sample = allWallets[0];
@@ -129,7 +129,7 @@ export default function Home() {
       });
       console.log('[Debug] Advanced filters:', advancedFilters);
     }
-  }, [allWallets, advancedFilters]);
+  }, [allWallets, advancedFilters]); */
 
   // Apply DISPLAY filters (client-side only - never triggers API call)
   const filteredWallets = useMemo(() => {
@@ -171,7 +171,7 @@ export default function Home() {
       const rugPullValid = rugPullRatio <= advancedFilters.rugPullMax;
 
       // Debug first wallet that fails
-      if (index === 0) {
+      /* if (index === 0) {
         console.log('[Debug] First wallet filter check:', {
           wallet_address: w.wallet_address,
           pnl_7d_raw: w.pnl_7d,
@@ -193,12 +193,12 @@ export default function Home() {
           rugPullValid,
           rugPullMax: advancedFilters.rugPullMax,
         });
-      }
+      } */
 
       return pnlValid && profitValid && tokensValid && holdTimeValid && rugPullValid;
     });
 
-    console.log('[Debug] After filtering:', filtered.length, 'of', allWallets.length);
+    // console.log('[Debug] After filtering:', filtered.length, 'of', allWallets.length);
     
     // Strip last_updated field for table (convert WalletWithMeta[] to Wallet[])
     return filtered.map(({ last_updated, ...wallet }) => wallet as Wallet);
@@ -257,7 +257,7 @@ export default function Home() {
         {/* Filter Status */}
         {filteredWallets.length < allWallets.length && (
           <div className="text-sm text-muted-foreground">
-            Showing {filteredWallets.length.toLocaleString()} of {allWallets.length.toLocaleString()} wallets (filtered by display filters)
+            Showing {filteredWallets.length.toLocaleString()} of {allWallets.length.toLocaleString()} wallets (filtered)
           </div>
         )}
 
