@@ -1,36 +1,167 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend Documentation
 
-## Getting Started
+## Overview
 
-First, run the development server:
+Next.js 16 dashboard for viewing and managing wallet data. Built with React Query, TypeScript, Tailwind CSS, and shadcn/ui components.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🏗 Architecture
+
+```
+app/                          # Pages + API routes (Next.js)
+├── page.tsx                  # Main dashboard
+├── analytics/
+│   ├── page.tsx             # Analytics dashboard
+│   └── layout.tsx           # Analytics layout
+├── api/
+│   ├── wallets/
+│   │   ├── route.ts         # GET /api/wallets (proxy)
+│   │   └── stats/
+│   │       └── route.ts     # GET /api/wallets/stats (proxy)
+│   ├── chains/route.ts      # GET /api/chains
+│   ├── tags/route.ts        # GET /api/tags
+│   └── sync/route.ts        # POST /api/sync
+├── layout.tsx               # Root layout
+├── globals.css              # Global styles
+└── providers.tsx            # Query client setup
+
+components/                   # React components
+├── WalletTable.tsx          # Main data table (TanStack Table)
+├── FilterBar.tsx            # Chain/timeframe/tag selector
+├── AdvancedFilters.tsx      # PnL/profit/risk filters
+├── StatsCards.tsx           # Summary cards
+├── TrendChart.tsx           # 7-day PnL trend chart
+├── TopGainersCard.tsx       # Top 10 wallets by profit
+├── StalenessIndicator.tsx   # Data freshness indicator
+└── ui/                      # shadcn/ui components
+
+hooks/
+└── useWalletStorage.ts      # localStorage management
+
+lib/
+├── api.ts                   # API client (React Query)
+├── supabase-client.ts       # Supabase + sync trigger
+├── rate-limit.ts            # Rate limiting utility
+├── export.ts                # CSV/JSON export
+└── utils.ts                 # Helpers
+
+types/
+└── wallet.ts                # TypeScript interfaces
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🔌 API Routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### `GET /api/wallets`
+Proxy to backend. Rate limited + origin check.
 
-## Learn More
+### `GET /api/wallets/stats`
+Proxy to backend stats. Same security.
 
-To learn more about Next.js, take a look at the following resources:
+### `POST /api/sync`
+Trigger backend sync to Supabase.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```json
+{
+  "chain": "sol",
+  "timeframe": "7d",
+  "tag": "all",
+  "limit": 200
+}
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🎯 Components
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### `WalletTable.tsx`
+Main table using TanStack Table.
+- Sortable columns
+- Row selection
+- Color-coded badges
+- Pagination (50/page)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### `FilterBar.tsx`
+Top filters: chain, timeframe, tag.
+
+### `AdvancedFilters.tsx`
+Client-side: PnL%, Profit, Tokens, Hold time, Risk.
+
+**Note:** These apply ONLY to loaded data. Backend returns 200 unfiltered wallets.
+
+### `TrendChart.tsx`
+7-day PnL trend from `wallet_snapshots` table.
+
+### `StalenessIndicator.tsx`
+Data freshness indicator + manual refresh button.
+
+---
+
+## 🪝 Custom Hooks
+
+### `useWalletStorage()`
+```typescript
+storage.getAllWallets(chain?: string): Wallet[]
+storage.saveWallet(wallet: Wallet): void
+storage.getStats(): Stats
+storage.isDataStale(minutes?: number): boolean
+storage.clear(): void
+```
+
+**Behavior:**
+- Accumulates wallets from API calls
+- Deduplicates by address
+- Merges with Supabase data
+- Tracks sync time per chain
+
+---
+
+## �� Security
+
+- ✅ Rate limiting: 100/min reads, 20/min writes per IP
+- ✅ Origin/Referer check: Production only allows `wdashboard.netlify.app`
+- ✅ API key: Hidden in `process.env`, included in all requests
+- ✅ Batch operations: One insert for 200 wallets
+
+---
+
+## 📦 Dependencies
+
+- `@tanstack/react-query` - Data fetching
+- `@tanstack/react-table` - Tables
+- `recharts` - Charts
+- `@supabase/supabase-js` - Database client
+- `tailwindcss` - Styling
+- `shadcn/ui` - UI components
+
+---
+
+## 🚀 Build & Deployment
+
+```bash
+npm run dev     # Development (localhost:3000)
+npm run build   # Production build
+npm run start   # Start server
+```
+
+### Netlify
+Auto-deploys on `git push`. Set env vars:
+- `API_URL=https://dashboard-backend-xxx.onrender.com/api`
+- `API_KEY=your_secret_key`
+
+---
+
+## 🐛 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Failed to fetch" | Check backend running, verify `API_URL` |
+| "Filters not working" | Data must be loaded first (check table) |
+| "Data never refreshes" | Click Refresh button, check backend cache |
+| "Analytics empty" | Sync data first (Refresh button), create snapshots |
+
+---
+
+**Last Updated**: November 12, 2025
