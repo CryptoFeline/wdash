@@ -6,6 +6,23 @@ const API_KEY = process.env.API_KEY;
 const FRONTEND_API_KEY = process.env.FRONTEND_API_KEY; // Optional: require this to use frontend routes
 
 export async function GET(request: NextRequest) {
+  // Check origin/referer (defense in depth)
+  const referer = request.headers.get('referer');
+  const origin = request.headers.get('origin');
+  const allowedDomains = ['wdashboard.netlify.app', 'localhost', '127.0.0.1'];
+  
+  const isAllowed = allowedDomains.some(domain => 
+    referer?.includes(domain) || origin?.includes(domain)
+  );
+  
+  // Allow local development, but block cross-origin abuse
+  if (process.env.NODE_ENV === 'production' && !isAllowed) {
+    return NextResponse.json(
+      { error: 'Forbidden' },
+      { status: 403 }
+    );
+  }
+
   // Rate limit: 100 requests per minute per IP
   const clientIP = getClientIP(request);
   const rateLimit = checkRateLimit(clientIP, 100, 60 * 1000);
