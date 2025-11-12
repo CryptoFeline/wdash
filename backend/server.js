@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import walletsRouter from './routes/wallets.js';
+import dbRouter from './routes/db.js';
 import healthRouter from './routes/health.js';
 import prefetchRouter from './routes/prefetch.js';
 import syncRouter from './routes/sync.js';
@@ -46,11 +47,17 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check (no auth required - used for keep-alive ping)
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // API Key Authentication
 app.use(requireApiKey);
 
 // Routes
 app.use('/api/wallets', walletsRouter);
+app.use('/api/wallets/db', dbRouter); // Supabase direct access (before /api/wallets, more specific route first)
 app.use('/api/prefetch', prefetchRouter);
 app.use('/api/sync', syncRouter);
 app.use('/api', healthRouter);

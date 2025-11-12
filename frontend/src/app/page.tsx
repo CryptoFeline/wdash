@@ -12,6 +12,7 @@ import { StalenessIndicator } from '@/components/StalenessIndicator';
 import { AdvancedFilterValues } from '@/components/AdvancedFilters';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useWalletStorage } from '@/hooks/useWalletStorage';
+import { useBackendKeepAlive } from '@/hooks/useBackendKeepAlive';
 import { triggerSync } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { BarChart3 } from 'lucide-react';
@@ -29,6 +30,9 @@ const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
 };
 
 export default function Home() {
+  // Keep backend alive (prevents cold start on Render free tier)
+  useBackendKeepAlive();
+
   // API filters (trigger actual fetch from backend)
   const [chain, setChain] = useState('sol');
   const [timeframe, setTimeframe] = useState('7d');
@@ -78,6 +82,40 @@ export default function Home() {
       storage.mergeWallets(walletsData.data);
     }
   }, [walletsData]);
+
+  // Load from Supabase on initial mount (fast, pre-populate localStorage)
+  useEffect(() => {
+    const loadFromSupabase = async () => {
+      try {
+        // Skip if we already have data
+        if (allWallets.length > 0) {
+          console.log('[Page] Using cached wallets from localStorage');
+          return;
+        }
+
+        console.log('[Page] Loading initial wallets from Supabase...');
+        const response = await fetch('/api/wallets/db?chain=sol&limit=500', {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+          console.error('[Page] Failed to load from Supabase:', response.status);
+          return;
+        }
+
+        const { data } = await response.json();
+        if (data && data.length > 0) {
+          storage.mergeWallets(data);
+          console.log('[Page] Loaded', data.length, 'wallets from Supabase');
+        }
+      } catch (error) {
+        console.error('[Page] Supabase load error:', error);
+        // Fail silently - let manual fetch handle it
+      }
+    };
+
+    loadFromSupabase();
+  }, []); // Only on mount
 
   // Initial fetch on mount OR when API filters change (chain/timeframe/tag)
   useEffect(() => {
