@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 const API_BASE_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const API_KEY = process.env.API_KEY;
 
+// Debug logging (remove after fixing)
+console.log('[API Route] Environment check:', {
+  API_URL: process.env.API_URL ? 'SET' : 'NOT SET',
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ? 'SET' : 'NOT SET',
+  API_KEY: API_KEY ? 'SET' : 'NOT SET',
+  Using: API_BASE_URL
+});
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const chain = searchParams.get('chain') || 'eth';
@@ -13,6 +21,8 @@ export async function GET(request: NextRequest) {
 
   // Don't add cacheOnly=true - let backend decide if it needs to fetch
   const url = `${API_BASE_URL}/wallets?chain=${chain}&timeframe=${timeframe}&tag=${tag}&page=${page}&limit=${limit}`;
+
+  console.log('[API Route] Fetching from:', url);
 
   try {
     const response = await fetch(url, {

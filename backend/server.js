@@ -8,7 +8,7 @@ dotenv.config();
 import walletsRouter from './routes/wallets.js';
 import healthRouter from './routes/health.js';
 import prefetchRouter from './routes/prefetch.js';
-import testStealthRouter from './routes/test-stealth.js';
+import syncRouter from './routes/sync.js';
 import { requireApiKey } from './middleware/auth.js';
 
 const app = express();
@@ -48,7 +48,7 @@ app.use(requireApiKey);
 // Routes
 app.use('/api/wallets', walletsRouter);
 app.use('/api/prefetch', prefetchRouter);
-app.use('/api/test-stealth', testStealthRouter);
+app.use('/api/sync', syncRouter);
 app.use('/api', healthRouter);
 
 // Root endpoint
@@ -88,10 +88,9 @@ app.listen(PORT, () => {
 ║   - GET /api/health                      ║
 ║   - GET /api/chains                      ║
 ║   - GET /api/tags                        ║
+║   - POST /api/sync                       ║
 ║   - GET /api/prefetch                    ║
 ║   - GET /api/prefetch/status             ║
-║   - GET /api/test-stealth                ║
-║   - GET /api/test-stealth/parallel       ║
 ╚══════════════════════════════════════════╝
   `);
   

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { fetchWallets, fetchStats } from '@/lib/api';
 import { Wallet, PaginatedResponse, StatsResponse } from '@/types/wallet';
@@ -11,6 +12,9 @@ import { StalenessIndicator } from '@/components/StalenessIndicator';
 import { AdvancedFilterValues } from '@/components/AdvancedFilters';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useWalletStorage } from '@/hooks/useWalletStorage';
+import { triggerSync } from '@/lib/supabase-client';
+import { Button } from '@/components/ui/button';
+import { BarChart3 } from 'lucide-react';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: -100,
@@ -91,11 +95,19 @@ export default function Home() {
 
   // Manual refresh handler - fetches fresh data from API
   const handleManualRefresh = useCallback(async () => {
-    // Fetch fresh data (will auto-merge into database via useEffect above)
-    await Promise.all([
-      refetchWallets(),
-      refetchStats(),
-    ]);
+    try {
+      // Fetch fresh data from backend (will auto-merge into database via useEffect above)
+      await Promise.all([
+        refetchWallets(),
+        refetchStats(),
+      ]);
+      
+      // Also trigger Supabase sync in background (creates snapshots for analytics)
+      // Don't await this - let it run in background
+      triggerSync().catch(err => console.error('Background sync failed:', err));
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    }
   }, [refetchWallets, refetchStats]);
 
   // Get all wallets from database
@@ -198,14 +210,22 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <ThemeToggle />
       <div className="container mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">
-            Wallet Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {stats.totalWallets.toLocaleString()} wallets - {(stats.sizeBytes / 1024).toFixed(1)} KB
-          </p>
+        {/* Header with Analytics Link */}
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight">
+              Wallet Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {stats.totalWallets.toLocaleString()} wallets - {(stats.sizeBytes / 1024).toFixed(1)} KB
+            </p>
+          </div>
+          {/* <Link href="/analytics"> */}
+          {/*   <Button variant="outline" className="gap-2"> */}
+          {/*     <BarChart3 className="w-4 h-4" /> */}
+          {/*     Analytics */}
+          {/*   </Button> */}
+          {/* </Link> */}
         </div>
 
         {/* Staleness Indicator with Manual Refresh */}
