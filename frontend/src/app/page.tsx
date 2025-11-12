@@ -104,11 +104,11 @@ export default function Home() {
       
       // Also trigger Supabase sync in background (creates snapshots for analytics)
       // Don't await this - let it run in background
-      triggerSync().catch(err => console.error('Background sync failed:', err));
+      triggerSync(chain, timeframe, tag).catch(err => console.error('Background sync failed:', err));
     } catch (error) {
       console.error('Refresh failed:', error);
     }
-  }, [refetchWallets, refetchStats]);
+  }, [refetchWallets, refetchStats, chain, timeframe, tag]);
 
   // Get all wallets from database
   const allWallets = storage.getAllWallets();
