@@ -4,9 +4,8 @@ services:
     runtime: node
     region: oregon
     plan: free
-    rootDir: backend
-    buildCommand: cd .. && ./render-build.sh
-    startCommand: npm start
+    buildCommand: ./render-build.sh
+    startCommand: npm --prefix backend start
     envVars:
       - key: NODE_VERSION
         value: 22.16.0
