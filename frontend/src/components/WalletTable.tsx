@@ -29,7 +29,8 @@ import {
   Download,
   FileJson,
   Rocket,
-  Star
+  Star,
+  Bookmark
 } from 'lucide-react';
 import {
   formatNumber,
@@ -42,6 +43,7 @@ import {
 } from '@/lib/export';
 import { exportToCSV, exportToJSON } from '@/lib/export';
 import { WalletDetailsModal } from './WalletDetailsModal';
+import { useTrackedWallets } from '@/hooks/useTrackedWallets';
 
 interface WalletTableProps {
   wallets: Wallet[];
@@ -64,6 +66,9 @@ export default function WalletTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Tracked wallets hook
+  const { isTracked, toggleWallet } = useTrackedWallets();
 
   const handleRowClick = (wallet: Wallet) => {
     setSelectedWallet(wallet);
@@ -132,6 +137,31 @@ export default function WalletTable({
           aria-label="Select row"
         />
       ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      id: 'bookmark',
+      header: '🔖',
+      cell: ({ row }) => {
+        const address = row.original.wallet_address;
+        const tracked = isTracked(address);
+        return (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 hover:bg-accent"
+            onClick={() => toggleWallet(address, chain)}
+            title={tracked ? 'Remove from tracked' : 'Add to tracked'}
+          >
+            <Bookmark
+              className={`h-4 w-4 transition-colors ${
+                tracked ? 'fill-blue-500 text-blue-500' : 'text-gray-400'
+              }`}
+            />
+          </Button>
+        );
+      },
       enableSorting: false,
       enableHiding: false,
     },

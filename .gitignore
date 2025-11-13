@@ -33,7 +33,7 @@ dist/
 coverage/
 
 # Uncomment to exclude docs from git (currently included)
-# docs/
+docs/
 
 # .history folder
 .history/

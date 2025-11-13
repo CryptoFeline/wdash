@@ -1,9 +1,11 @@
 {
   "name": "gmgn-dashboard",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "build": "cd backend && npm install",
-    "start": "cd backend && npm start"
+    "start": "cd backend && npm start",
+    "test:okx": "node okx_tests/test-all-endpoints.js"
   }
 }

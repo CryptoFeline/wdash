@@ -13,9 +13,10 @@ import { AdvancedFilterValues } from '@/components/AdvancedFilters';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useWalletStorage } from '@/hooks/useWalletStorage';
 import { useBackendKeepAlive } from '@/hooks/useBackendKeepAlive';
+import { useTrackedWallets } from '@/hooks/useTrackedWallets';
 import { triggerSync } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Bookmark } from 'lucide-react';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: 50,
@@ -34,6 +35,9 @@ const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
 export default function Home() {
   // Keep backend alive (prevents cold start on Render free tier)
   useBackendKeepAlive();
+
+  // Tracked wallets hook
+  const { getTrackedCount } = useTrackedWallets();
 
   // API filters (trigger actual fetch from backend)
   const [chain, setChain] = useState('sol');
@@ -290,6 +294,32 @@ export default function Home() {
 
   const isRefreshing = walletsLoading || walletsFetching || statsLoading;
 
+  // Check if table has data and hide modal if it does
+  useEffect(() => {
+    if (!showBackendLoadingModal) {
+      return; // Modal not visible, skip check
+    }
+
+    // If we have data loaded, hide the modal immediately
+    if (allWallets.length > 0) {
+      console.log('[Page] Data loaded, hiding modal');
+      setShowBackendLoadingModal(false);
+      return;
+    }
+
+    // Otherwise, check every 1 second if data has been loaded
+    const interval = setInterval(() => {
+      const currentWallets = storage.getAllWallets();
+      if (currentWallets.length > 0) {
+        console.log('[Page] Data detected, hiding modal');
+        setShowBackendLoadingModal(false);
+        clearInterval(interval);
+      }
+    }, 1000); // Check every 1 second
+
+    return () => clearInterval(interval);
+  }, [showBackendLoadingModal, allWallets.length, storage]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Backend Loading Modal (Solution E: Wake-up modal with backdrop blur) */}
@@ -321,12 +351,12 @@ export default function Home() {
               {stats.totalWallets.toLocaleString()} wallets - {(stats.sizeBytes / 1024).toFixed(1)} KB
             </p>
           </div>
-          {/* <Link href="/analytics"> */}
-          {/*   <Button variant="outline" className="gap-2"> */}
-          {/*     <BarChart3 className="w-4 h-4" /> */}
-          {/*     Analytics */}
-          {/*   </Button> */}
-          {/* </Link> */}
+          <Link href="/tracked">
+            <Button variant="outline" className="gap-2">
+              <Bookmark className="w-4 h-4" />
+              Tracked ({getTrackedCount()})
+            </Button>
+          </Link>
         </div>
 
         {/* Staleness Indicator with Manual Refresh */}

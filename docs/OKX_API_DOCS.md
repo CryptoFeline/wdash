@@ -89,12 +89,12 @@
     "unrealizedPnl": "4256.229420346543", // Unrealized PnL in USD
     "unrealizedPnlRoi": "34.338036395332516", // Unrealized PnL ROI percent (e.g. 34.34%)
     "winRateList": [ // win rate distribution buckets (1 to 6) - exact bucket metric is TBA!
-      "0.70", // percentage for bucket 1
-      "1.75", // percentage for bucket 2
-      "12.28", // percentage for bucket 3
-      "40.00", // percentage for bucket 4
-      "38.95", // percentage for bucket 5
-      "4.21" // percentage for bucket 6
+      "0.70", // 1 = 100%
+      "1.75", // 2 = 75-100%
+      "12.28", // 3 = 50-75%
+      "40.00", // 4 = 25-50%
+      "38.95", // 5 = 0-25% 
+      "4.21" // 6 = 0%
     ]
   },
   "detailMsg": "",
