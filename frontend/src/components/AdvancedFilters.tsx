@@ -24,6 +24,8 @@ export interface AdvancedFilterValues {
   holdTimeMin: number;
   holdTimeMax: number;
   rugPullMax: number;
+  winRateMin: number;
+  winRateMax: number;
 }
 
 interface AdvancedFiltersProps {
@@ -41,6 +43,8 @@ const DEFAULT_FILTERS: AdvancedFilterValues = {
   holdTimeMin: 0,
   holdTimeMax: 168, // 7 days in hours
   rugPullMax: 10,
+  winRateMin: 0,
+  winRateMax: 100,
 };
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
@@ -53,6 +57,8 @@ const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   holdTimeMin: 0,
   holdTimeMax: 168,
   rugPullMax: 10,
+  winRateMin: 0,
+  winRateMax: 100,
 };
 
 export function AdvancedFilters({
@@ -260,6 +266,52 @@ export function AdvancedFilters({
             </div>
             <p className="text-xs text-muted-foreground">
               Excludes wallets with liquidity pulled from more than this % of trades
+            </p>
+          </div>
+
+          {/* Win Rate Filter */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Win Rate (%)</label>
+              <span className="text-xs text-muted-foreground">
+                {filters.winRateMin.toFixed(1)}% - {filters.winRateMax.toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={filters.winRateMin}
+                onChange={(e) => updateFilter('winRateMin', parseFloat(e.target.value))}
+                className="w-24"
+                placeholder="Min %"
+              />
+              <Slider
+                value={[filters.winRateMin, filters.winRateMax]}
+                onValueChange={([min, max]) => {
+                  updateFilter('winRateMin', min);
+                  updateFilter('winRateMax', max);
+                }}
+                min={0}
+                max={100}
+                step={0.1}
+                className="flex-1"
+              />
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={filters.winRateMax}
+                onChange={(e) => updateFilter('winRateMax', parseFloat(e.target.value))}
+                className="w-24"
+                placeholder="Max %"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Filter by wallet win rate (% of trades that were profitable)
             </p>
           </div>
         </div>

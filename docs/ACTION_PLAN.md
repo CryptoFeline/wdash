@@ -31,20 +31,23 @@
 - **Proposed:** Frontend → Supabase (direct with JWT) + Backend keeps secure queries  
 - **Tradeoff:** Direct Supabase is faster but exposes service key
 
+**USER SOLUTION:**
+- ✅ **Implement Solution E:** On frontend load (if it's the first time, and we don't have cache already) we immediately ping /health endpoint of backend to wake it up, then display a modal with backdrop blur saying "Backend is loading", then proceed to test backend every 5 seconds - if backend properly responds, we hide the modal and load the dashboard normally. This ensures users are informed and do not see an empty dashboard.
 ---
 
 ### Issue 2: Incomplete Wallet Data in Database
 **Severity:** High | **Impact:** Missing analytics data (Daily Profit, Risk metrics)  
-**Root Cause:** Not all fields from GMGN API response are being saved to database
+**Root Cause:** Not all fields from GMGN API response are being saved to database (case may vary based on investigation)
 
 **Investigation Tasks:**
 - [ ] Create test script (`test-fetch.js`) to run backend fetcher
-- [ ] Examine full GMGN API JSON response structure
-- [ ] Document all available fields in GMGN response
+- [ ] Examine full GMGN API JSON response structure (and per wallet data)
+- [ ] Document all available fields in GMGN response - unified
 - [ ] Compare with what's being saved in `wallet.data` (Supabase)
 - [ ] Identify missing fields (likely: `daily_profit_7d`, `risk` object)
-- [ ] Update sync.js to capture all fields
+- [ ] Update sync.js to capture all fields properly
 - [ ] Verify Supabase schema can store full JSON
+- [ ] Verify new data is properly received when displaying
 
 **Expected Outcome:** Schema document showing all 50+ wallet fields and what's missing
 
@@ -75,6 +78,8 @@ filtered = filtered.filter(w =>
 );
 ```
 
+- Set slider range 0-100%, step 1%, default limit is 65% (we show values above 65%)
+
 ---
 
 ## Feature 4: Tracked/Favourited Wallets System
@@ -87,35 +92,37 @@ filtered = filtered.filter(w =>
 ```
 ┌─ Main Dashboard
 │  ├─ Wallet Table (existing)
-│  ├─ Row selection (checkboxes)
-│  └─ "Add to Tracked" button
+│  ├─ Row selection (checkboxes - existing for data download)
+│  └─ Add an icon button before first column row selection (new)
 │
 └─ Tracked Wallets Page (NEW)
-   ├─ Table view (same style as dashboard)
-   ├─ Fetch portfolio data for tracked wallets (from new APIs)
-   ├─ Store API data locally (IndexedDB or localStorage)
-   └─ Enhanced modal on row click (show token holdings, transactions, etc.)
+   ├─ Table view (same style as dashboard table)
+   ├─ Same data displayed as dashboard for selected wallets (same as dashboard table)
+   ├─ Fetch portfolio data for tracked wallets only (from new APIs)
+   ├─ Store API data locally (IndexedDB and localStorage)
+   └─ Enhanced modal on row click (show token holdings, transactions, etc. - TBD!)
 ```
 
 ### Data Flow
 
 ```
-User selects wallet in dashboard
+User selects wallet(s) in main dashboard
          ↓
-Click "Add to Tracked" button
+Click icon button - we use lucide bookmarkPlus (grey) to add, which turns into bookmarkCheck (green) to show tracked (on bookmarkChecked click we untrack the wallet - it's a toggle)
          ↓
-Save wallet_address to localStorage (key: "tracked_wallets")
+Save tracked_wallet_address to localStorage (key: "tracked_wallets")
          ↓
-Navigate to /tracked page
+Add "Tracked Wallets" button to header - on click navigate to /tracked page
          ↓
-Load tracked wallet addresses from localStorage
+Load tracked wallet addresses from localStorage's tracked_wallet_wallets
          ↓
-Fetch additional data from new APIs:
-  - Portfolio (tokens owned, balances)
-  - Transaction history
-  - Trading metrics
+Fetch additional data from new APIs for tracked_wallet_address:
+  - Portfolio (tokens owned/traded, balances)
+  - Transaction history (swaps)
+  - Trading metrics (PnL, ROI, etc.)
+  - Trading analytics (per-token trade patterns: when bought/sold, how much, how long, what gain, etc. - we may need token price API for this)
          ↓
-Display in enhanced modal
+Display in enhanced modal - design proper UI/UX for this
 ```
 
 ### Storage Strategy
@@ -125,20 +132,18 @@ Display in enhanced modal
 {
   "tracked_wallets": {
     "0x123abc...": {
-      "added_at": "2025-11-13T12:00:00Z",
-      "notes": "Promising trader",
-      "last_synced": "2025-11-13T12:30:00Z"
+      "added_at": "2025-11-13T12:00:00Z", // when user added to tracked
+      "last_synced": "2025-11-13T12:30:00Z", // last time we fetched API data
+      "synced_data": { ... }, // Supabase wallet data (from main dashboard)
+      "tracked_wallets_data": { // Newly fetched portfolio/transaction data (new API)
+        "portfolio": { ... }, // Tokens held/traded, balances
+        "transactions": [ ... ], // Array of transaction objects
+        "metrics": { ... }, // PnL, ROI, etc.
+        "analytics": { ... }, // Trade patterns, etc.
+        "fetched_at": "2025-11-13T12:30:00Z"
+        }
     },
-    "0x456def...": {
-      "added_at": "2025-11-13T12:05:00Z"
-    }
-  },
-  "tracked_wallets_cache": {
-    "0x123abc...": {
-      "portfolio": { ... },
-      "transactions": [ ... ],
-      "fetched_at": "2025-11-13T12:30:00Z"
-    }
+    "0x456def...": { ... }
   }
 }
 ```
@@ -149,24 +154,41 @@ Display in enhanced modal
 
 1. **What are the new API sources?**
    - Which APIs provide portfolio/token data?
+       + API sources seen in docs/OKX_API_DOCS.md
    - What's the data structure we need?
+       + See in docs/OKX_API_DOCS.md
    - Rate limits and auth requirements?
+       + No auth for GET requests, but POST needs structured curl
+       + Rate limit is unknown - need testing
+       + Endpoints are private APIs used by OKX explorer site (not public, but we can use)
 
 2. **Portfolio data details:**
    - What tokens should we track?
+       + All tokens traded within the past 7 days
    - Current holdings only, or historical?
+       + Both
    - Transaction types to include?
+       + Buys and Sells (transfer in/out can be detected from PnL context, e.g. if wallet sold + hold is more than bought it means it received tokens, if wallet bought more than sold + held it means it sent tokens out)
+   - Assess all possible fields from API responses for portfolio/transactions/metrics and propose a data display structure (we will select what to keep what to ditch) 
 
 3. **UI/UX specifics:**
-   - Where should "Add to Tracked" button appear?
+   - Where should the Tracked icon button appear?
+       + very first column before row selection checkbox
    - Should we show tracked count badge?
+       + in the Tracked Wallets page header
    - Delete/remove from tracked action?
+       + Use the tracker icon toggle (we track/untrack on toggle)
    - Sync interval for refreshing API data?
+       + rolling sync every X sec - but not all at once, wallet by wallet with a 1 sec delay
+       + "X sec" is based on the amount of wallets tracked, if 10 wallets are tracked we roll sync a wallet every 10 sec, if we have 60 wallets tracked we roll sync a wallet every 60 sec. Min sync is 10 sec per wallet.
 
 4. **Limits:**
    - Max tracked wallets per user?
+       + None (as many as cache can hold)
    - Max API calls per session?
+       + TBD based on rate limits discovered during testing
    - Cache expiry for portfolio data?
+       + Data keeps updating in the rolling sync every "X sec", if the user loads page with existing cached tracked wallet data it restarts the sync from there.
 
 ---
 

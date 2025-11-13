@@ -10,10 +10,7 @@ Currently, the dashboard fetches wallet data exclusively from **GMGN.ai**. This 
 
 Enable the dashboard to aggregate wallet data from multiple sources:
 - **GMGN.ai** (current, real-time rankings)
-- **Birdeye** (token analytics, wallet holdings)
-- **DexScreener** (DEX trading data, trends)
-- **Jupiter Protocol** (swap volume, arbitrage)
-- **Raydium** (liquidity, trading pairs)
+- **OKX** API (trading activity, portfolio insights)
 
 ---
 

@@ -27,6 +27,8 @@ const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   holdTimeMin: 0,
   holdTimeMax: 168,
   rugPullMax: 10,
+  winRateMin: 0,
+  winRateMax: 100,
 };
 
 export default function Home() {
@@ -40,6 +42,38 @@ export default function Home() {
   
   // Display filters (client-side only, filter the database)
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterValues>(DEFAULT_ADVANCED_FILTERS);
+
+  // Backend wake-up state (Solution E: show loading modal while backend starts)
+  const [showBackendLoadingModal, setShowBackendLoadingModal] = useState(false);
+  const [backendReady, setBackendReady] = useState(false);
+
+  // Wake up backend by pinging health endpoint
+  const wakeupBackend = useCallback(async (): Promise<boolean> => {
+    setShowBackendLoadingModal(true);
+    const maxAttempts = 30; // 5 sec * 30 = 2.5 min max wait
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await fetch('/health');
+        if (response.ok) {
+          console.log('[Page] Backend is ready');
+          setBackendReady(true);
+          setShowBackendLoadingModal(false);
+          return true;
+        }
+      } catch (error) {
+        console.log(`[Page] Health check attempt ${attempt}/${maxAttempts} - waiting...`);
+      }
+      
+      // Wait 5 seconds before next attempt
+      await new Promise(r => setTimeout(r, 5000));
+    }
+    
+    // Timeout after 2.5 min
+    console.warn('[Page] Backend wake-up timeout after 2.5 min, proceeding anyway');
+    setShowBackendLoadingModal(false);
+    return false;
+  }, []);
 
   // Persistent wallet database hook
   const storage = useWalletStorage();
@@ -88,10 +122,15 @@ export default function Home() {
     const loadFromSupabase = async () => {
       try {
         // Skip if we already have data
-        if (allWallets.length > 0) {
+        const currentWallets = storage.getAllWallets();
+        if (currentWallets.length > 0) {
           console.log('[Page] Using cached wallets from localStorage');
           return;
         }
+
+        // No cache found - wake up backend first
+        console.log('[Page] No cache found, waking backend...');
+        await wakeupBackend();
 
         console.log('[Page] Loading initial wallets from Supabase...');
         const response = await fetch('/api/wallets/db?chain=sol&limit=500', {
@@ -115,7 +154,7 @@ export default function Home() {
     };
 
     loadFromSupabase();
-  }, []); // Only on mount
+  }, [wakeupBackend, storage]); // Only on mount
 
   // Initial fetch on mount OR when API filters change (chain/timeframe/tag)
   useEffect(() => {
@@ -208,6 +247,10 @@ export default function Home() {
       const rugPullRatio = (w.risk?.sell_pass_buy_ratio || 0) * 100;
       const rugPullValid = rugPullRatio <= advancedFilters.rugPullMax;
 
+      // Win rate filter (matches "Win Rate %" - convert decimal to percentage)
+      const winRatePercent = (w.winrate_7d || 0) * 100;
+      const winRateValid = winRatePercent >= advancedFilters.winRateMin && winRatePercent <= advancedFilters.winRateMax;
+
       // Debug first wallet that fails
       /* if (index === 0) {
         console.log('[Debug] First wallet filter check:', {
@@ -230,10 +273,13 @@ export default function Home() {
           rugPullRatio,
           rugPullValid,
           rugPullMax: advancedFilters.rugPullMax,
+          winRatePercent,
+          winRateValid,
+          winRateRange: [advancedFilters.winRateMin, advancedFilters.winRateMax],
         });
       } */
 
-      return pnlValid && profitValid && tokensValid && holdTimeValid && rugPullValid;
+      return pnlValid && profitValid && tokensValid && holdTimeValid && rugPullValid && winRateValid;
     });
 
     // console.log('[Debug] After filtering:', filtered.length, 'of', allWallets.length);
@@ -246,6 +292,23 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Backend Loading Modal (Solution E: Wake-up modal with backdrop blur) */}
+      {showBackendLoadingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-8 shadow-2xl max-w-sm">
+            <div className="flex justify-center mb-6">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+            </div>
+            <p className="text-center text-gray-900 dark:text-white font-semibold text-lg mb-2">
+              Backend is loading...
+            </p>
+            <p className="text-center text-gray-600 dark:text-gray-400 text-sm">
+              This usually takes 10-15 seconds
+            </p>
+          </div>
+        </div>
+      )}
+
       <ThemeToggle />
       <div className="container mx-auto p-6 space-y-6">
         {/* Header with Analytics Link */}
