@@ -142,7 +142,7 @@ export default function WalletTable({
     },
     {
       id: 'bookmark',
-      header: '🔖',
+      header: '',
       cell: ({ row }) => {
         const address = row.original.wallet_address;
         const tracked = isTracked(address);

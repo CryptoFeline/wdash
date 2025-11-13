@@ -94,6 +94,7 @@ export function useSyncEngine() {
 
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
+  const hasStartedRef = useRef(false);
 
   /**
    * Initialize sync queue with rolling schedule
@@ -345,15 +346,71 @@ export function useSyncEngine() {
    * Auto-start when tracked wallets loaded
    */
   useEffect(() => {
-    if (trackersLoaded && trackedWallets.length > 0 && !isInitializedRef.current) {
+    if (trackersLoaded && trackedWallets.length > 0 && !hasStartedRef.current) {
       console.log('[SyncEngine] Tracked wallets loaded, starting engine');
-      startSyncEngine();
+      hasStartedRef.current = true;
+
+      // Initialize queue immediately with current wallets
+      if (!isInitializedRef.current && trackedWallets.length > 0) {
+        console.log('[SyncEngine] Initializing queue for', trackedWallets.length, 'wallets');
+        const syncWindow = 5 * 60 * 1000;
+        const intervalPerWallet = syncWindow / trackedWallets.length;
+        const now = Date.now();
+        
+        trackedWallets.forEach((wallet, index) => {
+          const scheduledFor = now + (index * intervalPerWallet);
+          addToSyncQueue(wallet.address, scheduledFor, 'normal');
+          console.log(
+            `[SyncEngine] Scheduled ${wallet.address.substring(0, 8)}... for ${new Date(scheduledFor).toLocaleTimeString()}`
+          );
+        });
+        isInitializedRef.current = true;
+      }
+
+      // Start the sync loop
+      if (!syncIntervalRef.current) {
+        console.log('[SyncEngine] Starting...');
+        
+        // Run sync loop immediately
+        (async () => {
+          const status = getSyncStatus();
+          if (!status.paused) {
+            const nextWallet = getNextWalletInQueue();
+            if (nextWallet) {
+              console.log('[SyncEngine] Processing', nextWallet.address.substring(0, 8) + '...');
+              removeFromSyncQueue(nextWallet.address);
+              await syncWallet(nextWallet.address);
+            }
+          }
+        })().catch((err) => console.error('[SyncEngine] Error in sync loop:', err));
+
+        // Set up interval
+        syncIntervalRef.current = setInterval(() => {
+          (async () => {
+            const status = getSyncStatus();
+            if (!status.paused) {
+              const nextWallet = getNextWalletInQueue();
+              if (nextWallet) {
+                console.log('[SyncEngine] Processing', nextWallet.address.substring(0, 8) + '...');
+                removeFromSyncQueue(nextWallet.address);
+                await syncWallet(nextWallet.address);
+              }
+            }
+          })().catch((err) => console.error('[SyncEngine] Error in sync loop:', err));
+        }, 60 * 1000);
+
+        setEngineStatus((prev) => ({
+          ...prev,
+          status: 'running',
+          isPaused: false,
+        }));
+      }
     }
 
     return () => {
       // Don't stop on unmount - let it continue in background
     };
-  }, [trackersLoaded, trackedWallets.length, startSyncEngine]);
+  }, [trackersLoaded, trackedWallets.length, trackedWallets, syncWallet]);
 
   return {
     engineStatus,
