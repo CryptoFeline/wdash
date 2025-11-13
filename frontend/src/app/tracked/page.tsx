@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, Trash2, TrendingUp } from 'lucide-react';
+import WalletDetailModalEnhanced from '@/components/WalletDetailModalEnhanced';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: 50,
@@ -65,6 +66,21 @@ export default function TrackedWalletsPage() {
   // Manual sync state
   const [isManualSyncing, setIsManualSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
+
+  // Enhanced modal state
+  const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleWalletClick = useCallback((wallet: Wallet) => {
+    setSelectedWallet(wallet);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    setIsModalOpen(false);
+    // Delay clearing selectedWallet to allow for closing animation
+    setTimeout(() => setSelectedWallet(null), 300);
+  }, []);
 
   // Fetch wallets with STATIC queryKey (manual refresh only)
   const {
@@ -213,8 +229,8 @@ export default function TrackedWalletsPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <Link href="/">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <ArrowLeft className="h-4 w-4" />
+                <Button variant="outline" size="icon" className="h-8 w-8">
+                  <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
               <h1 className="text-4xl font-bold tracking-tight">
@@ -223,7 +239,7 @@ export default function TrackedWalletsPage() {
             </div>
             <p className="text-sm text-muted-foreground">
               {filteredWallets.length} of {trackedWallets.length} tracked wallets
-              {trackedWallets.length > 0 && ` • Last sync: ${formatLastSync(lastSyncTime)}`}
+              {trackedWallets.length > 0 && ` - Last sync: ${formatLastSync(lastSyncTime)}`}
             </p>
           </div>
         </div>
@@ -356,7 +372,22 @@ export default function TrackedWalletsPage() {
               onLoadMore={() => { }} // No server-side pagination
               hasMore={false} // All data loaded from database
               isLoading={isRefreshing && trackedWalletsList.length === 0} // Only show loading if no data yet
+              onRowClick={handleWalletClick}
             />
+
+            {/* Enhanced OKX Modal */}
+            {selectedWallet && (
+              <WalletDetailModalEnhanced
+                isOpen={isModalOpen}
+                onClose={handleModalClose}
+                walletAddress={selectedWallet.wallet_address}
+                walletData={{
+                  twitter_username: selectedWallet.twitter_username || undefined,
+                  twitter_name: selectedWallet.twitter_name || undefined,
+                  avatar: selectedWallet.avatar || undefined,
+                }}
+              />
+            )}
           </>
         )}
       </div>

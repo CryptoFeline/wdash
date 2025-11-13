@@ -51,6 +51,7 @@ interface WalletTableProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   isLoading?: boolean;
+  onRowClick?: (wallet: Wallet) => void;
 }
 
 export default function WalletTable({
@@ -59,6 +60,7 @@ export default function WalletTable({
   onLoadMore,
   hasMore,
   isLoading,
+  onRowClick,
 }: WalletTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'pnl_7d', desc: true },
@@ -71,8 +73,14 @@ export default function WalletTable({
   const { isTracked, toggleWallet } = useTrackedWallets();
 
   const handleRowClick = (wallet: Wallet) => {
-    setSelectedWallet(wallet);
-    setIsModalOpen(true);
+    // If parent provides onRowClick, use that (enhanced modal)
+    // Otherwise use the old modal (backward compatibility)
+    if (onRowClick) {
+      onRowClick(wallet);
+    } else {
+      setSelectedWallet(wallet);
+      setIsModalOpen(true);
+    }
   };
 
   const closeModal = () => {

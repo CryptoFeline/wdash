@@ -140,7 +140,10 @@ export default function Home() {
         await wakeupBackend();
 
         console.log('[Page] Loading initial wallets from Supabase...');
-        const response = await fetch('/api/wallets/db?chain=sol&limit=500', {
+        
+        // Fetch ALL wallets by requesting high limit (1000)
+        // Backend has 771 wallets, so 1000 will get them all
+        const response = await fetch('/api/wallets/db?chain=sol&limit=1000', {
           headers: { 'Content-Type': 'application/json' }
         });
 
@@ -149,10 +152,10 @@ export default function Home() {
           return;
         }
 
-        const { data } = await response.json();
+        const { data, total } = await response.json();
         if (data && data.length > 0) {
           storage.mergeWallets(data);
-          console.log('[Page] Loaded', data.length, 'wallets from Supabase');
+          console.log(`[Page] Loaded ${data.length}/${total} wallets from Supabase`);
         }
       } catch (error) {
         console.error('[Page] Supabase load error:', error);

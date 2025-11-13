@@ -61,6 +61,7 @@ app.use('/api/wallets', walletsRouter);
 app.use('/api/wallets/db', dbRouter); // Supabase direct access (before /api/wallets, more specific route first)
 app.use('/api/prefetch', prefetchRouter);
 app.use('/api/sync', syncRouter);
+app.use('/api/okx', okxRouter); // OKX wallet data
 app.use('/api', healthRouter);
 
 // Root endpoint
@@ -103,6 +104,7 @@ app.listen(PORT, () => {
 ║   - POST /api/sync                       ║
 ║   - GET /api/prefetch                    ║
 ║   - GET /api/prefetch/status             ║
+║   - GET /api/okx/wallet/:address         ║
 ╚══════════════════════════════════════════╝
   `);
   
