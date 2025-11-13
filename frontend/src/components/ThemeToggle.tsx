@@ -12,7 +12,7 @@ export function ThemeToggle() {
       variant="outline"
       size="icon"
       onClick={toggleTheme}
-      className="fixed top-4 right-4 z-50"
+      className="fixed top-6 right-10 z-50"
       aria-label="Toggle theme"
     >
       {theme === 'dark' ? (

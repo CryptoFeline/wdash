@@ -227,4 +227,59 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/wallets/sync
+ * Fetch individual wallet data for sync engine
+ * Query params: address, chain (optional)
+ */
+router.get('/sync', async (req, res) => {
+  try {
+    const { address, chain = 'sol' } = req.query;
+    
+    if (!address) {
+      return res.status(400).json({
+        error: 'Missing required parameter: address'
+      });
+    }
+
+    console.log(`[API] GET /api/wallets/sync - address: ${address.substring(0, 8)}..., chain: ${chain}`);
+
+    // Import getWallet here to avoid circular dependencies
+    const { getWallet } = await import('../db/supabase.js');
+    
+    // Fetch wallet from database
+    const wallet = await getWallet(address, chain);
+    
+    if (!wallet) {
+      console.log(`[API] Wallet not found in database: ${address}`);
+      return res.status(404).json({
+        error: 'Wallet not found',
+        address,
+        chain
+      });
+    }
+
+    // Transform wallet data to match frontend interface
+    const response = {
+      summary: {
+        pnl_7d: wallet.metadata?.pnl_7d || wallet.pnl_7d || 0,
+        realized_profit_7d: wallet.metadata?.realized_profit_7d || wallet.realized_profit_7d || 0,
+        winrate_7d: wallet.metadata?.winrate_7d || wallet.winrate_7d || 0,
+        token_num_7d: wallet.metadata?.token_num_7d || wallet.token_num_7d || 0,
+      },
+      tokens: wallet.data?.tokens || [],
+      history: wallet.data?.history || [],
+    };
+
+    console.log(`[API] Returning wallet data for ${address.substring(0, 8)}...`);
+    res.json(response);
+  } catch (error) {
+    console.error('[API] Error fetching wallet sync data:', error);
+    res.status(500).json({
+      error: 'Failed to fetch wallet data',
+      message: error.message
+    });
+  }
+});
+
 export default router;
