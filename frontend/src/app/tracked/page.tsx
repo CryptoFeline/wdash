@@ -46,11 +46,12 @@ export default function TrackedWalletsPage() {
   // Tracked wallets hook
   const { trackedWallets, isLoaded, clearAll, removeWallet } = useTrackedWallets();
 
-  // Sync engine hook
-  const { engineStatus, startSyncEngine, stopSyncEngine, pauseSyncEngine, resumeSyncEngine, manualSyncWallet } = useSyncEngine();
+  // Sync engine hook - DISABLED: Causes infinite re-render when API call fails
+  // Should be re-enabled once wallet data is fully available in Supabase
+  // const { engineStatus, startSyncEngine, stopSyncEngine, pauseSyncEngine, resumeSyncEngine, manualSyncWallet } = useSyncEngine();
 
-  // Analytics hook
-  const { metrics, signals, copyWorthyWallets, getAnalyticsStats } = useAnalytics();
+  // Analytics hook - DISABLED: Depends on sync engine
+  // const { metrics, signals, copyWorthyWallets, getAnalyticsStats } = useAnalytics();
 
   // API filters (trigger actual fetch from backend)
   const [chain, setChain] = useState('sol');
@@ -242,18 +243,18 @@ export default function TrackedWalletsPage() {
           </div>
         ) : (
           <>
-            {/* Sync Progress Card - NEW rolling sync engine UI */}
-            <SyncProgressCard
+            {/* Sync Progress Card - DISABLED pending fix for infinite re-render */}
+            {/* <SyncProgressCard
               engineStatus={engineStatus}
               onSync={() => manualSyncWallet(trackedWallets[0]?.address || '')}
               onPause={pauseSyncEngine}
               onResume={resumeSyncEngine}
               onClearErrors={() => clearSyncErrors()}
               isSyncing={engineStatus.isSyncing}
-            />
+            /> */}
 
-            {/* Analytics Summary Card */}
-            {(() => {
+            {/* Analytics Summary Card - DISABLED pending sync engine fix */}
+            {/* {(() => {
               const stats = getAnalyticsStats();
               return (
                 <Card className="p-6">
@@ -295,10 +296,10 @@ export default function TrackedWalletsPage() {
                   </div>
                 </Card>
               );
-            })()}
+            })()} */}
 
-            {/* Top Traders Section */}
-            {copyWorthyWallets.length > 0 && (
+            {/* Top Traders Section - DISABLED pending analytics fix */}
+            {/* {copyWorthyWallets.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-bold">Top Copy-Worthy Traders</h3>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -314,7 +315,7 @@ export default function TrackedWalletsPage() {
                     })}
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Stats Cards */}
             <StatsCards

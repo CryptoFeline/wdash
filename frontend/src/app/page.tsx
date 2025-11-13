@@ -161,7 +161,7 @@ export default function Home() {
     };
 
     loadFromSupabase();
-  }, [wakeupBackend, storage]); // Only on mount
+  }, []); // Empty deps - only run once on mount
 
   // Initial fetch on mount OR when API filters change (chain/timeframe/tag)
   useEffect(() => {
