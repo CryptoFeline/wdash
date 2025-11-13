@@ -10,6 +10,7 @@ import dbRouter from './routes/db.js';
 import healthRouter from './routes/health.js';
 import prefetchRouter from './routes/prefetch.js';
 import syncRouter from './routes/sync.js';
+import okxRouter from './routes/okx.js';
 import { requireApiKey } from './middleware/auth.js';
 
 const app = express();

@@ -46,11 +46,13 @@ export default function TrackedWalletsPage() {
   // Tracked wallets hook
   const { trackedWallets, isLoaded, clearAll, removeWallet } = useTrackedWallets();
 
-  // Sync engine hook - now re-enabled with proper API proxy route
-  const { engineStatus, startSyncEngine, stopSyncEngine, pauseSyncEngine, resumeSyncEngine, manualSyncWallet } = useSyncEngine();
+  // SYNC ENGINE DISABLED - Not needed, wallets already in database
+  // Background syncing causes React #185 errors when wallets not in Supabase
+  // Instead: fetch OKX data on-demand when user clicks a row
+  // const { engineStatus, startSyncEngine, stopSyncEngine, pauseSyncEngine, resumeSyncEngine, manualSyncWallet } = useSyncEngine();
 
-  // Analytics hook - depends on sync engine
-  const { metrics, signals, copyWorthyWallets, getAnalyticsStats } = useAnalytics();
+  // ANALYTICS DISABLED - Depends on sync engine which is disabled
+  // const { metrics, signals, copyWorthyWallets, getAnalyticsStats } = useAnalytics();
 
   // API filters (trigger actual fetch from backend)
   const [chain, setChain] = useState('sol');
@@ -242,8 +244,13 @@ export default function TrackedWalletsPage() {
           </div>
         ) : (
           <>
-            {/* Sync Progress Card - NEW rolling sync engine UI */}
-            <SyncProgressCard
+            {/* SYNC ENGINE & ANALYTICS UI DISABLED
+                Background syncing causes React #185 infinite re-renders
+                Wallets not yet populated in Supabase, causing 404 errors
+                Solution: Fetch OKX data on-demand when clicking wallet row
+            */}
+
+            {/* <SyncProgressCard
               engineStatus={engineStatus}
               onSync={() => manualSyncWallet(trackedWallets[0]?.address || '')}
               onPause={pauseSyncEngine}
@@ -252,7 +259,6 @@ export default function TrackedWalletsPage() {
               isSyncing={engineStatus.isSyncing}
             />
 
-            {/* Analytics Summary Card */}
             {(() => {
               const stats = getAnalyticsStats();
               return (
@@ -297,7 +303,6 @@ export default function TrackedWalletsPage() {
               );
             })()}
 
-            {/* Top Traders Section */}
             {copyWorthyWallets.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-bold">Top Copy-Worthy Traders</h3>
@@ -314,7 +319,7 @@ export default function TrackedWalletsPage() {
                     })}
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Stats Cards */}
             <StatsCards
