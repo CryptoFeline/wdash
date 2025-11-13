@@ -95,6 +95,7 @@ export function useSyncEngine() {
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isInitializedRef = useRef(false);
   const hasStartedRef = useRef(false);
+  const errorCountRef = useRef<Map<string, number>>(new Map()); // Track errors per wallet without state updates
 
   /**
    * Initialize sync queue with rolling schedule
@@ -157,6 +158,7 @@ export function useSyncEngine() {
         console.log('[SyncEngine] Starting sync for', address.substring(0, 8) + '...');
         markSyncStarted(address);
 
+        // Only update state when starting (not on errors)
         setEngineStatus((prev) => ({
           ...prev,
           isSyncing: true,
@@ -181,7 +183,7 @@ export function useSyncEngine() {
             {
               wallet_address: address,
               ...walletData.summary,
-            } as any, // Storage layer adds last_updated
+            } as any,
           ]);
         }
 
@@ -194,6 +196,10 @@ export function useSyncEngine() {
         const nextSyncTime = Date.now() + 5 * 60 * 1000;
         addToSyncQueue(address, nextSyncTime, 'normal');
 
+        // Clear error count on success
+        errorCountRef.current.delete(address);
+
+        // Update state on success (this is OK - not in error path)
         setEngineStatus((prev) => ({
           ...prev,
           isSyncing: false,
@@ -204,28 +210,32 @@ export function useSyncEngine() {
         }));
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        console.error('[SyncEngine] Sync failed:', errorMsg);
+        console.error('[SyncEngine] Sync failed for', address.substring(0, 8) + '...:', errorMsg);
 
         recordSyncError(address, errorMsg);
         markSyncFailed(address, errorMsg);
 
-        // Retry in 30 seconds on error
-        const retryTime = Date.now() + 30 * 1000;
-        addToSyncQueue(address, retryTime, 'high');
+        // Track error count per wallet
+        const errorCount = (errorCountRef.current.get(address) || 0) + 1;
+        errorCountRef.current.set(address, errorCount);
 
+        // Only retry if error count is low (< 5 retries)
+        if (errorCount < 5) {
+          // Retry in 30 seconds on error
+          const retryTime = Date.now() + 30 * 1000;
+          addToSyncQueue(address, retryTime, 'high');
+          console.log(`[SyncEngine] Will retry ${address.substring(0, 8)}... in 30 seconds (attempt ${errorCount}/5)`);
+        } else {
+          // After 5 failures, stop retrying - skip this wallet
+          console.warn(`[SyncEngine] Wallet ${address.substring(0, 8)}... failed ${errorCount} times, giving up`);
+        }
+
+        // IMPORTANT: Only update state to reset isSyncing flag without adding to errors array
+        // This prevents continuous state churn that causes React #185
         setEngineStatus((prev) => ({
           ...prev,
           isSyncing: false,
           currentWallet: null,
-          status: 'error',
-          errors: [
-            ...prev.errors.slice(-10),
-            {
-              wallet: address,
-              error: errorMsg,
-              timestamp: Date.now(),
-            },
-          ],
         }));
       }
     },
