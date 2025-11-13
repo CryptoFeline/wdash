@@ -55,10 +55,13 @@ export default function Home() {
   const wakeupBackend = useCallback(async (): Promise<boolean> => {
     setShowBackendLoadingModal(true);
     const maxAttempts = 30; // 5 sec * 30 = 2.5 min max wait
+    const backendHealthUrl = process.env.NEXT_PUBLIC_API_URL 
+      ? `${process.env.NEXT_PUBLIC_API_URL.replace('/api', '')}/health`
+      : 'http://localhost:3001/health';
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const response = await fetch('/health');
+        const response = await fetch(backendHealthUrl);
         if (response.ok) {
           console.log('[Page] Backend is ready');
           setBackendReady(true);
