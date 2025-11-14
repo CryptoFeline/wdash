@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, Trash2, TrendingUp } from 'lucide-react';
-import WalletDetailModalEnhanced from '@/components/WalletDetailModalEnhanced';
+import WalletDetailModal from '@/components/WalletDetailModal';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: 50,
@@ -376,18 +376,16 @@ export default function TrackedWalletsPage() {
             />
 
             {/* Enhanced OKX Modal */}
-            {selectedWallet && (
-              <WalletDetailModalEnhanced
-                isOpen={isModalOpen}
-                onClose={handleModalClose}
-                walletAddress={selectedWallet.wallet_address}
-                walletData={{
-                  twitter_username: selectedWallet.twitter_username || undefined,
-                  twitter_name: selectedWallet.twitter_name || undefined,
-                  avatar: selectedWallet.avatar || undefined,
-                }}
-              />
-            )}
+            <WalletDetailModal
+              wallet={selectedWallet ? {
+                address: selectedWallet.wallet_address,
+                chainId: '501', // Solana chain ID
+                nickname: selectedWallet.twitter_username || selectedWallet.twitter_name || undefined,
+                avatarUrl: selectedWallet.avatar || undefined,
+              } : null}
+              isOpen={isModalOpen}
+              onClose={handleModalClose}
+            />
           </>
         )}
       </div>
