@@ -354,8 +354,9 @@ export default function Home() {
               Wallet Dashboard
             </h1>
             <p className="text-sm text-muted-foreground">
-              {stats.totalWallets.toLocaleString()} wallets - {(stats.sizeBytes / 1024).toFixed(1)} KB
+              {stats.totalWallets.toLocaleString()} wallets - {(stats.sizeBytes / 1024 / 1024).toFixed(2)} MB
             </p>
+
           </div>
           <Link href="/tracked">
             <Button variant="outline" className="gap-2">
