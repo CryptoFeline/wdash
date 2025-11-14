@@ -84,6 +84,8 @@ export async function GET(
       );
     }
 
+    console.log(`[OKX API Proxy] Using API key: ${apiKey.substring(0, 4)}...`);
+    
     const response = await fetch(backendUrl, {
       headers: {
         'Accept': 'application/json',
@@ -93,8 +95,9 @@ export async function GET(
     });
 
     if (!response.ok) {
-      console.error('[OKX API Proxy] Backend error:', response.status, response.statusText);
       const errorText = await response.text().catch(() => '');
+      console.error('[OKX API Proxy] Backend error:', response.status, response.statusText);
+      console.error('[OKX API Proxy] Backend response:', errorText);
       
       return NextResponse.json(
         { 
