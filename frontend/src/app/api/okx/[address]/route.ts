@@ -71,9 +71,23 @@ export async function GET(
     }
 
     // Call backend
+    const apiKey = process.env.BACKEND_API_KEY;
+    if (!apiKey) {
+      console.error('[OKX API Proxy] Missing BACKEND_API_KEY environment variable');
+      return NextResponse.json(
+        { 
+          code: 1,
+          msg: 'Backend API key not configured',
+          data: null
+        },
+        { status: 500 }
+      );
+    }
+
     const response = await fetch(backendUrl, {
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'x-api-key': apiKey
       },
       next: { revalidate: 300 } // Cache for 5 minutes
     });
