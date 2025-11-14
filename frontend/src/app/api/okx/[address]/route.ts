@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// OKX API Configuration
-const OKX_BASE_URL = 'https://www.okx.com/priapi/v1/dx/market/v2/pnl';
+// Backend API Configuration
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 // Rate limiting (simple in-memory)
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 30; // requests per minute (increased for OKX API)
+const RATE_LIMIT = 30; // requests per minute
 const RATE_WINDOW = 60 * 1000; // 1 minute
 
 function checkRateLimit(ip: string): boolean {
@@ -50,88 +50,100 @@ export async function GET(
     const chainId = searchParams.get('chainId') || '501';
     const endpoint = searchParams.get('endpoint') || 'summary';
     const tokenAddress = searchParams.get('tokenAddress');
-    const offset = searchParams.get('offset') || '0';
-    const limit = searchParams.get('limit') || '100';
 
-    console.log(`[OKX API] ${endpoint} request for wallet: ${address}, chain: ${chainId}`);
+    console.log(`[OKX API Proxy] ${endpoint} request for wallet: ${address}, chain: ${chainId}`);
 
-    // Build OKX API URL based on endpoint
-    let okxUrl: string;
+    // Route different endpoints
+    let backendUrl: string;
     
-    switch (endpoint) {
-      case 'summary':
-        // Endpoint 1: Wallet Profile Summary
-        // Required params: periodType (0=24h, 1=3d, 2=1w, 3=1m), sortType (0=PnL desc, 1=ROI desc)
-        // Note: Use walletAddress not address
-        okxUrl = `${OKX_BASE_URL}/wallet-profile/summary?walletAddress=${address}&chainId=${chainId}&periodType=2&sortType=0`;
-        break;
-        
-      case 'tokenList':
-        // Endpoint 4: Token List
-        // Required params: sortType (0=PnL desc, 1=ROI desc, 2=win rate desc), isAsc (false=desc, true=asc), filterEmptyBalance (false=show all)
-        // Note: Use walletAddress not address
-        okxUrl = `${OKX_BASE_URL}/token-list?walletAddress=${address}&chainId=${chainId}&offset=${offset}&limit=${limit}&sortType=0&isAsc=false&filterEmptyBalance=false`;
-        break;
-        
-      case 'tokenHistory':
-        // Endpoint 6: Token Trading History
-        // Note: Use walletAddress not address
-        if (!tokenAddress) {
-          return NextResponse.json(
-            { code: 1, msg: 'tokenAddress is required for tokenHistory endpoint', data: null },
-            { status: 400 }
-          );
-        }
-        okxUrl = `${OKX_BASE_URL}/kline-bs-point?walletAddress=${address}&chainId=${chainId}&tokenAddress=${tokenAddress}`;
-        break;
-        
-      default:
-        return NextResponse.json(
-          { code: 1, msg: `Unknown endpoint: ${endpoint}`, data: null },
-          { status: 400 }
-        );
+    if (endpoint === 'summary' || endpoint === 'tokenList') {
+      // Use comprehensive backend endpoint that fetches everything
+      backendUrl = `${BACKEND_URL}/okx/wallet/${address}?chainId=${chainId}`;
+    } else if (endpoint === 'tokenHistory') {
+      // For token history, we might need a separate endpoint or handle it differently
+      // For now, return the comprehensive data which includes top token histories
+      backendUrl = `${BACKEND_URL}/okx/wallet/${address}?chainId=${chainId}`;
+    } else {
+      return NextResponse.json(
+        { code: 1, msg: `Unknown endpoint: ${endpoint}`, data: null },
+        { status: 400 }
+      );
     }
 
-    // Call OKX API
-    const response = await fetch(okxUrl, {
+    // Call backend
+    const response = await fetch(backendUrl, {
       headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://www.okx.com/'
+        'Accept': 'application/json'
       },
       next: { revalidate: 300 } // Cache for 5 minutes
     });
 
     if (!response.ok) {
-      console.error('[OKX API] Error response:', response.status, response.statusText);
+      console.error('[OKX API Proxy] Backend error:', response.status, response.statusText);
+      const errorText = await response.text().catch(() => '');
       
-      // Return OKX-compatible error format
       return NextResponse.json(
         { 
           code: 1,
-          msg: `OKX API error: ${response.statusText}`,
+          msg: `Backend error: ${response.statusText}`,
           data: null
         },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    const backendData = await response.json();
 
-    // Return data with cache headers
-    return NextResponse.json(data, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
-      }
-    });
+    // Transform backend response to match OKX API format expected by frontend
+    if (endpoint === 'summary') {
+      // Return summary in OKX format
+      return NextResponse.json({
+        code: 0,
+        data: backendData.data?.summary || {},
+        msg: ''
+      }, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+        }
+      });
+    } else if (endpoint === 'tokenList') {
+      // Combine holdings and historical trades
+      const holdings = backendData.data?.holdings || [];
+      const historicalTrades = backendData.data?.historicalTrades || [];
+      const allTokens = [...holdings, ...historicalTrades];
+      
+      return NextResponse.json({
+        code: 0,
+        data: {
+          hasNext: false, // For now, we don't support pagination through backend
+          tokenList: allTokens
+        },
+        msg: ''
+      }, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+        }
+      });
+    } else {
+      // Return full data for other endpoints
+      return NextResponse.json({
+        code: 0,
+        data: backendData.data,
+        msg: ''
+      }, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
+        }
+      });
+    }
 
   } catch (error) {
-    console.error('[OKX API] Error:', error);
+    console.error('[OKX API Proxy] Error:', error);
     
     return NextResponse.json(
       { 
         code: 1,
-        msg: 'Failed to fetch data from OKX',
+        msg: 'Failed to fetch data from backend',
         data: null,
         details: error instanceof Error ? error.message : 'Unknown error'
       },
