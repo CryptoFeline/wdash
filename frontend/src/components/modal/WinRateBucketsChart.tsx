@@ -29,12 +29,12 @@ export function WinRateBucketsChart({ tokens }: WinRateBucketsChartProps) {
 
   // Color gradient from green (high win rate) to red (low win rate)
   const colors = [
-    '#10b981', // 100% - green
-    '#22c55e', // 100-75% - light green
-    '#3b82f6', // 75-50% - blue
-    '#f59e0b', // 50-25% - orange
-    '#f97316', // 25-0% - dark orange
-    '#ef4444'  // 0% - red
+    'hsl(var(--chart-4))',   // 100% - green
+    'hsl(var(--chart-4))',   // 100-75% - light green  
+    'hsl(var(--chart-2))',   // 75-50% - blue
+    'hsl(var(--chart-5))',   // 50-25% - orange
+    'hsl(var(--chart-1))',   // 25-0% - dark orange
+    'hsl(var(--destructive))'// 0% - red
   ];
 
   // Custom tooltip
@@ -45,33 +45,33 @@ export function WinRateBucketsChart({ tokens }: WinRateBucketsChartProps) {
     const tokensInBucket = data.tokens || [];
 
     return (
-      <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 shadow-xl max-w-xs">
-        <p className="text-sm font-semibold text-zinc-100 mb-2">
+      <div className="bg-card border border-border rounded-lg px-4 py-3 shadow-xl max-w-xs">
+        <p className="text-sm font-semibold text-foreground mb-2">
           {data.label} Win Rate
         </p>
-        <p className="text-xs text-zinc-400 mb-3">
+        <p className="text-xs text-muted-foreground mb-3">
           {data.count} token{data.count !== 1 ? 's' : ''}
         </p>
         
         {tokensInBucket.length > 0 && (
           <div className="space-y-1 max-h-48 overflow-y-auto">
-            <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
               Tokens:
             </p>
             {tokensInBucket.slice(0, 10).map((token: any, i: number) => (
               <div 
                 key={i}
-                className="flex items-center justify-between text-xs border-b border-zinc-700/50 pb-1"
+                className="flex items-center justify-between text-xs border-b border-border pb-1"
               >
-                <span className="text-zinc-300 font-medium">{token.symbol}</span>
+                <span className="text-foreground font-medium">{token.symbol}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-zinc-400">{token.winRate}%</span>
-                  <span className="text-zinc-500">({token.tradeCount} tx)</span>
+                  <span className="text-muted-foreground">{token.winRate}%</span>
+                  <span className="text-muted-foreground">({token.tradeCount} tx)</span>
                 </div>
               </div>
             ))}
             {tokensInBucket.length > 10 && (
-              <p className="text-xs text-zinc-500 italic mt-1">
+              <p className="text-xs text-muted-foreground italic mt-1">
                 +{tokensInBucket.length - 10} more...
               </p>
             )}
@@ -82,18 +82,18 @@ export function WinRateBucketsChart({ tokens }: WinRateBucketsChartProps) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-6 border border-zinc-700/50 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-blue-500/20 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-blue-400" />
+          <div className="p-2 bg-primary/20 rounded-lg">
+            <TrendingUp className="w-5 h-5 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold text-zinc-100">Win Rate Distribution</h3>
+          <h3 className="text-lg font-semibold text-foreground">Win Rate Distribution</h3>
         </div>
         <div className="text-right">
-          <p className="text-xs text-zinc-500">Total Tokens</p>
-          <p className="text-lg font-bold text-zinc-200">{tokens.length}</p>
+          <p className="text-xs text-muted-foreground">Total Tokens</p>
+          <p className="text-lg font-bold text-foreground">{tokens.length}</p>
         </div>
       </div>
 

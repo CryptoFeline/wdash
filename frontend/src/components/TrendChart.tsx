@@ -39,7 +39,7 @@ export function TrendChart({ chain = 'eth', days = 7 }: TrendChartProps) {
     return (
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Portfolio Trend</h3>
-        <div className="h-80 flex items-center justify-center text-gray-500">
+        <div className="h-80 flex items-center justify-center text-muted-foreground">
           Loading trend data...
         </div>
       </Card>
@@ -50,7 +50,7 @@ export function TrendChart({ chain = 'eth', days = 7 }: TrendChartProps) {
     return (
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Portfolio Trend</h3>
-        <div className="h-80 flex items-center justify-center text-red-500">
+        <div className="h-80 flex items-center justify-center text-destructive">
           {error}
         </div>
       </Card>
@@ -61,7 +61,7 @@ export function TrendChart({ chain = 'eth', days = 7 }: TrendChartProps) {
     return (
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Portfolio Trend</h3>
-        <div className="h-80 flex items-center justify-center text-gray-500">
+        <div className="h-80 flex items-center justify-center text-muted-foreground">
           No snapshot data yet. Sync wallets to generate analytics.
         </div>
       </Card>
