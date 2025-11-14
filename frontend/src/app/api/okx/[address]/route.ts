@@ -61,12 +61,14 @@ export async function GET(
     switch (endpoint) {
       case 'summary':
         // Endpoint 1: Wallet Profile Summary
-        okxUrl = `${OKX_BASE_URL}/wallet-profile/summary?address=${address}&chainId=${chainId}`;
+        // Required params: periodType (0=7d, 1=30d), sortType (0=PnL desc, 1=ROI desc)
+        okxUrl = `${OKX_BASE_URL}/wallet-profile/summary?address=${address}&chainId=${chainId}&periodType=0&sortType=0`;
         break;
         
       case 'tokenList':
         // Endpoint 4: Token List
-        okxUrl = `${OKX_BASE_URL}/token-list?address=${address}&chainId=${chainId}&offset=${offset}&limit=${limit}`;
+        // Required params: sortType (0=PnL desc, 1=ROI desc, 2=win rate desc)
+        okxUrl = `${OKX_BASE_URL}/token-list?address=${address}&chainId=${chainId}&offset=${offset}&limit=${limit}&sortType=0`;
         break;
         
       case 'tokenHistory':
