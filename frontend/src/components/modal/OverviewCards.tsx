@@ -21,8 +21,11 @@ export function BalancesCard({ summary }: BalancesCardProps) {
   const nativeBalance = parseFloat(summary.nativeTokenBalanceAmount || '0');
   const nativeValue = parseFloat(summary.nativeTokenBalanceUsd || '0');
   
+  // Ensure topTokens is an array (defensive programming)
+  const topTokens = summary.topTokens || [];
+  
   // Calculate portfolio breakdown (top 3 + native + others)
-  const top3Value = summary.topTokens.reduce((sum, token) => {
+  const top3Value = topTokens.reduce((sum, token) => {
     // Approximate value from PnL (rough estimate)
     return sum + Math.abs(parseFloat(token.pnl || '0'));
   }, 0);
@@ -69,7 +72,7 @@ export function BalancesCard({ summary }: BalancesCardProps) {
           Top Holdings
         </p>
         
-        {summary.topTokens.map((token, index) => {
+        {topTokens.map((token, index) => {
           const pnl = parseFloat(token.pnl || '0');
           const roi = parseFloat(token.roi || '0');
           const isProfitable = pnl >= 0;
@@ -138,7 +141,7 @@ export function BalancesCard({ summary }: BalancesCardProps) {
             style={{ width: `${(nativeValue / totalPortfolioValue) * 100}%` }}
             title="SOL"
           />
-          {summary.topTokens.map((token, i) => {
+          {topTokens.map((token, i) => {
             const value = Math.abs(parseFloat(token.pnl || '0'));
             const percentage = (value / totalPortfolioValue) * 100;
             const colors = ['bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
@@ -157,7 +160,7 @@ export function BalancesCard({ summary }: BalancesCardProps) {
             <div className="w-2 h-2 bg-blue-500 rounded-full" />
             <span>SOL</span>
           </div>
-          {summary.topTokens.slice(0, 3).map((token, i) => {
+          {topTokens.slice(0, 3).map((token, i) => {
             const colors = ['bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
             return (
               <div key={token.tokenAddress} className="flex items-center gap-1.5">

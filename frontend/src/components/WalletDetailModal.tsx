@@ -357,18 +357,18 @@ function OverviewTab({ walletData }: { walletData: OKXWalletData }) {
       {/* Row 2: Market Cap & Quality Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MarketCapCard summary={walletData.summary} />
-        <QualityMetricsCard tokenList={walletData.tokenList} />
+        <QualityMetricsCard tokenList={walletData.tokenList || []} />
       </div>
 
       {/* Row 3: Token Analytics Table */}
-      <TokenAnalyticsTable tokens={walletData.tokenList} maxRows={20} />
+      <TokenAnalyticsTable tokens={walletData.tokenList || []} maxRows={20} />
 
       {/* Row 4: Charts & Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <WinRateBucketsChart tokens={walletData.tokenList} />
+        <WinRateBucketsChart tokens={walletData.tokenList || []} />
         <BuySellTimelineChart 
           walletAddress={walletData.address} 
-          tokens={walletData.tokenList}
+          tokens={walletData.tokenList || []}
           chainId={walletData.chainId}
         />
       </div>
@@ -384,8 +384,11 @@ function HoldingsTab({ walletData }: { walletData: OKXWalletData }) {
   const [sortField, setSortField] = useState<'symbol' | 'balance' | 'value' | 'pnl' | 'holdTime'>('value');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  // Ensure tokenList is an array (defensive programming)
+  const tokenList = walletData.tokenList || [];
+  
   // Filter to only tokens with current balance
-  const holdings = walletData.tokenList.filter(token => parseFloat(token.balance || '0') > 0);
+  const holdings = tokenList.filter(token => parseFloat(token.balance || '0') > 0);
 
   // Sort holdings
   const sortedHoldings = [...holdings].sort((a, b) => {
@@ -547,8 +550,11 @@ function HistoryTab({ walletData }: { walletData: OKXWalletData }) {
   const [sortField, setSortField] = useState<'symbol' | 'buyVol' | 'sellVol' | 'pnl' | 'roi'>('pnl');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  // Ensure tokenList is an array (defensive programming)
+  const tokenList = walletData.tokenList || [];
+  
   // Filter to only tokens that have been sold (completed trades)
-  const completedTrades = walletData.tokenList.filter(token => token.totalTxSell > 0);
+  const completedTrades = tokenList.filter(token => token.totalTxSell > 0);
 
   // Sort completed trades
   const sortedTrades = [...completedTrades].sort((a, b) => {
@@ -726,12 +732,15 @@ function HistoryTab({ walletData }: { walletData: OKXWalletData }) {
 // ============================================================================
 
 function AnalyticsTab({ walletData }: { walletData: OKXWalletData }) {
+  // Ensure tokenList is an array (defensive programming)
+  const tokenList = walletData.tokenList || [];
+  
   // Prepare data for charts
-  const topPerformers = [...walletData.tokenList]
+  const topPerformers = [...tokenList]
     .sort((a, b) => parseFloat(b.totalPnlPercentage || '0') - parseFloat(a.totalPnlPercentage || '0'))
     .slice(0, 5);
 
-  const worstPerformers = [...walletData.tokenList]
+  const worstPerformers = [...tokenList]
     .sort((a, b) => parseFloat(a.totalPnlPercentage || '0') - parseFloat(b.totalPnlPercentage || '0'))
     .slice(0, 5);
 
