@@ -61,25 +61,28 @@ export async function GET(
     switch (endpoint) {
       case 'summary':
         // Endpoint 1: Wallet Profile Summary
-        // Required params: periodType (0=7d, 1=30d), sortType (0=PnL desc, 1=ROI desc)
-        okxUrl = `${OKX_BASE_URL}/wallet-profile/summary?address=${address}&chainId=${chainId}&periodType=0&sortType=0`;
+        // Required params: periodType (0=24h, 1=3d, 2=1w, 3=1m), sortType (0=PnL desc, 1=ROI desc)
+        // Note: Use walletAddress not address
+        okxUrl = `${OKX_BASE_URL}/wallet-profile/summary?walletAddress=${address}&chainId=${chainId}&periodType=2&sortType=0`;
         break;
         
       case 'tokenList':
         // Endpoint 4: Token List
-        // Required params: sortType (0=PnL desc, 1=ROI desc, 2=win rate desc), isAsc (false=desc, true=asc)
-        okxUrl = `${OKX_BASE_URL}/token-list?address=${address}&chainId=${chainId}&offset=${offset}&limit=${limit}&sortType=0&isAsc=false`;
+        // Required params: sortType (0=PnL desc, 1=ROI desc, 2=win rate desc), isAsc (false=desc, true=asc), filterEmptyBalance (false=show all)
+        // Note: Use walletAddress not address
+        okxUrl = `${OKX_BASE_URL}/token-list?walletAddress=${address}&chainId=${chainId}&offset=${offset}&limit=${limit}&sortType=0&isAsc=false&filterEmptyBalance=false`;
         break;
         
       case 'tokenHistory':
         // Endpoint 6: Token Trading History
+        // Note: Use walletAddress not address
         if (!tokenAddress) {
           return NextResponse.json(
             { code: 1, msg: 'tokenAddress is required for tokenHistory endpoint', data: null },
             { status: 400 }
           );
         }
-        okxUrl = `${OKX_BASE_URL}/kline-bs-point?address=${address}&chainId=${chainId}&tokenAddress=${tokenAddress}`;
+        okxUrl = `${OKX_BASE_URL}/kline-bs-point?walletAddress=${address}&chainId=${chainId}&tokenAddress=${tokenAddress}`;
         break;
         
       default:
