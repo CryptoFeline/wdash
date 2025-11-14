@@ -338,20 +338,29 @@ export async function fetchTokenHistory(
   chainId: string = SOLANA_CHAIN_ID
 ): Promise<OKXAPIResponse<OKXTokenHistoryResponse>> {
   try {
-    const url = `/api/okx/${walletAddress}?chainId=${chainId}&endpoint=tokenHistory&tokenAddress=${tokenAddress}`;
+    const url = `/api/okx/history/${walletAddress}?tokenAddress=${tokenAddress}&chainId=${chainId}`;
     const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
     }
 
-    const json: OKXTokenHistoryResponse = await response.json();
+    const json = await response.json();
     
+    // The backend returns { code, data, msg }
+    // where data is directly the array of history points
     if (json.code !== 0) {
       throw new Error(json.msg || 'Unknown API error');
     }
     
-    return { success: true, data: json, error: null, cached: false };
+    // Transform to match OKXTokenHistoryResponse structure
+    const tokenHistoryResponse: OKXTokenHistoryResponse = {
+      code: json.code,
+      data: Array.isArray(json.data) ? json.data : [],
+      msg: json.msg
+    };
+    
+    return { success: true, data: tokenHistoryResponse, error: null, cached: false };
   } catch (error) {
     console.error('[OKX API] Error fetching token history:', error);
     return {

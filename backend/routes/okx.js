@@ -223,4 +223,75 @@ router.get('/wallet/:address', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/okx/history/:address
+ * Fetches detailed trading history for a specific token
+ * Endpoint 6: Token Trading History (Kline Buy-Sell Points)
+ */
+router.get('/history/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const { tokenAddress, chainId = SOLANA_CHAIN_ID } = req.query;
+
+    if (!tokenAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing tokenAddress query parameter'
+      });
+    }
+
+    console.log(`[OKX] Fetching history for token ${tokenAddress} in wallet ${address}`);
+
+    // Fetch trading history (Endpoint 6: kline-bs-point)
+    const historyResponse = await axios.get(
+      `${OKX_BASE_URL}/priapi/v1/dx/market/v2/trading/kline-bs-point`,
+      {
+        params: {
+          chainId,
+          tokenAddress,
+          fromAddress: address,
+          after: Date.now(),
+          bar: '1m',
+          limit: 240,
+          t: Date.now()
+        },
+        timeout: 15000
+      }
+    );
+
+    const data = historyResponse.data?.data || [];
+
+    res.json({
+      code: 0,
+      data: data,
+      msg: ''
+    });
+
+  } catch (error) {
+    console.error('[OKX] Error fetching token history:', error.message);
+    
+    if (error.response?.status === 429) {
+      return res.status(429).json({
+        code: 429,
+        data: [],
+        msg: 'Rate limit exceeded. Please try again in a moment.'
+      });
+    }
+
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        code: 504,
+        data: [],
+        msg: 'Request timeout. Please try again.'
+      });
+    }
+
+    res.status(500).json({
+      code: 500,
+      data: [],
+      msg: 'Failed to fetch token history from OKX'
+    });
+  }
+});
+
 export default router;

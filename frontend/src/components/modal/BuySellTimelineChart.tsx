@@ -59,9 +59,15 @@ export function BuySellTimelineChart({
         }
 
         // Transform API response to timeline data points
+        // result.data is OKXTokenHistoryResponse with .data array inside
         const points: TimelineDataPoint[] = [];
+        const historyData = result.data.data || [];
 
-        result.data.data.forEach((record) => {
+        if (!Array.isArray(historyData)) {
+          throw new Error('Invalid history data format: expected array');
+        }
+
+        historyData.forEach((record: any) => {
           const timestamp = parseInt(record.time);
 
           // Add buy point if exists

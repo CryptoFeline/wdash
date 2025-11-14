@@ -348,7 +348,7 @@ function OverviewTab({ walletData }: { walletData: OKXWalletData }) {
     <div className="space-y-6">
       {/* Row 1: Balances, PnL, Win Rate, Trading Stats */}
       <div className="grid grid-rows-1 md:grid-rows-2 lg:grid-rows-4 gap-4">
-        <BalancesCard summary={walletData.summary} />
+        <BalancesCard summary={walletData.summary} tokenList={walletData.tokenList} />
         <PnLCard summary={walletData.summary} />
         <WinRateCard summary={walletData.summary} />
         <TradingStatsCard summary={walletData.summary} />
@@ -383,12 +383,19 @@ function OverviewTab({ walletData }: { walletData: OKXWalletData }) {
 function HoldingsTab({ walletData }: { walletData: OKXWalletData }) {
   const [sortField, setSortField] = useState<'symbol' | 'balance' | 'value' | 'pnl' | 'holdTime'>('value');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   // Ensure tokenList is an array (defensive programming)
   const tokenList = walletData.tokenList || [];
   
   // Filter to only tokens with current balance
   const holdings = tokenList.filter(token => parseFloat(token.balance || '0') > 0);
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(holdings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
 
   // Sort holdings
   const sortedHoldings = [...holdings].sort((a, b) => {
@@ -422,6 +429,9 @@ function HoldingsTab({ walletData }: { walletData: OKXWalletData }) {
     return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
   });
 
+  // Get paginated results
+  const paginatedHoldings = sortedHoldings.slice(startIndex, endIndex);
+
   const handleSort = (field: typeof sortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -429,6 +439,10 @@ function HoldingsTab({ walletData }: { walletData: OKXWalletData }) {
       setSortField(field);
       setSortDirection('desc');
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
   const totalHoldingValue = holdings.reduce((sum, token) => 
@@ -443,19 +457,19 @@ function HoldingsTab({ walletData }: { walletData: OKXWalletData }) {
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
-          <p className="text-xs text-zinc-500 mb-1">Total Holdings</p>
-          <p className="text-2xl font-bold text-zinc-100">{holdings.length}</p>
-          <p className="text-xs text-zinc-500 mt-1">tokens</p>
+        <div className="bg-card rounded-lg p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Total Holdings</p>
+          <p className="text-2xl font-bold text-foreground">{holdings.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">tokens</p>
         </div>
-        <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
-          <p className="text-xs text-zinc-500 mb-1">Total Value</p>
-          <p className="text-2xl font-bold text-zinc-100">{formatUSD(totalHoldingValue)}</p>
+        <div className="bg-card rounded-lg p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Total Value</p>
+          <p className="text-2xl font-bold text-foreground">{formatUSD(totalHoldingValue)}</p>
         </div>
-        <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
-          <p className="text-xs text-zinc-500 mb-1">Unrealized PnL</p>
+        <div className="bg-card rounded-lg p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Unrealized PnL</p>
           <p className={`text-2xl font-bold ${
-            totalUnrealizedPnL >= 0 ? 'text-green-400' : 'text-red-400'
+            totalUnrealizedPnL >= 0 ? 'text-chart-4' : 'text-destructive'
           }`}>
             {formatUSD(totalUnrealizedPnL)}
           </p>
@@ -463,40 +477,40 @@ function HoldingsTab({ walletData }: { walletData: OKXWalletData }) {
       </div>
 
       {/* Holdings Table */}
-      <div className="bg-zinc-800/50 rounded-lg border border-zinc-700/50 overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         <table className="w-full">
-          <thead className="bg-zinc-900/50">
-            <tr className="text-xs text-zinc-400 uppercase tracking-wider">
+          <thead className="bg-secondary/50">
+            <tr className="text-xs text-muted-foreground uppercase tracking-wider">
               <th className="px-6 py-3 text-left">
-                <button onClick={() => handleSort('symbol')} className="hover:text-zinc-200">
+                <button onClick={() => handleSort('symbol')} className="hover:text-foreground">
                   Token
                 </button>
               </th>
               <th className="px-6 py-3 text-right">
-                <button onClick={() => handleSort('balance')} className="hover:text-zinc-200">
+                <button onClick={() => handleSort('balance')} className="hover:text-foreground">
                   Balance
                 </button>
               </th>
               <th className="px-6 py-3 text-right">
-                <button onClick={() => handleSort('value')} className="hover:text-zinc-200">
+                <button onClick={() => handleSort('value')} className="hover:text-foreground">
                   Value
                 </button>
               </th>
               <th className="px-6 py-3 text-right">Avg Buy Price</th>
               <th className="px-6 py-3 text-right">
-                <button onClick={() => handleSort('pnl')} className="hover:text-zinc-200">
+                <button onClick={() => handleSort('pnl')} className="hover:text-foreground">
                   Unrealized PnL
                 </button>
               </th>
               <th className="px-6 py-3 text-right">
-                <button onClick={() => handleSort('holdTime')} className="hover:text-zinc-200">
+                <button onClick={() => handleSort('holdTime')} className="hover:text-foreground">
                   Hold Time
                 </button>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-700/30">
-            {sortedHoldings.map((token) => {
+          <tbody className="divide-y divide-border">
+            {paginatedHoldings.map((token) => {
               const balance = parseFloat(token.balance || '0');
               const value = parseFloat(token.balanceUsd || '0');
               const unrealizedPnL = parseFloat(token.unrealizedPnl || '0');
@@ -504,31 +518,43 @@ function HoldingsTab({ walletData }: { walletData: OKXWalletData }) {
               const holdTimeDays = Math.floor((token.holdingTime || 0) / 86400);
 
               return (
-                <tr key={token.tokenAddress} className="hover:bg-zinc-800/30">
+                <tr key={token.tokenAddress} className="hover:bg-secondary/30">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-zinc-200">{token.tokenSymbol}</span>
-                      <span className="text-xs text-zinc-500 truncate max-w-[100px]">{token.tokenName}</span>
+                      {token.logoUrl && (
+                        <img 
+                          src={token.logoUrl} 
+                          alt={token.tokenSymbol}
+                          className="w-8 h-8 rounded-full"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <div>
+                        <span className="text-sm font-semibold text-foreground">{token.tokenSymbol}</span>
+                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">{token.tokenName}</p>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <p className="text-sm text-zinc-300">{formatNumber(balance)}</p>
+                    <p className="text-sm text-foreground">{formatNumber(balance)}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <p className="text-sm font-medium text-zinc-200">{formatUSD(value)}</p>
+                    <p className="text-sm font-medium text-foreground">{formatUSD(value)}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <p className="text-sm text-zinc-400">{formatUSD(avgBuyPrice)}</p>
+                    <p className="text-sm text-muted-foreground">{formatUSD(avgBuyPrice)}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <p className={`text-sm font-semibold ${
-                      unrealizedPnL >= 0 ? 'text-green-400' : 'text-red-400'
+                      unrealizedPnL >= 0 ? 'text-chart-4' : 'text-destructive'
                     }`}>
                       {formatUSD(unrealizedPnL)}
                     </p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-muted-foreground">
                       {holdTimeDays > 0 ? `${holdTimeDays}d` : '<1d'}
                     </p>
                   </td>
@@ -538,6 +564,34 @@ function HoldingsTab({ walletData }: { walletData: OKXWalletData }) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4 px-4 py-3 bg-card border border-border rounded-lg">
+          <p className="text-xs text-muted-foreground">
+            Showing {startIndex + 1} to {Math.min(endIndex, holdings.length)} of {holdings.length} holdings
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed rounded border border-input"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-sm bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed rounded border border-input"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -732,167 +786,284 @@ function HistoryTab({ walletData }: { walletData: OKXWalletData }) {
 // ============================================================================
 
 function AnalyticsTab({ walletData }: { walletData: OKXWalletData }) {
+  const [sortField, setSortField] = useState<'symbol' | 'pnl' | 'roi' | 'trades'>('pnl');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showWorst, setShowWorst] = useState(false);
+  const itemsPerPage = 15;
+
   // Ensure tokenList is an array (defensive programming)
   const tokenList = walletData.tokenList || [];
+  const summary = walletData.summary || {};
   
-  // Prepare data for charts
-  const topPerformers = [...tokenList]
-    .sort((a, b) => parseFloat(b.totalPnlPercentage || '0') - parseFloat(a.totalPnlPercentage || '0'))
-    .slice(0, 5);
+  // Filter tokens that were actually traded
+  const tradedTokens = tokenList.filter(token => {
+    const totalTx = (token.totalTxBuy || 0) + (token.totalTxSell || 0);
+    return totalTx > 0;
+  });
 
-  const worstPerformers = [...tokenList]
-    .sort((a, b) => parseFloat(a.totalPnlPercentage || '0') - parseFloat(b.totalPnlPercentage || '0'))
-    .slice(0, 5);
+  // Sort traded tokens
+  const sortedTokens = [...tradedTokens].sort((a, b) => {
+    let aValue: number, bValue: number;
 
-  // Market cap distribution data
-  const mcapData = (walletData.summary.mcapTxsBuyList || []).map((count, index) => ({
+    switch (sortField) {
+      case 'symbol':
+        return sortDirection === 'asc'
+          ? a.tokenSymbol.localeCompare(b.tokenSymbol)
+          : b.tokenSymbol.localeCompare(a.tokenSymbol);
+      case 'pnl':
+        aValue = parseFloat(a.realizedPnl || '0');
+        bValue = parseFloat(b.realizedPnl || '0');
+        break;
+      case 'roi':
+        aValue = parseFloat(a.totalPnlPercentage || '0');
+        bValue = parseFloat(b.totalPnlPercentage || '0');
+        break;
+      case 'trades':
+        aValue = (a.totalTxBuy || 0) + (a.totalTxSell || 0);
+        bValue = (b.totalTxBuy || 0) + (b.totalTxSell || 0);
+        break;
+      default:
+        return 0;
+    }
+
+    return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+  });
+
+  // Split into top and worst
+  const topPerformers = sortDirection === 'desc' ? sortedTokens : [...sortedTokens].reverse();
+  const worstPerformers = sortDirection === 'asc' ? sortedTokens : [...sortedTokens].reverse();
+  const displayTokens = showWorst ? worstPerformers : topPerformers;
+
+  // Pagination
+  const totalPages = Math.ceil(displayTokens.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTokens = displayTokens.slice(startIndex, endIndex);
+
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  // Calculate key metrics
+  const totalRealizedPnL = tradedTokens.reduce((sum, token) => 
+    sum + parseFloat(token.realizedPnl || '0'), 0
+  );
+
+  const winningTokens = tradedTokens.filter(token => parseFloat(token.realizedPnl || '0') > 0);
+  const winRate = tradedTokens.length > 0 ? (winningTokens.length / tradedTokens.length) * 100 : 0;
+
+  const avgHoldingTime = tradedTokens.length > 0 
+    ? tradedTokens.reduce((sum, token) => sum + (token.holdingTime || 0), 0) / tradedTokens.length
+    : 0;
+  const avgHoldingDays = Math.floor(avgHoldingTime / 86400);
+
+  // Market cap distribution
+  const mcapData = (summary.mcapTxsBuyList || []).map((count, index) => ({
     name: ['<$100k', '$100k-$1M', '$1M-$10M', '$10M-$100M', '>$100M'][index],
     value: count
   }));
 
+  const favoriteMcapIndex = parseInt(summary.favoriteMcapType || '0');
+
   return (
     <div className="space-y-6">
-      {/* PnL Trend Chart */}
-      <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700/50">
-        <h3 className="text-lg font-semibold text-zinc-100 mb-4">7-Day PnL Trend</h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={walletData.summary.datePnlList || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
-              <XAxis 
-                dataKey="timestamp"
-                tickFormatter={(timestamp) => {
-                  const date = new Date(timestamp);
-                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                }}
-                stroke="#a1a1aa"
-                tick={{ fontSize: 11 }}
-              />
-              <YAxis 
-                tickFormatter={(value) => formatUSD(value)}
-                stroke="#a1a1aa"
-                tick={{ fontSize: 11 }}
-              />
-              <Tooltip 
-                formatter={(value: any) => [formatUSD(value), 'PnL']}
-                labelFormatter={(timestamp) => {
-                  const date = new Date(timestamp);
-                  return date.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    month: 'short', 
-                    day: 'numeric' 
-                  });
-                }}
-                contentStyle={{ 
-                  backgroundColor: '#27272a', 
-                  border: '1px solid #3f3f46',
-                  borderRadius: '8px'
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="profit" 
-                stroke="#3b82f6" 
-                strokeWidth={2}
-                dot={{ fill: '#3b82f6', r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+      {/* Key Metrics Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-card rounded-lg p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Win Rate</p>
+          <p className="text-2xl font-bold text-foreground">{winRate.toFixed(1)}%</p>
+          <p className="text-xs text-muted-foreground mt-1">({winningTokens.length} of {tradedTokens.length})</p>
+        </div>
+
+        <div className="bg-card rounded-lg p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Realized PnL</p>
+          <p className={`text-2xl font-bold ${
+            totalRealizedPnL >= 0 ? 'text-chart-4' : 'text-destructive'
+          }`}>
+            {formatUSD(totalRealizedPnL)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">From {tradedTokens.length} tokens</p>
+        </div>
+
+        <div className="bg-card rounded-lg p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Avg Holding Time</p>
+          <p className="text-2xl font-bold text-foreground">{avgHoldingDays}d</p>
+          <p className="text-xs text-muted-foreground mt-1">Across all trades</p>
+        </div>
+
+        <div className="bg-card rounded-lg p-4 border border-border">
+          <p className="text-xs text-muted-foreground mb-1">Total Transactions</p>
+          <p className="text-2xl font-bold text-foreground">
+            {tradedTokens.reduce((sum, t) => sum + ((t.totalTxBuy || 0) + (t.totalTxSell || 0)), 0)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">Buy + Sell</p>
         </div>
       </div>
 
-      {/* Top & Worst Performers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Top Performers */}
-        <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700/50">
-          <h3 className="text-lg font-semibold text-zinc-100 mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-green-400" />
-            Top Performers
-          </h3>
-          <div className="space-y-3">
-            {topPerformers.map((token, index) => {
-              const roi = parseFloat(token.totalPnlPercentage || '0');
-              const pnl = parseFloat(token.totalPnl || '0');
-              return (
-                <div key={token.tokenAddress} className="flex items-center gap-3 p-3 bg-zinc-900/30 rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 font-bold text-sm">
-                    #{index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-zinc-200">{token.tokenSymbol}</p>
-                    <p className="text-xs text-zinc-500 truncate">{token.tokenName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-green-400">{formatPercent(roi)}</p>
-                    <p className="text-xs text-zinc-500">{formatUSD(pnl)}</p>
-                  </div>
-                </div>
-              );
-            })}
+      {/* Performance Table */}
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="flex items-center justify-between p-6 border-b border-border bg-secondary/50">
+          <div className="flex items-center gap-4">
+            <h3 className="text-lg font-semibold text-foreground">
+              {showWorst ? 'Worst Performers' : 'Top Performers'}
+            </h3>
+            <span className="text-sm text-muted-foreground">
+              ({displayTokens.length} tokens)
+            </span>
           </div>
+          <button
+            onClick={() => {
+              setShowWorst(!showWorst);
+              setCurrentPage(1);
+            }}
+            className="px-3 py-1 text-sm bg-secondary hover:bg-secondary/80 text-foreground rounded border border-input transition-colors"
+          >
+            Switch to {showWorst ? 'Top' : 'Worst'}
+          </button>
         </div>
 
-        {/* Worst Performers */}
-        <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700/50">
-          <h3 className="text-lg font-semibold text-zinc-100 mb-4 flex items-center gap-2">
-            <TrendingDown className="w-5 h-5 text-red-400" />
-            Worst Performers
-          </h3>
-          <div className="space-y-3">
-            {worstPerformers.map((token, index) => {
+        <table className="w-full">
+          <thead className="bg-secondary/30">
+            <tr className="text-xs text-muted-foreground uppercase tracking-wider">
+              <th className="px-6 py-3 text-left">Token</th>
+              <th className="px-6 py-3 text-right">
+                <button onClick={() => handleSort('trades')} className="hover:text-foreground">
+                  Trades
+                </button>
+              </th>
+              <th className="px-6 py-3 text-right">
+                <button onClick={() => handleSort('roi')} className="hover:text-foreground">
+                  ROI %
+                </button>
+              </th>
+              <th className="px-6 py-3 text-right">
+                <button onClick={() => handleSort('pnl')} className="hover:text-foreground">
+                  Realized PnL
+                </button>
+              </th>
+              <th className="px-6 py-3 text-right">Buy Avg</th>
+              <th className="px-6 py-3 text-right">Sell Avg</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {paginatedTokens.map((token, idx) => {
               const roi = parseFloat(token.totalPnlPercentage || '0');
-              const pnl = parseFloat(token.totalPnl || '0');
+              const pnl = parseFloat(token.realizedPnl || '0');
+              const totalTx = (token.totalTxBuy || 0) + (token.totalTxSell || 0);
+              const buyAvg = parseFloat(token.buyAvgPrice || '0');
+              const sellAvg = parseFloat(token.sellAvgPrice || '0');
+
               return (
-                <div key={token.tokenAddress} className="flex items-center gap-3 p-3 bg-zinc-900/30 rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold text-sm">
-                    #{index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-zinc-200">{token.tokenSymbol}</p>
-                    <p className="text-xs text-zinc-500 truncate">{token.tokenName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-red-400">{formatPercent(roi)}</p>
-                    <p className="text-xs text-zinc-500">{formatUSD(pnl)}</p>
-                  </div>
-                </div>
+                <tr key={token.tokenAddress} className="hover:bg-secondary/20">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      {token.logoUrl && (
+                        <img 
+                          src={token.logoUrl} 
+                          alt={token.tokenSymbol}
+                          className="w-8 h-8 rounded-full"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{token.tokenSymbol}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[150px]">{token.tokenName}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <p className="text-sm text-foreground">{totalTx}</p>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <p className={`text-sm font-semibold ${
+                      roi >= 0 ? 'text-chart-4' : 'text-destructive'
+                    }`}>
+                      {roi >= 0 ? '+' : ''}{formatPercent(roi)}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <p className={`text-sm font-semibold ${
+                      pnl >= 0 ? 'text-chart-4' : 'text-destructive'
+                    }`}>
+                      {formatUSD(pnl)}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <p className="text-sm text-muted-foreground">{formatUSD(buyAvg)}</p>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <p className="text-sm text-muted-foreground">{formatUSD(sellAvg)}</p>
+                  </td>
+                </tr>
               );
             })}
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
 
-      {/* Market Cap Preference Pie Chart */}
-      <div className="bg-zinc-800/50 rounded-lg p-6 border border-zinc-700/50">
-        <h3 className="text-lg font-semibold text-zinc-100 mb-4">Market Cap Preference Distribution</h3>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={mcapData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }: any) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {mcapData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#ef4444'][index % 5]} />
-                ))}
-              </Pie>
-              <Tooltip 
-                formatter={(value: any, name) => [value, 'Buys']}
-                contentStyle={{ 
-                  backgroundColor: '#27272a', 
-                  border: '1px solid #3f3f46',
-                  borderRadius: '8px'
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg">
+          <p className="text-xs text-muted-foreground">
+            Showing {startIndex + 1} to {Math.min(endIndex, displayTokens.length)} of {displayTokens.length} tokens
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 text-sm bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed rounded border border-input"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 text-sm bg-secondary hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed rounded border border-input"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Market Cap Bracket Analysis */}
+      <div className="bg-card rounded-lg p-6 border border-border">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Market Cap Bracket Activity</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {mcapData.map((bracket, index) => (
+            <div
+              key={bracket.name}
+              className={`p-4 rounded-lg border transition-colors ${
+                index === favoriteMcapIndex
+                  ? 'bg-primary/20 border-primary'
+                  : 'bg-secondary/50 border-border'
+              }`}
+            >
+              <p className="text-xs text-muted-foreground mb-1 truncate">{bracket.name}</p>
+              <p className="text-2xl font-bold text-foreground">{bracket.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {tradedTokens.length > 0 ? ((bracket.value / tradedTokens.length) * 100).toFixed(0) : 0}%
+              </p>
+              {index === favoriteMcapIndex && (
+                <p className="text-xs text-primary mt-2 font-semibold">⭐ Favorite</p>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -16,22 +16,34 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 interface BalancesCardProps {
   summary: OKXWalletSummary;
+  tokenList?: any[];  // Full token holdings data
 }
 
-export function BalancesCard({ summary }: BalancesCardProps) {
+export function BalancesCard({ summary, tokenList = [] }: BalancesCardProps) {
   const nativeBalance = parseFloat(summary.nativeTokenBalanceAmount || '0');
   const nativeValue = parseFloat(summary.nativeTokenBalanceUsd || '0');
   
   // Ensure topTokens is an array (defensive programming)
   const topTokens = summary.topTokens || [];
   
-  // Calculate portfolio breakdown (top 3 + native + others)
-  const top3Value = topTokens.reduce((sum, token) => {
-    // Approximate value from PnL (rough estimate)
-    return sum + Math.abs(parseFloat(token.pnl || '0'));
-  }, 0);
+  // Calculate total portfolio value from all holdings (not just top 3)
+  // If tokenList is provided, use it for accurate total; otherwise fallback to top 3 estimate
+  let totalPortfolioValue = nativeValue;
   
-  const totalPortfolioValue = nativeValue + top3Value;
+  if (tokenList && tokenList.length > 0) {
+    // Use actual holdings data for accurate total
+    const holdingsValue = tokenList.reduce((sum, token) => {
+      const usdValue = parseFloat(token.balanceUsd || '0');
+      return sum + (usdValue > 0 ? usdValue : 0);
+    }, 0);
+    totalPortfolioValue += holdingsValue;
+  } else {
+    // Fallback: estimate from top 3 tokens' PnL
+    const top3Value = topTokens.reduce((sum, token) => {
+      return sum + Math.abs(parseFloat(token.pnl || '0'));
+    }, 0);
+    totalPortfolioValue += top3Value;
+  }
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
@@ -193,8 +205,11 @@ export function PnLCard({ summary }: PnLCardProps) {
   const realizedRoi = parseFloat(summary.totalProfitPnlRoi || '0');
   const unrealizedRoi = parseFloat(summary.unrealizedPnlRoi || '0');
 
-  // Prepare chart data (7 days)
-  const chartData = summary.datePnlList || [];
+  // Prepare chart data (7 days) - ensure proper data types
+  const chartData = (summary.datePnlList || []).map(item => ({
+    timestamp: parseInt(String(item.timestamp)) || 0,
+    profit: parseFloat(String(item.profit)) || 0
+  }));
 
   return (
     <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
@@ -246,38 +261,44 @@ export function PnLCard({ summary }: PnLCardProps) {
 
       {/* Chart */}
       <div className="h-48 mt-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis 
-              dataKey="timestamp" 
-              tickFormatter={(ts: any) => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              stroke="hsl(var(--muted-foreground))"
-              tick={{ fontSize: 12 }}
-            />
-            <YAxis 
-              stroke="hsl(var(--muted-foreground))"
-              tick={{ fontSize: 12 }}
-            />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px'
-              }}
-              labelStyle={{ color: 'hsl(var(--foreground))' }}
-              formatter={(value: any) => [formatUSD(parseFloat(value || '0')), 'PnL']}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="profit" 
-              stroke="hsl(var(--chart-1))"
-              dot={false}
-              isAnimationActive={false}
-              name="Daily PnL"
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        {chartData.length === 0 ? (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+            <p>No PnL data available</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis 
+                dataKey="timestamp" 
+                tickFormatter={(ts: any) => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis 
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px'
+                }}
+                labelStyle={{ color: 'hsl(var(--foreground))' }}
+                formatter={(value: any) => [formatUSD(parseFloat(value || '0')), 'PnL']}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="profit" 
+                stroke="hsl(var(--chart-1))"
+                dot={false}
+                isAnimationActive={false}
+                name="Daily PnL"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
