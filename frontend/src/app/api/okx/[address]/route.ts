@@ -67,8 +67,8 @@ export async function GET(
         
       case 'tokenList':
         // Endpoint 4: Token List
-        // Required params: sortType (0=PnL desc, 1=ROI desc, 2=win rate desc)
-        okxUrl = `${OKX_BASE_URL}/token-list?address=${address}&chainId=${chainId}&offset=${offset}&limit=${limit}&sortType=0`;
+        // Required params: sortType (0=PnL desc, 1=ROI desc, 2=win rate desc), isAsc (false=desc, true=asc)
+        okxUrl = `${OKX_BASE_URL}/token-list?address=${address}&chainId=${chainId}&offset=${offset}&limit=${limit}&sortType=0&isAsc=false`;
         break;
         
       case 'tokenHistory':
