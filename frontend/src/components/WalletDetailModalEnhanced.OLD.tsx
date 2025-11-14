@@ -467,7 +467,7 @@ function AnalyticsTab({ data, metrics }: { data: OKXWalletData; metrics: any }) 
                 </div>
                 <div className="w-full bg-gray-700 rounded-full h-2">
                   <div
-                    className="h-2 rounded-full bg-purple-500"
+                    className="h-2 rounded-full bg-purple-500 rounded-full"
                     style={{ width: `${percentage}%` }}
                   />
                 </div>

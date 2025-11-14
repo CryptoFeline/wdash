@@ -927,3 +927,355 @@ x-zkdex-env: 0
     "msg": ""
 }
 ```
+
+11. Token OHLC Candles - Price (GET)
+- Example: `https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=3wppuwUMAGgxnX75Aqr4W91xYWaN6RjxjCUFiPZUpump&after=1763142010000&bar=1m&limit=1000&t=1763141944703`
+- Response:
+
+```json
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    [
+      "1763141940000", // timestamp (based on `&bar=1m` tag, this is 1 minute candle)
+      "0.000176616583001753", // open price
+      "0.00017759841970721", // high price
+      "0.000174061565949889", // low price
+      "0.000176547440416411", // close price
+      "1225738.117824", // volume in USD
+      "214.5471135251599642", // trades
+      "0" // active candle
+    ],
+    [
+      "1763141340000",
+      "0.000175572662534204",
+      "0.000179252633989274",
+      "0.000175572662534204",
+      "0.000176616583001753",
+      "1426489.952284",
+      "253.5259991644798311",
+      "1" // closed candle
+    ],
+    [
+      "1763141280000",
+      "0.000175017494611127",
+      "0.000175572662534204",
+      "0.000174771349362359",
+      "0.000175572662534204",
+      "817534.332104",
+      "143.5185451447203906",
+      "1"
+    ],
+    [
+      "1763141100000",
+      "0.000175275853931574",
+      "0.000175275853931574",
+      "0.000175017494611127",
+      "0.000175017494611127",
+      "22618.4576",
+      "3.9586257811200045",
+      "1"
+    ],
+    [ ... ], // more candle data
+
+    [
+      "1763030940000",
+      "0.0002180453625641",
+      "0.000224862567646499",
+      "0.0002180453625641",
+      "0.000224862567646499",
+      "735057.829408",
+      "163.5116642371798672",
+      "1"
+    ]
+  ]
+}
+```
+
+12. Token OHLC Candles - MCap (GET)
+- Example: `https://web3.okx.com/priapi/v5/dex/token/market/history-dex-token-hlc-candles?chainId=501&address=3wppuwUMAGgxnX75Aqr4W91xYWaN6RjxjCUFiPZUpump&after=1763130060000&bar=1m&limit=28&t=1763142555403`
+- Response:
+
+```json
+{
+    "code": "0",
+    "msg": "",
+    "data": [
+        [
+            "1763142540000", // Timestamp
+            "0.00017368980607957", // O
+            "0.000176317479086563", // H
+            "0.00017368980607957", // L
+            "0.000176317479086563", // C
+            "169818.508068", // Vol
+            "29.8840603254700477", // Trades
+            "0"
+        ],
+        [
+            "1763142360000",
+            "0.00017571850484774",
+            "0.00017571850484774",
+            "0.00017368980607957",
+            "0.00017368980607957",
+            "96328.434331",
+            "16.7312670788999833",
+            "1"
+        ],
+        [ ... ],
+        [
+            "1763127660000",
+            "0.00020691220867598",
+            "0.000208929729164514",
+            "0.00020691220867598",
+            "0.000207635696462452",
+            "1438.576725",
+            "0.2999485089900001",
+            "1"
+        ]
+    ]
+}
+```
+
+13. Risk Check API (GET)
+
+- Example: `https://web3.okx.com/priapi/v1/dx/market/v2/risk/new/check?chainId=501&tokenContractAddress=3wppuwUMAGgxnX75Aqr4W91xYWaN6RjxjCUFiPZUpump&t=1763153896804`
+- Response:
+
+```json
+{
+  "code": 0,
+  "data": {
+    "allAnalysis": {
+      "highRiskList": [],
+      "lowRiskList": [
+        {
+          "newRiskDesc": "If a token contains malicious code, it’s a honeypot token.",
+          "newRiskLabel": "No",
+          "newRiskName": "Honeypot",
+          "riskControlLevel": "4",
+          "riskDesc": "No malicious code is found in this token at the moment.",
+          "riskName": "Unlikely to be a honeypot token"
+        },
+        {
+          "newRiskDesc": "Tokens issued by official programs meet the SPL standard. Tokens that don’t meet this standard may contain undetectable functions.",
+          "newRiskLabel": "No",
+          "newRiskName": "Misses the SPL standard",
+          "riskControlLevel": "4",
+          "riskDesc": "This token is issued by the official program. It meets the SPL standard.",
+          "riskName": "Meets the SPL standard"
+        },
+        {
+          "newRiskDesc": "If there are privileged addresses in this token, they could alter the holder’s assets, such as burning or transferring the held tokens.",
+          "newRiskLabel": "No",
+          "newRiskName": "Has privileged addresses",
+          "riskControlLevel": "3",
+          "riskDesc": "If there are privileged addresses in this token, they can alter the holder’s assets, such as burning or transferring the held tokens.",
+          "riskName": "No privileged addresses"
+        },
+        {
+          "newRiskDesc": "If this token has previously used its blocklist permissions to block certain addresses, the blocked addresses would no longer be able to trade this token.",
+          "newRiskLabel": "No",
+          "newRiskName": "Used blocklist functions",
+          "riskControlLevel": "3",
+          "riskDesc": "This token has never used any blocklist permissions to block any address.",
+          "riskName": "No blocklist used"
+        },
+        {
+          "newRiskDesc": "If this token is a soulbound token issued by the official program, it’ll be untransferrable.",
+          "newRiskLabel": "No",
+          "newRiskName": "Soulbound token (SBT)",
+          "riskControlLevel": "2",
+          "riskDesc": "If this token is a soulbound token issued by the official program, it’ll be untransferrable.",
+          "riskName": "This isn’t a soulbound token (SBT)"
+        },
+        {
+          "newRiskDesc": "If the contract owner can modify the transaction tax and raise it to over 50%, the token could be untradable as a result.",
+          "newRiskLabel": "No",
+          "newRiskName": "Can modify transaction tax",
+          "riskControlLevel": "2",
+          "riskDesc": "If the contract owner can modify the transaction tax and raise it to over 50%, the token could be untradable as a result.",
+          "riskName": "Transaction tax can’t be modified"
+        },
+        {
+          "newRiskDesc": "If the contract contains proxy functions, the contract owner can replace the token’s logic with proxy contracts, affecting the token’s price and functions.",
+          "newRiskLabel": "No",
+          "newRiskName": "Has proxy functions",
+          "riskControlLevel": "2",
+          "riskDesc": "If the contract contains proxy functions, the contract owner can replace the token’s logic with proxy contracts, affecting the token’s price and functions.",
+          "riskName": "No proxy function"
+        },
+        {
+          "newRiskDesc": "If privileged account authorization isn’t renounced in this token contract, the privileged accounts could alter the contract or implement other exploits, causing asset loss.",
+          "newRiskLabel": "No",
+          "newRiskName": "Authorization retained",
+          "riskControlLevel": "2",
+          "riskDesc": "If privileged account authorization isn’t renounced in this token contract, the privileged accounts could alter the contract or implement other exploits, causing asset loss.",
+          "riskName": "Authorization renounced"
+        },
+        {
+          "newRiskDesc": "If this token contract freezes its first-time holders, it’ll prevent these holders from trading this token for a period of time.",
+          "newRiskLabel": "No",
+          "newRiskName": "Freezes first-time holders",
+          "riskControlLevel": "2",
+          "riskDesc": "If this token contract freezes its first-time holders, it’ll prevent these holders from trading this token for a period of time.",
+          "riskName": "Doesn’t freeze first-time holders"
+        },
+        {
+          "newRiskDesc": "If there are unspecified additional issuance functions, they can lead to an increase in the token’s circulating supply, affecting its price.",
+          "newRiskLabel": "No",
+          "newRiskName": "Can issue additional tokens",
+          "riskControlLevel": "2",
+          "riskDesc": "If there are unspecified additional issuance functions, they can lead to an increase in the token’s circulating supply, affecting its price.",
+          "riskName": "No additional issuance"
+        },
+        {
+          "newRiskDesc": "If the token’s full name, symbol, and other metadata are modifiable, the modified token information could mislead users.",
+          "newRiskLabel": "No",
+          "newRiskName": "Can modify metadata",
+          "riskControlLevel": "2",
+          "riskDesc": "If the token’s full name, symbol, and other metadata are modifiable, the modified token information could mislead users.",
+          "riskName": "Metadata can’t be modified"
+        },
+        {
+          "newRiskDesc": "If there are such accounts, they can freeze the token holders and prevent them from trading this token.",
+          "newRiskLabel": "No",
+          "newRiskName": "Has accounts with freeze permissions",
+          "riskControlLevel": "2",
+          "riskDesc": "If there are such accounts, they can freeze the token holders and prevent them from trading this token.",
+          "riskName": "No accounts with freeze permissions"
+        }
+      ],
+      "middleRiskList": []
+    },
+    "buyTaxes": "",
+    "contractAnalysis": {
+      "highRiskList": [],
+      "lowRiskList": [
+        {
+          "newRiskDesc": "Tokens issued by official programs meet the SPL standard. Tokens that don’t meet this standard may contain undetectable functions.",
+          "newRiskLabel": "No",
+          "newRiskName": "Misses the SPL standard",
+          "riskControlLevel": "",
+          "riskDesc": "This token is issued by the official program. It meets the SPL standard.",
+          "riskName": "Meets the SPL standard"
+        },
+        {
+          "newRiskDesc": "If there are privileged addresses in this token, they could alter the holder’s assets, such as burning or transferring the held tokens.",
+          "newRiskLabel": "No",
+          "newRiskName": "Has privileged addresses",
+          "riskControlLevel": "",
+          "riskDesc": "If there are privileged addresses in this token, they can alter the holder’s assets, such as burning or transferring the held tokens.",
+          "riskName": "No privileged addresses"
+        },
+        {
+          "newRiskDesc": "If this token has previously used its blocklist permissions to block certain addresses, the blocked addresses would no longer be able to trade this token.",
+          "newRiskLabel": "No",
+          "newRiskName": "Used blocklist functions",
+          "riskControlLevel": "",
+          "riskDesc": "This token has never used any blocklist permissions to block any address.",
+          "riskName": "No blocklist used"
+        },
+        {
+          "newRiskDesc": "If this token is a soulbound token issued by the official program, it’ll be untransferrable.",
+          "newRiskLabel": "No",
+          "newRiskName": "Soulbound token (SBT)",
+          "riskControlLevel": "",
+          "riskDesc": "If this token is a soulbound token issued by the official program, it’ll be untransferrable.",
+          "riskName": "This isn’t a soulbound token (SBT)"
+        },
+        {
+          "newRiskDesc": "If the contract owner can modify the transaction tax and raise it to over 50%, the token could be untradable as a result.",
+          "newRiskLabel": "No",
+          "newRiskName": "Can modify transaction tax",
+          "riskControlLevel": "",
+          "riskDesc": "If the contract owner can modify the transaction tax and raise it to over 50%, the token could be untradable as a result.",
+          "riskName": "Transaction tax can’t be modified"
+        },
+        {
+          "newRiskDesc": "If the contract contains proxy functions, the contract owner can replace the token’s logic with proxy contracts, affecting the token’s price and functions.",
+          "newRiskLabel": "No",
+          "newRiskName": "Has proxy functions",
+          "riskControlLevel": "",
+          "riskDesc": "If the contract contains proxy functions, the contract owner can replace the token’s logic with proxy contracts, affecting the token’s price and functions.",
+          "riskName": "No proxy function"
+        },
+        {
+          "newRiskDesc": "If privileged account authorization isn’t renounced in this token contract, the privileged accounts could alter the contract or implement other exploits, causing asset loss.",
+          "newRiskLabel": "No",
+          "newRiskName": "Authorization retained",
+          "riskControlLevel": "",
+          "riskDesc": "If privileged account authorization isn’t renounced in this token contract, the privileged accounts could alter the contract or implement other exploits, causing asset loss.",
+          "riskName": "Authorization renounced"
+        },
+        {
+          "newRiskDesc": "If this token contract freezes its first-time holders, it’ll prevent these holders from trading this token for a period of time.",
+          "newRiskLabel": "No",
+          "newRiskName": "Freezes first-time holders",
+          "riskControlLevel": "",
+          "riskDesc": "If this token contract freezes its first-time holders, it’ll prevent these holders from trading this token for a period of time.",
+          "riskName": "Doesn’t freeze first-time holders"
+        },
+        {
+          "newRiskDesc": "If there are unspecified additional issuance functions, they can lead to an increase in the token’s circulating supply, affecting its price.",
+          "newRiskLabel": "No",
+          "newRiskName": "Can issue additional tokens",
+          "riskControlLevel": "",
+          "riskDesc": "If there are unspecified additional issuance functions, they can lead to an increase in the token’s circulating supply, affecting its price.",
+          "riskName": "No additional issuance"
+        },
+        {
+          "newRiskDesc": "If the token’s full name, symbol, and other metadata are modifiable, the modified token information could mislead users.",
+          "newRiskLabel": "No",
+          "newRiskName": "Can modify metadata",
+          "riskControlLevel": "",
+          "riskDesc": "If the token’s full name, symbol, and other metadata are modifiable, the modified token information could mislead users.",
+          "riskName": "Metadata can’t be modified"
+        },
+        {
+          "newRiskDesc": "If there are such accounts, they can freeze the token holders and prevent them from trading this token.",
+          "newRiskLabel": "No",
+          "newRiskName": "Has accounts with freeze permissions",
+          "riskControlLevel": "",
+          "riskDesc": "If there are such accounts, they can freeze the token holders and prevent them from trading this token.",
+          "riskName": "No accounts with freeze permissions"
+        }
+      ],
+      "middleRiskList": []
+    },
+    "extraAnalysis": {
+      "highRiskList": [],
+      "lowRiskList": [],
+      "middleRiskList": []
+    },
+    "highRiskNum": "0",
+    "highestRiskBannerInfo": {
+      "riskBannerDesc": "",
+      "riskBannerName": ""
+    },
+    "lowRiskNum": "12",
+    "middleRiskNum": "0",
+    "riskControlLevel": "1",
+    "riskLevel": "2",
+    "sellTaxes": "",
+    "swapAnalysis": {
+      "highRiskList": [],
+      "lowRiskList": [
+        {
+          "newRiskDesc": "If a token contains malicious code, it’s a honeypot token.",
+          "newRiskLabel": "No",
+          "newRiskName": "Honeypot",
+          "riskControlLevel": "",
+          "riskDesc": "No malicious code is found in this token at the moment.",
+          "riskName": "Unlikely to be a honeypot token"
+        }
+      ],
+      "middleRiskList": []
+    }
+  },
+  "detailMsg": "",
+  "error_code": "0",
+  "error_message": "",
+  "msg": ""
+}
+```

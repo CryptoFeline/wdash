@@ -23,7 +23,7 @@ export function MarketCapCard({ summary }: MarketCapCardProps) {
   const mcapData = (summary.mcapTxsBuyList || []).map((count, index) => ({
     label: MCAP_LABELS[index],
     count,
-    color: ['bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-orange-500', 'bg-red-500'][index]
+    color: ['bg-chart-1', 'bg-chart-2', 'bg-chart-3', 'bg-chart-5', 'bg-destructive'][index]
   }));
 
   const maxCount = Math.max(...mcapData.map(m => m.count), 1);
@@ -34,18 +34,18 @@ export function MarketCapCard({ summary }: MarketCapCardProps) {
   const favoriteLabel = MCAP_LABELS[favoriteIndex] || MCAP_LABELS[0];
 
   return (
-    <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-6 border border-zinc-700/50 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-pink-500/20 rounded-lg">
-            <BarChart3 className="w-5 h-5 text-pink-400" />
+          <div className="p-2 bg-chart-5/20 rounded-lg">
+            <BarChart3 className="w-5 h-5 text-chart-5" />
           </div>
-          <h3 className="text-lg font-semibold text-zinc-100">Market Cap Preference</h3>
+          <h3 className="text-lg font-semibold text-foreground">Market Cap Preference</h3>
         </div>
         <div className="text-right">
-          <p className="text-xs text-zinc-500">Favorite</p>
-          <p className="text-sm font-semibold text-pink-400">{favoriteLabel}</p>
+          <p className="text-xs text-muted-foreground">Favorite</p>
+          <p className="text-sm font-semibold text-chart-5">{favoriteLabel}</p>
         </div>
       </div>
 
@@ -60,29 +60,29 @@ export function MarketCapCard({ summary }: MarketCapCardProps) {
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium ${
-                    isFavorite ? 'text-pink-400' : 'text-zinc-400'
+                    isFavorite ? 'text-chart-5' : 'text-muted-foreground'
                   }`}>
                     {mcap.label}
                   </span>
                   {isFavorite && (
-                    <span className="px-1.5 py-0.5 bg-pink-500/20 text-pink-400 text-[10px] font-bold rounded">
+                    <span className="px-1.5 py-0.5 bg-chart-5/20 text-chart-5 text-[10px] font-bold rounded">
                       TOP
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-zinc-500">
+                <span className="text-xs text-muted-foreground">
                   {mcap.count} buys ({percentage.toFixed(1)}%)
                 </span>
               </div>
               
               {/* Horizontal Bar */}
-              <div className="h-6 bg-zinc-900/50 rounded-lg overflow-hidden">
+              <div className="h-6 bg-secondary rounded-lg overflow-hidden">
                 <div 
                   className={`h-full ${mcap.color} flex items-center px-3 transition-all group-hover:opacity-90`}
                   style={{ width: `${(mcap.count / maxCount) * 100}%` }}
                 >
                   {mcap.count > maxCount * 0.1 && (
-                    <span className="text-xs font-semibold text-white">
+                    <span className="text-xs font-semibold text-foreground">
                       {mcap.count}
                     </span>
                   )}
@@ -94,10 +94,10 @@ export function MarketCapCard({ summary }: MarketCapCardProps) {
       </div>
 
       {/* Summary */}
-      <div className="mt-4 pt-4 border-t border-zinc-700/30">
+      <div className="mt-4 pt-4 border-t border-input">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-zinc-500">Total Buy Transactions</span>
-          <span className="font-semibold text-zinc-200">{totalBuys.toLocaleString()}</span>
+          <span className="text-muted-foreground">Total Buy Transactions</span>
+          <span className="font-semibold text-foreground">{totalBuys.toLocaleString()}</span>
         </div>
       </div>
     </div>
@@ -120,23 +120,23 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
     switch (level) {
       case 'LOW':
         return {
-          bg: 'bg-green-500/20',
-          border: 'border-green-500/40',
-          text: 'text-green-400',
+          bg: 'bg-chart-4/20',
+          border: 'border-chart-4/40',
+          text: 'text-chart-4',
           icon: Shield
         };
       case 'MEDIUM':
         return {
-          bg: 'bg-orange-500/20',
-          border: 'border-orange-500/40',
-          text: 'text-orange-400',
+          bg: 'bg-chart-5/20',
+          border: 'border-chart-5/40',
+          text: 'text-chart-5',
           icon: AlertTriangle
         };
       case 'HIGH':
         return {
-          bg: 'bg-red-500/20',
-          border: 'border-red-500/40',
-          text: 'text-red-400',
+          bg: 'bg-destructive/20',
+          border: 'border-destructive/40',
+          text: 'text-destructive',
           icon: AlertTriangle
         };
     }
@@ -146,14 +146,14 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
   const RiskIcon = riskStyle.icon;
 
   return (
-    <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-6 border border-zinc-700/50 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <div className={`p-2 ${riskStyle.bg} rounded-lg border ${riskStyle.border}`}>
             <RiskIcon className={`w-5 h-5 ${riskStyle.text}`} />
           </div>
-          <h3 className="text-lg font-semibold text-zinc-100">Quality Metrics</h3>
+          <h3 className="text-lg font-semibold text-foreground">Quality Metrics</h3>
         </div>
         <div className={`px-3 py-1.5 ${riskStyle.bg} rounded-lg border ${riskStyle.border}`}>
           <p className={`text-sm font-bold ${riskStyle.text}`}>
@@ -165,15 +165,15 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
       {/* Metrics Grid */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {/* Diversification Score */}
-        <div className="p-4 bg-zinc-900/50 rounded-lg border border-zinc-700/30">
-          <p className="text-xs text-zinc-500 mb-2">Diversification</p>
+        <div className="p-4 bg-secondary/50 rounded-lg border border-input">
+          <p className="text-xs text-muted-foreground mb-2">Diversification</p>
           <div className="flex items-baseline gap-1 mb-1">
-            <p className="text-2xl font-bold text-zinc-200">
+            <p className="text-2xl font-bold text-foreground">
               {metrics.diversificationScore}
             </p>
-            <p className="text-xs text-zinc-500">/100</p>
+            <p className="text-xs text-muted-foreground">/100</p>
           </div>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-muted-foreground">
             Avg ROI: {metrics.avgROI.toFixed(1)}%
           </p>
           <p className="text-xs font-medium mt-2">
@@ -182,15 +182,15 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
         </div>
 
         {/* Execution Score */}
-        <div className="p-4 bg-zinc-900/50 rounded-lg border border-zinc-700/30">
-          <p className="text-xs text-zinc-500 mb-2">Execution</p>
+        <div className="p-4 bg-secondary/50 rounded-lg border border-input">
+          <p className="text-xs text-muted-foreground mb-2">Execution</p>
           <div className="flex items-baseline gap-1 mb-1">
-            <p className="text-2xl font-bold text-zinc-200">
+            <p className="text-2xl font-bold text-foreground">
               {metrics.executionPercentage.toFixed(1)}
             </p>
-            <p className="text-xs text-zinc-500">%</p>
+            <p className="text-xs text-muted-foreground">%</p>
           </div>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-muted-foreground">
             {metrics.profitableTradesCount}/{metrics.totalTradesCount} profitable
           </p>
           <p className="text-xs font-medium mt-2">
@@ -199,15 +199,15 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
         </div>
 
         {/* Rug Rate */}
-        <div className="p-4 bg-zinc-900/50 rounded-lg border border-zinc-700/30">
-          <p className="text-xs text-zinc-500 mb-2">Rug Rate</p>
+        <div className="p-4 bg-secondary/50 rounded-lg border border-input">
+          <p className="text-xs text-muted-foreground mb-2">Rug Rate</p>
           <div className="flex items-baseline gap-1 mb-1">
-            <p className="text-2xl font-bold text-zinc-200">
+            <p className="text-2xl font-bold text-foreground">
               {metrics.rugRate.toFixed(1)}
             </p>
-            <p className="text-xs text-zinc-500">%</p>
+            <p className="text-xs text-muted-foreground">%</p>
           </div>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-muted-foreground">
             {metrics.severeRugsCount} severe rugs
           </p>
           <p className="text-xs font-medium mt-2">
@@ -221,12 +221,12 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
         {/* Diversification Progress Bar */}
         <div>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-zinc-500">Diversification Score</span>
-            <span className="text-zinc-400">{metrics.diversificationScore}/100</span>
+            <span className="text-muted-foreground">Diversification Score</span>
+            <span className="text-muted-foreground">{metrics.diversificationScore}/100</span>
           </div>
-          <div className="h-2 bg-zinc-900 rounded-full overflow-hidden">
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+              className="h-full bg-gradient-to-r from-chart-1 to-chart-2"
               style={{ width: `${metrics.diversificationScore}%` }}
             />
           </div>
@@ -235,14 +235,14 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
         {/* Execution Progress Bar */}
         <div>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-zinc-500">Profitable Trades</span>
-            <span className="text-zinc-400">
+            <span className="text-muted-foreground">Profitable Trades</span>
+            <span className="text-muted-foreground">
               {metrics.profitableTradesCount} / {metrics.totalTradesCount}
             </span>
           </div>
-          <div className="h-2 bg-zinc-900 rounded-full overflow-hidden">
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
+              className="h-full bg-gradient-to-r from-chart-4 to-chart-3"
               style={{ width: `${metrics.executionPercentage}%` }}
             />
           </div>
@@ -251,19 +251,19 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
         {/* Rug Rate Progress Bar (inverted - lower is better) */}
         <div>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-zinc-500">Rug Exposure</span>
-            <span className="text-zinc-400">
+            <span className="text-muted-foreground">Rug Exposure</span>
+            <span className="text-muted-foreground">
               {metrics.severeRugsCount + metrics.majorLossesCount} rugs
             </span>
           </div>
-          <div className="h-2 bg-zinc-900 rounded-full overflow-hidden">
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
             <div 
               className={`h-full ${
                 metrics.rugRate < 5 
-                  ? 'bg-green-500' 
+                  ? 'bg-chart-4' 
                   : metrics.rugRate < 10 
-                    ? 'bg-orange-500' 
-                    : 'bg-red-500'
+                    ? 'bg-chart-5' 
+                    : 'bg-destructive'
               }`}
               style={{ width: `${Math.min(metrics.rugRate, 100)}%` }}
             />
@@ -272,11 +272,11 @@ export function QualityMetricsCard({ tokenList }: QualityMetricsCardProps) {
       </div>
 
       {/* Average PnL per Trade */}
-      <div className="mt-4 pt-4 border-t border-zinc-700/30">
+      <div className="mt-4 pt-4 border-t border-input">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-500">Avg PnL per Trade</span>
+          <span className="text-xs text-muted-foreground">Avg PnL per Trade</span>
           <span className={`text-sm font-semibold ${
-            metrics.avgPnLPerTrade >= 0 ? 'text-green-400' : 'text-red-400'
+            metrics.avgPnLPerTrade >= 0 ? 'text-chart-4' : 'text-destructive'
           }`}>
             ${metrics.avgPnLPerTrade.toFixed(2)}
           </span>

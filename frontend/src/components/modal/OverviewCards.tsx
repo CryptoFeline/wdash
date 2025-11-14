@@ -8,6 +8,7 @@ import {
   formatPercent,
   type OKXWalletSummary 
 } from '@/lib/okx-api-v2';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ============================================================================
 // BALANCES CARD COMPONENT
@@ -33,34 +34,34 @@ export function BalancesCard({ summary }: BalancesCardProps) {
   const totalPortfolioValue = nativeValue + top3Value;
 
   return (
-    <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-6 border border-zinc-700/50 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 bg-blue-500/20 rounded-lg">
-          <Wallet className="w-5 h-5 text-blue-400" />
+        <div className="p-2 bg-chart-1/20 rounded-lg">
+          <Wallet className="w-5 h-5 text-chart-1" />
         </div>
-        <h3 className="text-lg font-semibold text-zinc-100">Portfolio Balance</h3>
+        <h3 className="text-lg font-semibold text-foreground">Portfolio Balance</h3>
       </div>
 
       {/* Total Value */}
       <div className="mb-6">
-        <p className="text-sm text-zinc-500 mb-1">Total Value</p>
-        <p className="text-3xl font-bold text-zinc-100">
+        <p className="text-sm text-muted-foreground mb-1">Total Value</p>
+        <p className="text-3xl font-bold text-foreground">
           {formatUSD(totalPortfolioValue)}
         </p>
       </div>
 
       {/* Native Token Balance */}
-      <div className="p-4 bg-zinc-900/50 rounded-lg mb-4 border border-zinc-700/30">
+      <div className="p-4 bg-secondary/50 rounded-lg mb-4 border border-input">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-zinc-400">SOL Balance</span>
-          <span className="text-sm font-semibold text-zinc-200">
+          <span className="text-sm text-muted-foreground">SOL Balance</span>
+          <span className="text-sm font-semibold text-foreground">
             {nativeBalance.toFixed(4)} SOL
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-500">USD Value</span>
-          <span className="text-sm font-medium text-green-400">
+          <span className="text-xs text-muted-foreground">USD Value</span>
+          <span className="text-sm font-medium text-chart-4">
             {formatUSD(nativeValue)}
           </span>
         </div>
@@ -68,7 +69,7 @@ export function BalancesCard({ summary }: BalancesCardProps) {
 
       {/* Top 3 Tokens */}
       <div className="space-y-3">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Top Holdings
         </p>
         
@@ -80,10 +81,10 @@ export function BalancesCard({ summary }: BalancesCardProps) {
           return (
             <div 
               key={token.tokenAddress}
-              className="flex items-center gap-3 p-3 bg-zinc-900/30 rounded-lg border border-zinc-700/20 hover:border-zinc-600/40 transition-colors"
+              className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg border border-input hover:border-border transition-colors"
             >
               {/* Token Logo */}
-              <div className="relative w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden">
+              <div className="relative w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                 {token.tokenLogo ? (
                   <Image 
                     src={token.tokenLogo} 
@@ -93,7 +94,7 @@ export function BalancesCard({ summary }: BalancesCardProps) {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-xs font-bold text-zinc-400">
+                  <span className="text-xs font-bold text-muted-foreground">
                     {token.tokenSymbol[0]}
                   </span>
                 )}
@@ -102,21 +103,21 @@ export function BalancesCard({ summary }: BalancesCardProps) {
               {/* Token Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-zinc-200 truncate">
+                  <span className="text-sm font-semibold text-foreground truncate">
                     {token.tokenSymbol}
                   </span>
-                  <span className="text-xs text-zinc-500 truncate">
+                  <span className="text-xs text-muted-foreground truncate">
                     {token.tokenName}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className={`text-xs font-medium ${
-                    isProfitable ? 'text-green-400' : 'text-red-400'
+                    isProfitable ? 'text-chart-4' : 'text-destructive'
                   }`}>
                     {formatUSD(pnl)}
                   </span>
                   <span className={`text-xs ${
-                    isProfitable ? 'text-green-400/80' : 'text-red-400/80'
+                    isProfitable ? 'text-chart-4/80' : 'text-destructive/80'
                   }`}>
                     ({formatPercent(roi)})
                   </span>
@@ -124,7 +125,7 @@ export function BalancesCard({ summary }: BalancesCardProps) {
               </div>
 
               {/* Rank Badge */}
-              <div className="px-2 py-1 bg-zinc-800 rounded text-xs font-bold text-zinc-400">
+              <div className="px-2 py-1 bg-secondary rounded text-xs font-bold text-muted-foreground">
                 #{index + 1}
               </div>
             </div>
@@ -133,18 +134,18 @@ export function BalancesCard({ summary }: BalancesCardProps) {
       </div>
 
       {/* Portfolio Breakdown Bar */}
-      <div className="mt-4 pt-4 border-t border-zinc-700/30">
-        <p className="text-xs text-zinc-500 mb-2">Portfolio Distribution</p>
-        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden flex">
+      <div className="mt-4 pt-4 border-t border-input">
+        <p className="text-xs text-muted-foreground mb-2">Portfolio Distribution</p>
+        <div className="h-2 bg-secondary rounded-full overflow-hidden flex">
           <div 
-            className="bg-blue-500" 
+            className="bg-chart-1" 
             style={{ width: `${(nativeValue / totalPortfolioValue) * 100}%` }}
             title="SOL"
           />
           {topTokens.map((token, i) => {
             const value = Math.abs(parseFloat(token.pnl || '0'));
             const percentage = (value / totalPortfolioValue) * 100;
-            const colors = ['bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
+            const colors = ['bg-chart-2', 'bg-chart-3', 'bg-chart-5'];
             return (
               <div 
                 key={token.tokenAddress}
@@ -155,15 +156,15 @@ export function BalancesCard({ summary }: BalancesCardProps) {
             );
           })}
         </div>
-        <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 bg-blue-500 rounded-full" />
+        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-chart-1 rounded-full" />
             <span>SOL</span>
           </div>
-          {topTokens.slice(0, 3).map((token, i) => {
-            const colors = ['bg-purple-500', 'bg-pink-500', 'bg-orange-500'];
+          {topTokens.map((token, i) => {
+            const colors = ['bg-chart-2', 'bg-chart-3', 'bg-chart-5'];
             return (
-              <div key={token.tokenAddress} className="flex items-center gap-1.5">
+              <div key={token.tokenAddress} className="flex items-center gap-1">
                 <div className={`w-2 h-2 ${colors[i]} rounded-full`} />
                 <span>{token.tokenSymbol}</span>
               </div>
@@ -189,123 +190,94 @@ export function PnLCard({ summary }: PnLCardProps) {
   const unrealizedPnL = parseFloat(summary.unrealizedPnl || '0');
   const totalROI = parseFloat(summary.totalPnlRoi || '0');
   const isProfitable = totalPnL >= 0;
+  const realizedRoi = parseFloat(summary.totalProfitPnlRoi || '0');
+  const unrealizedRoi = parseFloat(summary.unrealizedPnlRoi || '0');
 
   // Prepare chart data (7 days)
   const chartData = summary.datePnlList || [];
-  const maxAbsPnL = Math.max(...chartData.map(d => Math.abs(parseFloat(d.profit))));
 
   return (
-    <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-6 border border-zinc-700/50 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className={`p-2 rounded-lg ${
-            isProfitable ? 'bg-green-500/20' : 'bg-red-500/20'
-          }`}>
-            {isProfitable ? (
-              <TrendingUp className="w-5 h-5 text-green-400" />
-            ) : (
-              <TrendingDown className="w-5 h-5 text-red-400" />
-            )}
-          </div>
-          <h3 className="text-lg font-semibold text-zinc-100">7-Day PnL</h3>
-        </div>
-        <div className={`text-right ${
-          isProfitable ? 'text-green-400' : 'text-red-400'
-        }`}>
-          <p className="text-sm font-medium">{formatPercent(totalROI)}</p>
-        </div>
+      <div className="flex items-center gap-2 mb-4">
+        {isProfitable ? (
+          <TrendingUp className="w-5 h-5 text-chart-4" />
+        ) : (
+          <TrendingDown className="w-5 h-5 text-destructive" />
+        )}
+        <h3 className="text-lg font-semibold text-foreground">7-Day PnL</h3>
       </div>
 
       {/* Total PnL */}
-      <div className="mb-6">
-        <p className="text-sm text-zinc-500 mb-1">Total PnL</p>
-        <p className={`text-3xl font-bold ${
-          isProfitable ? 'text-green-400' : 'text-red-400'
+      <div className="mb-4">
+        <p className={`text-2xl font-bold ${
+          isProfitable ? 'text-chart-4' : 'text-destructive'
         }`}>
-          {formatUSD(totalPnL)}
+          {isProfitable ? '+' : ''}{formatUSD(totalPnL)}
         </p>
       </div>
 
-      {/* 7-Day Chart */}
-      <div className="mb-6">
-        <div className="flex items-end justify-between gap-1 h-32">
-          {chartData.map((day, index) => {
-            const profit = parseFloat(day.profit);
-            const isPositive = profit >= 0;
-            const heightPercent = maxAbsPnL > 0 
-              ? (Math.abs(profit) / maxAbsPnL) * 100 
-              : 0;
-            
-            return (
-              <div 
-                key={day.timestamp}
-                className="flex-1 flex flex-col justify-end items-center group relative"
-              >
-                {/* Bar */}
-                <div 
-                  className={`w-full rounded-t transition-all ${
-                    isPositive 
-                      ? 'bg-green-500 group-hover:bg-green-400' 
-                      : 'bg-red-500 group-hover:bg-red-400'
-                  }`}
-                  style={{ height: `${Math.max(heightPercent, 2)}%` }}
-                />
-                
-                {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
-                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-xl">
-                    <p className={`font-semibold ${
-                      isPositive ? 'text-green-400' : 'text-red-400'
-                    }`}>
-                      {formatUSD(profit)}
-                    </p>
-                    <p className="text-zinc-400">
-                      {new Date(day.timestamp).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Day Label */}
-                <p className="text-[10px] text-zinc-500 mt-1">
-                  {new Date(day.timestamp).toLocaleDateString('en-US', { 
-                    weekday: 'short' 
-                  })[0]}
-                </p>
-              </div>
-            );
-          })}
+      {/* PnL Breakdown Row */}
+      <div className="space-y-3">
+        <div className="p-3 bg-secondary/50 rounded-lg border border-input">
+          <p className="text-xs text-muted-foreground mb-1">Realized</p>
+          <p className={`text-lg font-semibold ${
+            realizedPnL >= 0 ? 'text-chart-4' : 'text-destructive'
+          }`}>
+            {realizedPnL >= 0 ? '+' : ''}{formatUSD(realizedPnL)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            ({formatPercent(realizedRoi)})
+          </p>
+        </div>
+
+        <div className="p-3 bg-secondary/50 rounded-lg border border-input">
+          <p className="text-xs text-muted-foreground mb-1">Unrealized</p>
+          <p className={`text-lg font-semibold ${
+            unrealizedPnL >= 0 ? 'text-chart-4' : 'text-destructive'
+          }`}>
+            {unrealizedPnL >= 0 ? '+' : ''}{formatUSD(unrealizedPnL)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            ({formatPercent(unrealizedRoi)})
+          </p>
         </div>
       </div>
 
-      {/* Realized vs Unrealized Breakdown */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/30">
-          <p className="text-xs text-zinc-500 mb-1">Realized</p>
-          <p className={`text-lg font-semibold ${
-            realizedPnL >= 0 ? 'text-green-400' : 'text-red-400'
-          }`}>
-            {formatUSD(realizedPnL)}
-          </p>
-          <p className="text-xs text-zinc-500 mt-1">
-            {formatPercent(summary.totalProfitPnlRoi)}
-          </p>
-        </div>
-        
-        <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/30">
-          <p className="text-xs text-zinc-500 mb-1">Unrealized</p>
-          <p className={`text-lg font-semibold ${
-            unrealizedPnL >= 0 ? 'text-green-400' : 'text-red-400'
-          }`}>
-            {formatUSD(unrealizedPnL)}
-          </p>
-          <p className="text-xs text-zinc-500 mt-1">
-            {formatPercent(summary.unrealizedPnlRoi)}
-          </p>
-        </div>
+      {/* Chart */}
+      <div className="h-48 mt-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis 
+              dataKey="timestamp" 
+              tickFormatter={(ts: any) => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              stroke="hsl(var(--muted-foreground))"
+              tick={{ fontSize: 12 }}
+            />
+            <YAxis 
+              stroke="hsl(var(--muted-foreground))"
+              tick={{ fontSize: 12 }}
+            />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '8px'
+              }}
+              labelStyle={{ color: 'hsl(var(--foreground))' }}
+              formatter={(value: any) => [formatUSD(parseFloat(value || '0')), 'PnL']}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="profit" 
+              stroke="hsl(var(--chart-1))"
+              dot={false}
+              isAnimationActive={false}
+              name="Daily PnL"
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
@@ -334,8 +306,8 @@ export function WinRateCard({ summary }: WinRateCardProps) {
   // PnL distribution (4 brackets from API)
   const pnlBrackets = (summary.newWinRateDistribution || []).map((count, index) => {
     const labels = ['>500%', '0-500%', '-50%-0%', '<-50%'];
-    const colors = ['text-green-500', 'text-green-400', 'text-orange-400', 'text-red-400'];
-    const bgColors = ['bg-green-500', 'bg-green-400', 'bg-orange-400', 'bg-red-400'];
+    const colors = ['text-chart-4', 'text-chart-3', 'text-chart-5', 'text-destructive'];
+    const bgColors = ['bg-chart-4', 'bg-chart-3', 'bg-chart-5', 'bg-destructive'];
     return {
       label: labels[index],
       count,
@@ -347,40 +319,40 @@ export function WinRateCard({ summary }: WinRateCardProps) {
   const maxBracketCount = Math.max(...pnlBrackets.map(b => b.count), 1);
 
   return (
-    <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-6 border border-zinc-700/50 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-purple-500/20 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-purple-400" />
+          <div className="p-2 bg-chart-2/20 rounded-lg">
+            <TrendingUp className="w-5 h-5 text-chart-2" />
           </div>
-          <h3 className="text-lg font-semibold text-zinc-100">Win Rate</h3>
+          <h3 className="text-lg font-semibold text-foreground">Win Rate</h3>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold text-purple-400">{winRate.toFixed(1)}%</p>
-          <p className="text-xs text-zinc-500">Overall</p>
+          <p className="text-2xl font-bold text-chart-2">{winRate.toFixed(1)}%</p>
+          <p className="text-xs text-muted-foreground">Overall</p>
         </div>
       </div>
 
       {/* Win Rate Distribution (6 buckets) */}
       <div className="mb-6">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
           Win Rate Distribution
         </p>
         <div className="space-y-2">
           {winRateBuckets.map((bucket, index) => (
             <div key={bucket.label} className="flex items-center gap-3">
-              <div className="w-16 text-xs text-zinc-400 text-right">
+              <div className="w-16 text-xs text-muted-foreground text-right">
                 {bucket.label}
               </div>
-              <div className="flex-1 bg-zinc-900/50 rounded-full h-6 overflow-hidden">
+              <div className="flex-1 bg-secondary rounded-full h-6 overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-end px-2 transition-all"
+                  className="h-full bg-gradient-to-r from-chart-1 to-chart-2 flex items-center justify-end px-2 transition-all rounded-full"
                   style={{ width: `${bucket.value}%` }}
                 >
                   {bucket.value > 5 && (
-                    <span className="text-xs font-semibold text-white">
-                      {bucket.value.toFixed(1)}%
+                    <span className="text-xs font-semibold text-foreground">
+                      {bucket.value.toFixed(0)}
                     </span>
                   )}
                 </div>
@@ -391,22 +363,22 @@ export function WinRateCard({ summary }: WinRateCardProps) {
       </div>
 
       {/* PnL Brackets (4 brackets) */}
-      <div className="pt-4 border-t border-zinc-700/30">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+      <div className="pt-4 border-t border-input">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
           PnL Distribution
         </p>
         <div className="grid grid-cols-4 gap-2">
           {pnlBrackets.map((bracket) => (
             <div 
               key={bracket.label}
-              className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/30 text-center"
+              className="p-3 bg-secondary/50 rounded-lg border border-input text-center"
             >
-              <p className="text-xs text-zinc-500 mb-1">{bracket.label}</p>
+              <p className="text-xs text-muted-foreground mb-1">{bracket.label}</p>
               <p className={`text-lg font-bold ${bracket.color}`}>
                 {bracket.count}
               </p>
               {/* Mini bar */}
-              <div className="mt-2 h-1 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="mt-2 h-1 bg-secondary rounded-full overflow-hidden">
                 <div 
                   className={bracket.bgColor}
                   style={{ width: `${(bracket.count / maxBracketCount) * 100}%` }}
@@ -440,58 +412,58 @@ export function TradingStatsCard({ summary }: TradingStatsCardProps) {
   const buyRatio = totalVolume > 0 ? (buyVolume / totalVolume) * 100 : 50;
 
   return (
-    <div className="bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-xl p-6 border border-zinc-700/50 shadow-lg">
+    <div className="bg-card border border-border rounded-xl p-6 shadow-lg">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 bg-orange-500/20 rounded-lg">
-          <DollarSign className="w-5 h-5 text-orange-400" />
+        <div className="p-2 bg-chart-5/20 rounded-lg">
+          <DollarSign className="w-5 h-5 text-chart-5" />
         </div>
-        <h3 className="text-lg font-semibold text-zinc-100">Trading Stats</h3>
+        <h3 className="text-lg font-semibold text-foreground">Trading Stats</h3>
       </div>
 
       {/* Total Transactions */}
       <div className="mb-6">
-        <p className="text-sm text-zinc-500 mb-1">Total Transactions</p>
-        <p className="text-3xl font-bold text-zinc-100">{totalTxs.toLocaleString()}</p>
+        <p className="text-sm text-muted-foreground mb-1">Total Transactions</p>
+        <p className="text-3xl font-bold text-foreground">{totalTxs.toLocaleString()}</p>
       </div>
 
       {/* Buy vs Sell */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-          <p className="text-xs text-green-400 mb-1">Buys</p>
-          <p className="text-xl font-bold text-green-400">{totalBuys.toLocaleString()}</p>
-          <p className="text-xs text-zinc-500 mt-1">{formatUSD(buyVolume)}</p>
+        <div className="p-3 bg-chart-4/10 rounded-lg border border-chart-4/20">
+          <p className="text-xs text-chart-4 mb-1">Buys</p>
+          <p className="text-xl font-bold text-chart-4">{totalBuys.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-1">{formatUSD(buyVolume)}</p>
         </div>
         
-        <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-          <p className="text-xs text-red-400 mb-1">Sells</p>
-          <p className="text-xl font-bold text-red-400">{totalSells.toLocaleString()}</p>
-          <p className="text-xs text-zinc-500 mt-1">{formatUSD(sellVolume)}</p>
+        <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+          <p className="text-xs text-destructive mb-1">Sells</p>
+          <p className="text-xl font-bold text-destructive">{totalSells.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-1">{formatUSD(sellVolume)}</p>
         </div>
       </div>
 
       {/* Buy/Sell Ratio Bar */}
       <div className="mb-4">
-        <div className="flex items-center justify-between text-xs text-zinc-500 mb-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
           <span>Buy/Sell Ratio</span>
           <span>{buyRatio.toFixed(1)}% / {(100 - buyRatio).toFixed(1)}%</span>
         </div>
-        <div className="h-3 bg-zinc-900 rounded-full overflow-hidden flex">
+        <div className="h-3 bg-secondary rounded-full overflow-hidden flex">
           <div 
-            className="bg-gradient-to-r from-green-500 to-green-400"
+            className="bg-gradient-to-r from-chart-4 to-chart-4"
             style={{ width: `${buyRatio}%` }}
           />
           <div 
-            className="bg-gradient-to-r from-red-400 to-red-500"
+            className="bg-gradient-to-r from-destructive to-destructive"
             style={{ width: `${100 - buyRatio}%` }}
           />
         </div>
       </div>
 
       {/* Average Buy Cost */}
-      <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700/30">
-        <p className="text-xs text-zinc-500 mb-1">Avg Buy Cost</p>
-        <p className="text-lg font-semibold text-zinc-200">{formatUSD(avgCost)}</p>
+      <div className="p-3 bg-secondary/50 rounded-lg border border-input">
+        <p className="text-xs text-muted-foreground mb-1">Avg Buy Cost</p>
+        <p className="text-lg font-semibold text-foreground">{formatUSD(avgCost)}</p>
       </div>
     </div>
   );
