@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { OKXWalletSummary } from '@/lib/okx-api-v2';
 import { WalletAnalysisMetrics, ReconstructedTrade } from '@/types/wallet';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '88c090fb868f171d322e9cea5a8484dd10c05975e789a28238f2bb2428b06e84';
 
 export function useWalletAnalysis(walletAddress: string, chain: string = 'eth', isOpen: boolean = true) {
@@ -27,9 +27,9 @@ export function useWalletAnalysis(walletAddress: string, chain: string = 'eth', 
 
         // Fetch all three endpoints in parallel
         const [summaryResponse, metricsResponse, tradesResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/analysis/summary/${walletAddress}?chain=${chain}`, { headers }),
-          fetch(`${API_BASE_URL}/api/analysis/metrics/${walletAddress}?chain=${chain}`, { headers }),
-          fetch(`${API_BASE_URL}/api/analysis/trades/${walletAddress}?chain=${chain}`, { headers }),
+          fetch(`${API_BASE_URL}/analysis/summary/${walletAddress}?chain=${chain}`, { headers }),
+          fetch(`${API_BASE_URL}/analysis/metrics/${walletAddress}?chain=${chain}`, { headers }),
+          fetch(`${API_BASE_URL}/analysis/trades/${walletAddress}?chain=${chain}`, { headers }),
         ]);
 
         // Handle summary response

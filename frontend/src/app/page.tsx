@@ -17,7 +17,7 @@ import { useTrackedWallets } from '@/hooks/useTrackedWallets';
 import { triggerSync } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { BarChart3, Bookmark } from 'lucide-react';
-import WalletDetailModal from '@/components/WalletDetailModal';
+import { WalletOverviewModal } from '@/components/WalletOverviewModal';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: 50,
@@ -421,15 +421,11 @@ export default function Home() {
           }}
         />
 
-        {/* Simple PnL Modal */}
+        {/* Simple Overview Modal */}
         {selectedWallet && (
-          <WalletDetailModal
-            wallet={{
-              address: selectedWallet.wallet_address,
-              chainId: chain === 'sol' ? '501' : chain === 'eth' ? '1' : '501',
-              nickname: selectedWallet.twitter_username || selectedWallet.twitter_name || undefined,
-              avatarUrl: selectedWallet.avatar || undefined,
-            }}
+          <WalletOverviewModal
+            wallet={selectedWallet}
+            chain={chain}
             isOpen={isModalOpen}
             onClose={() => {
               setIsModalOpen(false);
