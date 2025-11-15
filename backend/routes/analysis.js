@@ -3,6 +3,8 @@ import { reconstructWalletTrades } from '../services/tradeReconstruction.js';
 import { computeMetrics } from '../services/metricsComputation.js';
 import { enrichTradesWithPrices } from '../services/priceEnrichment.js';
 import { enrichTradesWithRiskCheck, filterRiskyTrades } from '../services/riskCheck.js';
+import { enrichTradesWithMarketCap, calculateMcapDistribution } from '../services/marketCapService.js';
+import { calculateDiversityMetrics, calculateTemporalDiversity } from '../services/diversityMetrics.js';
 import axios from 'axios';
 
 const router = express.Router();
@@ -275,7 +277,14 @@ router.get('/metrics/:walletAddress', async (req, res) => {
       const balance = parseFloat(token.balance || 0);
       const realizedPnl = parseFloat(token.realizedPnl || 0);
       const realizedPnlPct = parseFloat(token.realizedPnlPercentage || 0);
-      const holdingTime = parseInt(token.holdingTime || 0);
+      const holdingTime = parseInt(token.holdingTime || 0); // in seconds
+      const latestTime = parseInt(token.latestTime || Date.now()); // last trade timestamp
+      
+      // Calculate approximate entry/exit timestamps
+      // For closed positions: exitTime = latestTime, entryTime = latestTime - holdingTime
+      // For open positions: entryTime = latestTime - holdingTime, exitTime = null
+      const exitTimestamp = balance > 0 ? null : latestTime;
+      const entryTimestamp = latestTime - (holdingTime * 1000); // Convert seconds to ms
       
       return {
         // Identity
@@ -301,6 +310,11 @@ router.get('/metrics/:walletAddress', async (req, res) => {
         holding_seconds: holdingTime,
         holding_hours: holdingTime / 3600,
         holding_days: holdingTime / 86400,
+        
+        // Timestamps (required for OHLC enrichment)
+        entry_timestamp: entryTimestamp,
+        exit_timestamp: exitTimestamp,
+        latest_time: latestTime,
         
         // Win/loss
         win: realizedPnl > 0,
@@ -361,8 +375,17 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     // Enrich with price data for accurate skill scoring
     const enablePriceEnrichment = req.query.enrichPrices !== 'false'; // Default: true
     const enableRiskCheck = req.query.checkRisks !== 'false'; // Default: true
+    const enableMcapEnrichment = req.query.enrichMcap !== 'false'; // Default: true
     const filterRisky = req.query.filterRisky !== 'false'; // Default: true (exclude risky from metrics)
     
+    // Enrich with market cap data
+    if (enableMcapEnrichment) {
+      console.log(`[Analysis API] Enriching ${closedTrades.length} trades with market cap data...`);
+      closedTrades = await enrichTradesWithMarketCap(closedTrades, chain);
+      console.log(`[Analysis API] Market cap enrichment complete`);
+    }
+    
+    // Enrich with OHLC price data
     if (enablePriceEnrichment) {
       console.log(`[Analysis API] Enriching ${closedTrades.length} trades with OHLC data for metrics...`);
       closedTrades = await enrichTradesWithPrices(closedTrades, chain);
@@ -399,6 +422,15 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     
     // Compute metrics
     const metrics = computeMetrics(closedTrades);
+    
+    // Add market cap distribution
+    if (enableMcapEnrichment) {
+      metrics.market_cap_distribution = calculateMcapDistribution(closedTrades);
+    }
+    
+    // Add diversity metrics
+    metrics.diversity = calculateDiversityMetrics(closedTrades);
+    metrics.temporal_diversity = calculateTemporalDiversity(closedTrades);
     
     console.log(`[Analysis API] Computed metrics for ${walletAddress}: ${metrics.total_trades} trades, ${metrics.win_rate.toFixed(1)}% win rate`);
     
