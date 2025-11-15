@@ -39,13 +39,14 @@ export function WalletDetailsModal({
 }: WalletDetailsModalProps) {
   const [activeTab, setActiveTab] = useState('overview');
   
-  if (!wallet) return null;
-
+  // Call hooks before any conditional returns (Rules of Hooks)
   const { summary, metrics, trades, loading: analysisLoading, error: analysisError } = useWalletAnalysis(
-    wallet.wallet_address, 
+    wallet?.wallet_address || '', 
     chain, 
-    isOpen
+    isOpen && !!wallet
   );
+  
+  if (!wallet) return null;
 
   // Calculate if this is a good candidate for copy trading
   const isGoodCandidate = 

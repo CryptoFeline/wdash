@@ -17,6 +17,7 @@ import { useTrackedWallets } from '@/hooks/useTrackedWallets';
 import { triggerSync } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { BarChart3, Bookmark } from 'lucide-react';
+import WalletDetailModal from '@/components/WalletDetailModal';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: 50,
@@ -46,6 +47,10 @@ export default function Home() {
   
   // Display filters (client-side only, filter the database)
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterValues>(DEFAULT_ADVANCED_FILTERS);
+
+  // Simple PnL modal state
+  const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Backend wake-up state (Solution E: show loading modal while backend starts)
   const [showBackendLoadingModal, setShowBackendLoadingModal] = useState(false);
@@ -410,7 +415,28 @@ export default function Home() {
           onLoadMore={() => {}} // No server-side pagination
           hasMore={false} // All data loaded from database
           isLoading={isRefreshing && allWallets.length === 0} // Only show loading if no data yet
+          onRowClick={(wallet) => {
+            setSelectedWallet(wallet);
+            setIsModalOpen(true);
+          }}
         />
+
+        {/* Simple PnL Modal */}
+        {selectedWallet && (
+          <WalletDetailModal
+            wallet={{
+              address: selectedWallet.wallet_address,
+              chainId: chain === 'sol' ? '501' : chain === 'eth' ? '1' : '501',
+              nickname: selectedWallet.twitter_username || selectedWallet.twitter_name || undefined,
+              avatarUrl: selectedWallet.avatar || undefined,
+            }}
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setSelectedWallet(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );
