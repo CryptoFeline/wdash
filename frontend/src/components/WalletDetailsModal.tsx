@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Wallet } from '@/types/wallet';
 import {
   Dialog,
@@ -10,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   formatNumber,
   formatPercentage,
@@ -17,8 +19,10 @@ import {
   getPnLColor,
   truncateAddress,
 } from '@/lib/export';
-import { Copy, ExternalLink, TrendingUp, TrendingDown, AlertTriangle, Star } from 'lucide-react';
+import { Copy, ExternalLink, TrendingUp, TrendingDown, AlertTriangle, Star, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import AnalysisDashboard from '@/components/analysis/AnalysisDashboard';
+import { useWalletAnalysis } from '@/hooks/useWalletAnalysis';
 
 interface WalletDetailsModalProps {
   wallet: Wallet | null;
@@ -33,7 +37,11 @@ export function WalletDetailsModal({
   isOpen,
   onClose,
 }: WalletDetailsModalProps) {
+  const [activeTab, setActiveTab] = useState('overview');
+  
   if (!wallet) return null;
+
+  const { summary, metrics, trades, loading: analysisLoading, error: analysisError } = useWalletAnalysis(wallet.wallet_address, isOpen);
 
   // Calculate if this is a good candidate for copy trading
   const isGoodCandidate = 
@@ -56,7 +64,7 @@ export function WalletDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="font-mono text-lg">{truncateAddress(wallet.wallet_address)}</span>
@@ -78,7 +86,13 @@ export function WalletDetailsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="analysis">Advanced Analysis</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4 mt-4">
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
@@ -345,7 +359,31 @@ export function WalletDetailsModal({
               </div>
             </CardContent>
           </Card>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="analysis" className="py-4">
+            {analysisLoading ? (
+              <div className="flex items-center justify-center h-96">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <p className="text-muted-foreground">Loading detailed analysis...</p>
+                </div>
+              </div>
+            ) : analysisError ? (
+              <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
+                <p className="text-destructive text-sm">{analysisError}</p>
+              </div>
+            ) : (
+              <AnalysisDashboard 
+                summary={summary}
+                metrics={metrics}
+                trades={trades}
+                loading={false}
+                error={null}
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
