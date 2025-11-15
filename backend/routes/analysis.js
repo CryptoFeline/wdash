@@ -19,22 +19,31 @@ router.get('/summary/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] Fetching summary for ${walletAddress} on ${chain}`);
     
-    // Fetch from OKX API (correct endpoint)
+    // Fetch from OKX API (correct endpoint with all required params)
     const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
-    const okxUrl = `https://www.okx.com/priapi/v1/dx/market/v2/pnl/wallet-profile/summary`;
+    const okxUrl = `https://web3.okx.com/priapi/v1/dx/market/v2/pnl/wallet-profile/summary`;
     const response = await axios.get(okxUrl, {
       params: {
+        periodType: 3, // 7 days
         chainId,
-        address: walletAddress
+        walletAddress,
+        t: Date.now()
       },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'application/json'
-      }
+      },
+      timeout: 15000
     });
     
-    if (response.data?.code !== '0' || !response.data?.data) {
+    if (response.data?.code !== '0' && response.data?.code !== 0) {
+      console.error('[Analysis API] OKX API error:', response.data);
       return res.status(404).json({ error: 'Wallet not found or OKX API error' });
+    }
+    
+    if (!response.data?.data) {
+      console.error('[Analysis API] No data in OKX response');
+      return res.status(404).json({ error: 'No wallet data available' });
     }
     
     const walletData = response.data.data;
@@ -77,23 +86,35 @@ router.get('/trades/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] Reconstructing trades for ${walletAddress} on ${chain}`);
     
-    // Fetch from OKX API (correct endpoint)
+    // Fetch from OKX API (correct endpoint with all required params)
     const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
-    const okxUrl = `https://www.okx.com/priapi/v1/dx/market/v2/pnl/token-list`;
+    const okxUrl = `https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list`;
     const response = await axios.get(okxUrl, {
       params: {
+        walletAddress,
         chainId,
-        address: walletAddress,
-        type: 1 // 1 = history, 2 = holdings
+        isAsc: false,
+        sortType: 1, // Sort by PnL
+        filterEmptyBalance: false, // All tokens including sold
+        offset: 0,
+        limit: 100,
+        t: Date.now()
       },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'application/json'
-      }
+      },
+      timeout: 15000
     });
     
-    if (response.data?.code !== '0' || !response.data?.data) {
+    if (response.data?.code !== '0' && response.data?.code !== 0) {
+      console.error('[Analysis API] OKX API error:', response.data);
       return res.status(404).json({ error: 'Wallet not found or OKX API error' });
+    }
+    
+    if (!response.data?.data?.tokenList) {
+      console.error('[Analysis API] No token list in OKX response');
+      return res.status(404).json({ error: 'No trade data available' });
     }
     
     const walletData = response.data.data;
@@ -162,23 +183,35 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] Computing metrics for ${walletAddress} on ${chain}`);
     
-    // Fetch from OKX API (correct endpoint)
+    // Fetch from OKX API (correct endpoint with all required params)
     const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
-    const okxUrl = `https://www.okx.com/priapi/v1/dx/market/v2/pnl/token-list`;
+    const okxUrl = `https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list`;
     const response = await axios.get(okxUrl, {
       params: {
+        walletAddress,
         chainId,
-        address: walletAddress,
-        type: 1 // 1 = history, 2 = holdings
+        isAsc: false,
+        sortType: 1, // Sort by PnL
+        filterEmptyBalance: false, // All tokens including sold
+        offset: 0,
+        limit: 100,
+        t: Date.now()
       },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'application/json'
-      }
+      },
+      timeout: 15000
     });
     
-    if (response.data?.code !== '0' || !response.data?.data) {
+    if (response.data?.code !== '0' && response.data?.code !== 0) {
+      console.error('[Analysis API] OKX API error:', response.data);
       return res.status(404).json({ error: 'Wallet not found or OKX API error' });
+    }
+    
+    if (!response.data?.data?.tokenList) {
+      console.error('[Analysis API] No token list in OKX response');
+      return res.status(404).json({ error: 'No trade data available' });
     }
     
     const walletData = response.data.data;
