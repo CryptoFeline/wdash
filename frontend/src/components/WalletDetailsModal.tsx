@@ -41,7 +41,11 @@ export function WalletDetailsModal({
   
   if (!wallet) return null;
 
-  const { summary, metrics, trades, loading: analysisLoading, error: analysisError } = useWalletAnalysis(wallet.wallet_address, isOpen);
+  const { summary, metrics, trades, loading: analysisLoading, error: analysisError } = useWalletAnalysis(
+    wallet.wallet_address, 
+    chain, 
+    isOpen
+  );
 
   // Calculate if this is a good candidate for copy trading
   const isGoodCandidate = 

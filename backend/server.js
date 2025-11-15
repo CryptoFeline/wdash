@@ -11,6 +11,7 @@ import healthRouter from './routes/health.js';
 import prefetchRouter from './routes/prefetch.js';
 import syncRouter from './routes/sync.js';
 import okxRouter from './routes/okx.js';
+import analysisRouter from './routes/analysis.js';
 import { requireApiKey } from './middleware/auth.js';
 
 const app = express();
@@ -62,6 +63,7 @@ app.use('/api/wallets/db', dbRouter); // Supabase direct access (before /api/wal
 app.use('/api/prefetch', prefetchRouter);
 app.use('/api/sync', syncRouter);
 app.use('/api/okx', okxRouter); // OKX wallet data
+app.use('/api/analysis', analysisRouter); // Analysis endpoints (trade reconstruction, metrics)
 app.use('/api', healthRouter);
 
 // Root endpoint

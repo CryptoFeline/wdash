@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { OKXWalletSummary } from '@/lib/okx-api-v2';
 import { WalletAnalysisMetrics, ReconstructedTrade } from '@/types/wallet';
 
-export function useWalletAnalysis(walletAddress: string, isOpen: boolean) {
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || '88c090fb868f171d322e9cea5a8484dd10c05975e789a28238f2bb2428b06e84';
+
+export function useWalletAnalysis(walletAddress: string, chain: string = 'eth', isOpen: boolean = true) {
   const [summary, setSummary] = useState<OKXWalletSummary | undefined>();
   const [metrics, setMetrics] = useState<WalletAnalysisMetrics | undefined>();
   const [trades, setTrades] = useState<ReconstructedTrade[]>([]);
@@ -17,25 +20,40 @@ export function useWalletAnalysis(walletAddress: string, isOpen: boolean) {
         setLoading(true);
         setError(null);
 
-        // Fetch summary from OKX API
-        const summaryResponse = await fetch(`/api/analysis/summary?walletAddress=${walletAddress}`);
+        const headers = {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY,
+        };
+
+        // Fetch all three endpoints in parallel
+        const [summaryResponse, metricsResponse, tradesResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/analysis/summary/${walletAddress}?chain=${chain}`, { headers }),
+          fetch(`${API_BASE_URL}/api/analysis/metrics/${walletAddress}?chain=${chain}`, { headers }),
+          fetch(`${API_BASE_URL}/api/analysis/trades/${walletAddress}?chain=${chain}`, { headers }),
+        ]);
+
+        // Handle summary response
         if (summaryResponse.ok) {
           const summaryData = await summaryResponse.json();
           setSummary(summaryData);
+        } else {
+          console.warn('Summary fetch failed:', summaryResponse.status);
         }
 
-        // Fetch metrics from analysis API
-        const metricsResponse = await fetch(`/api/analysis/metrics?walletAddress=${walletAddress}`);
+        // Handle metrics response
         if (metricsResponse.ok) {
           const metricsData = await metricsResponse.json();
-          setMetrics(metricsData);
+          setMetrics(metricsData.metrics || metricsData);
+        } else {
+          console.warn('Metrics fetch failed:', metricsResponse.status);
         }
 
-        // Fetch reconstructed trades
-        const tradesResponse = await fetch(`/api/analysis/trades?walletAddress=${walletAddress}`);
+        // Handle trades response
         if (tradesResponse.ok) {
           const tradesData = await tradesResponse.json();
-          setTrades(Array.isArray(tradesData) ? tradesData : tradesData.data || []);
+          setTrades(tradesData.trades || tradesData.data || []);
+        } else {
+          console.warn('Trades fetch failed:', tradesResponse.status);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load analysis');
@@ -46,7 +64,7 @@ export function useWalletAnalysis(walletAddress: string, isOpen: boolean) {
     };
 
     fetchAnalysis();
-  }, [walletAddress, isOpen]);
+  }, [walletAddress, chain, isOpen]);
 
   return { summary, metrics, trades, loading, error };
 }
