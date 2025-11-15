@@ -294,4 +294,88 @@ router.get('/history/:address', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/okx/:address (catch-all)
+ * Route handler for flexible endpoint selection via query param
+ * Supports: ?endpoint=summary, ?endpoint=tokenList
+ * NOTE: Must come AFTER /wallet/:address and /history/:address routes
+ */
+router.get('/:address', async (req, res) => {
+  const { address } = req.params;
+  const { endpoint, chainId = SOLANA_CHAIN_ID } = req.query;
+
+  console.log(`[OKX] Request to /${address}, endpoint: ${endpoint}, chain: ${chainId}`);
+
+  try {
+    // Route based on endpoint parameter
+    if (endpoint === 'summary') {
+      // Fetch only wallet summary
+      const summaryResponse = await axios.get(`${OKX_BASE_URL}/priapi/v1/dx/market/v2/pnl/wallet-profile/summary`, {
+        params: {
+          periodType: 3,
+          chainId,
+          walletAddress: address,
+          t: Date.now()
+        },
+        timeout: 15000
+      });
+
+      const summary = summaryResponse.data?.data || {};
+      return res.json({
+        code: 0,
+        data: summary,
+        msg: ''
+      });
+    }
+
+    if (endpoint === 'tokenList') {
+      // Fetch all traded tokens
+      const response = await axios.get(`${OKX_BASE_URL}/priapi/v1/dx/market/v2/pnl/token-list`, {
+        params: {
+          walletAddress: address,
+          chainId,
+          isAsc: false,
+          sortType: 1,
+          filterEmptyBalance: false,
+          offset: req.query.offset || 0,
+          limit: req.query.limit || 100,
+          t: Date.now()
+        },
+        timeout: 15000
+      });
+
+      const data = response.data?.data || {};
+      return res.json({
+        code: 0,
+        data: data,
+        msg: ''
+      });
+    }
+
+    // If endpoint not specified, throw error
+    return res.status(400).json({
+      code: 400,
+      data: null,
+      msg: 'Endpoint parameter required. Use ?endpoint=summary or ?endpoint=tokenList'
+    });
+
+  } catch (error) {
+    console.error(`[OKX] Error handling /${address}:`, error.message);
+    
+    if (error.response?.status === 429) {
+      return res.status(429).json({
+        code: 429,
+        data: null,
+        msg: 'Rate limit exceeded. Please try again in a moment.'
+      });
+    }
+
+    res.status(500).json({
+      code: 500,
+      data: null,
+      msg: error.message || 'Failed to fetch wallet data from OKX'
+    });
+  }
+});
+
 export default router;
