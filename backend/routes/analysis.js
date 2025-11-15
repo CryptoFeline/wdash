@@ -19,13 +19,13 @@ router.get('/summary/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] Fetching summary for ${walletAddress} on ${chain}`);
     
-    // Fetch from OKX API
-    const okxUrl = `https://www.okx.com/priapi/v1/invest/activity/smart-money/wallet-transactions`;
+    // Fetch from OKX API (correct endpoint)
+    const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
+    const okxUrl = `https://www.okx.com/priapi/v1/dx/market/v2/pnl/wallet-profile/summary`;
     const response = await axios.get(okxUrl, {
       params: {
-        chainId: chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1',
-        address: walletAddress,
-        limit: 100
+        chainId,
+        address: walletAddress
       },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -77,13 +77,14 @@ router.get('/trades/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] Reconstructing trades for ${walletAddress} on ${chain}`);
     
-    // Fetch from OKX API
-    const okxUrl = `https://www.okx.com/priapi/v1/invest/activity/smart-money/wallet-transactions`;
+    // Fetch from OKX API (correct endpoint)
+    const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
+    const okxUrl = `https://www.okx.com/priapi/v1/dx/market/v2/pnl/token-list`;
     const response = await axios.get(okxUrl, {
       params: {
-        chainId: chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1',
+        chainId,
         address: walletAddress,
-        limit: 100 // Can increase if needed
+        type: 1 // 1 = history, 2 = holdings
       },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -161,13 +162,14 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] Computing metrics for ${walletAddress} on ${chain}`);
     
-    // Fetch from OKX API
-    const okxUrl = `https://www.okx.com/priapi/v1/invest/activity/smart-money/wallet-transactions`;
+    // Fetch from OKX API (correct endpoint)
+    const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
+    const okxUrl = `https://www.okx.com/priapi/v1/dx/market/v2/pnl/token-list`;
     const response = await axios.get(okxUrl, {
       params: {
-        chainId: chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1',
+        chainId,
         address: walletAddress,
-        limit: 100
+        type: 1 // 1 = history, 2 = holdings
       },
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
