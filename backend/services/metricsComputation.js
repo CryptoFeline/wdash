@@ -35,10 +35,10 @@ export function calculateEntrySkillScore(trades) {
   
   // Calculate what % of max potential was realized on average
   const ratios = trades
-    .filter(t => t.max_potential_roi > 0)
+    .filter(t => (t.max_potential_roi || 0) > 0)
     .map(t => {
-      const potentialGain = t.max_potential_roi;
-      const actualGain = t.realized_roi;
+      const potentialGain = t.max_potential_roi || 0;
+      const actualGain = t.realized_roi || 0;
       
       // If they captured most of the potential, good entry
       return potentialGain > 0 ? (actualGain / potentialGain) : 0;
@@ -49,9 +49,13 @@ export function calculateEntrySkillScore(trades) {
   const avgRatio = ratios.reduce((sum, r) => sum + r, 0) / ratios.length;
   
   // Also consider time to peak - early entries have longer time to peak
-  const avgTimeToPeak = trades
-    .filter(t => t.time_to_peak_hours > 0)
-    .reduce((sum, t) => sum + t.time_to_peak_hours, 0) / Math.max(trades.length, 1);
+  const timeToPeakHours = trades
+    .map(t => t.time_to_peak_hours || 0)
+    .filter(h => h > 0);
+    
+  const avgTimeToPeak = timeToPeakHours.length > 0
+    ? timeToPeakHours.reduce((sum, h) => sum + h, 0) / timeToPeakHours.length
+    : 0;
   
   // Score: 50% based on realized/potential ratio, 50% on early entry timing
   const ratioScore = Math.min(avgRatio * 100, 100);
@@ -74,11 +78,11 @@ export function calculateExitSkillScore(trades) {
   
   // How close to max price did they sell?
   const exitEfficiency = trades
-    .filter(t => t.max_price_during_hold > 0)
+    .filter(t => (t.max_price_during_hold || 0) > 0)
     .map(t => {
-      const maxPrice = t.max_price_during_hold;
-      const exitPrice = t.exit_price;
-      const entryPrice = t.entry_price;
+      const maxPrice = t.max_price_during_hold || 0;
+      const exitPrice = t.exit_price || 0;
+      const entryPrice = t.entry_price || 0;
       
       // Normalize: 0 = sold at entry, 1 = sold at peak
       const priceRange = maxPrice - entryPrice;
@@ -93,7 +97,7 @@ export function calculateExitSkillScore(trades) {
   const avgEfficiency = exitEfficiency.reduce((sum, e) => sum + e, 0) / exitEfficiency.length;
   
   // Penalize early exits
-  const earlyExits = trades.filter(t => t.early_exit).length;
+  const earlyExits = trades.filter(t => t.early_exit === true).length;
   const earlyExitPenalty = (earlyExits / trades.length) * 20; // Max 20 point penalty
   
   const score = Math.max(0, Math.min(100, avgEfficiency * 100 - earlyExitPenalty));
@@ -187,7 +191,31 @@ export function analyzeMarketCapStrategy(trades) {
  */
 export function computeMetrics(trades) {
   if (!trades || trades.length === 0) {
-    return null;
+    // Return empty structure with all required fields initialized to safe defaults
+    return {
+      total_trades: 0,
+      win_count: 0,
+      loss_count: 0,
+      win_rate: 0,
+      total_realized_pnl: 0,
+      avg_realized_roi: 0,
+      median_realized_roi: 0,
+      total_realized_pnl_wins: 0,
+      total_realized_pnl_losses: 0,
+      avg_holding_hours: 0,
+      median_holding_hours: 0,
+      avg_holding_hours_winners: 0,
+      avg_holding_hours_losers: 0,
+      median_max_potential_roi: 0,
+      entry_skill_score: 0,
+      exit_skill_score: 0,
+      overall_skill_score: 0,
+      copy_trade_rating: 'N/A',
+      market_cap_strategy: {
+        favorite_bracket: 0,
+        success_by_bracket: []
+      }
+    };
   }
   
   // Basic counts
@@ -222,10 +250,10 @@ export function computeMetrics(trades) {
     ? loserHoldingHours.reduce((sum, h) => sum + h, 0) / loserHoldingHours.length
     : 0;
   
-  // Max potential analysis
+  // Max potential analysis - use safe defaults if fields are missing
   const maxPotentialRois = trades
-    .filter(t => t.max_potential_roi !== undefined)
-    .map(t => t.max_potential_roi);
+    .map(t => t.max_potential_roi || 0)
+    .filter(roi => roi > 0);
   const medianMaxPotentialRoi = maxPotentialRois.length > 0 
     ? calculateMedian(maxPotentialRois)
     : 0;

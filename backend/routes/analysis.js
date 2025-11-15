@@ -48,20 +48,27 @@ router.get('/summary/:walletAddress', async (req, res) => {
     
     const walletData = response.data.data;
     
-    // Build summary object
+    // Build summary object from OKX API response
+    // Map OKX field names to our expected format
     const summary = {
       wallet_address: walletAddress,
       chain,
-      total_tokens: walletData.tokenList?.length || 0,
+      total_tokens: (walletData.topTokens?.length || 0) + (walletData.totalTxsBuy || 0), // Rough estimate
       total_pnl: parseFloat(walletData.totalPnl || 0),
-      total_invested: parseFloat(walletData.totalInvest || 0),
-      total_roi_percent: parseFloat(walletData.roi || 0),
-      win_rate: parseFloat(walletData.winRate || 0),
-      realized_pnl: parseFloat(walletData.totalRealizedProfit || 0),
-      unrealized_pnl: parseFloat(walletData.totalUnrealizedProfit || 0),
-      best_token: walletData.bestToken || null,
-      worst_token: walletData.worstToken || null,
-      avg_holding_time_hours: parseFloat(walletData.avgHoldingTime || 0) / 3600
+      total_invested: parseFloat(walletData.totalVolumeBuy || 0), // Use buy volume as investment
+      total_roi_percent: parseFloat(walletData.totalPnlRoi || 0), // Correct field name
+      win_rate: parseFloat(walletData.totalWinRate || 0), // Correct field name
+      realized_pnl: parseFloat(walletData.totalProfitPnl || 0), // Total profit PnL
+      unrealized_pnl: parseFloat(walletData.unrealizedPnl || 0), // Correct field name
+      best_token: walletData.topTokens?.[0] || null, // First token in topTokens
+      worst_token: null, // OKX doesn't provide worst token
+      avg_holding_time_hours: 0, // Not available in summary endpoint
+      total_volume_buy: parseFloat(walletData.totalVolumeBuy || 0),
+      total_volume_sell: parseFloat(walletData.totalVolumeSell || 0),
+      total_txs_buy: parseInt(walletData.totalTxsBuy || 0),
+      total_txs_sell: parseInt(walletData.totalTxsSell || 0),
+      avg_cost_buy: parseFloat(walletData.avgCostBuy || 0),
+      top_tokens: walletData.topTokens || []
     };
     
     res.json(summary);
@@ -119,10 +126,54 @@ router.get('/trades/:walletAddress', async (req, res) => {
     
     const walletData = response.data.data;
     
-    // Reconstruct trades using FIFO
-    let trades = reconstructWalletTrades(walletData);
+    // OKX token-list returns aggregated trade data, not individual transactions
+    // Convert to our expected trade format
+    const trades = (walletData.tokenList || []).map((token, index) => ({
+      trade_id: `${token.tokenContractAddress || token.tokenAddress}_agg`,
+      token_address: token.tokenContractAddress || token.tokenAddress,
+      token_symbol: token.tokenSymbol,
+      token_name: token.tokenSymbol, // OKX doesn't provide name in token-list
+      logo_url: token.tokenLogoUrl,
+      
+      // Buy side
+      buy_price_avg: parseFloat(token.buyAvgPrice || 0),
+      buy_volume: parseFloat(token.buyVolume || 0),
+      buy_quantity: parseFloat(token.buyVolume || 0),
+      total_buy_txs: parseInt(token.totalTxBuy || 0),
+      
+      // Sell side  
+      sell_price_avg: parseFloat(token.sellAvgPrice || 0),
+      sell_volume: parseFloat(token.sellVolume || 0),
+      sell_quantity: parseFloat(token.sellVolume || 0),
+      total_sell_txs: parseInt(token.totalTxSell || 0),
+      
+      // PnL metrics
+      realized_pnl: parseFloat(token.realizedPnl || 0),
+      realized_pnl_percent: parseFloat(token.realizedPnlPercentage || 0),
+      unrealized_pnl: parseFloat(token.unrealizedPnl || 0),
+      unrealized_pnl_percent: parseFloat(token.unrealizedPnlPercentage || 0),
+      total_pnl: parseFloat(token.totalPnl || 0),
+      total_pnl_percent: parseFloat(token.totalPnlPercentage || 0),
+      
+      // Current position
+      current_balance: parseFloat(token.balance || 0),
+      current_balance_usd: parseFloat(token.balanceUsd || 0),
+      hold_avg_price: parseFloat(token.holdAvgPrice || 0),
+      holding_time: parseInt(token.holdingTime || 0),
+      
+      // Risk
+      risk_level: parseInt(token.riskLevel || token.riskControlLevel || 1),
+      
+      // Status
+      status: parseFloat(token.balance || 0) > 0 ? 'open' : 'closed',
+      
+      // Timestamps
+      latest_time: parseInt(token.latestTime || Date.now()),
+      entry_time: parseInt(token.latestTime || Date.now()), // Approximation
+      exit_time: parseFloat(token.balance || 0) > 0 ? null : parseInt(token.latestTime || Date.now())
+    }));
     
-    console.log(`[Analysis API] Reconstructed ${trades.length} trades for ${walletAddress}`);
+    console.log(`[Analysis API] Returning ${trades.length} aggregated trades for ${walletAddress}`);
     
     // Enrich closed trades with price data (skip open positions)
     const enablePriceEnrichment = req.query.enrichPrices !== 'false'; // Default: true
@@ -216,16 +267,92 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     
     const walletData = response.data.data;
     
-    // Reconstruct trades
-    let trades = reconstructWalletTrades(walletData);
+    // Convert OKX token list to trade format for metrics computation
+    // OKX returns aggregated data per token, we treat each token as a "trade"
+    const trades = (walletData.tokenList || []).map((token, index) => {
+      const buyVolume = parseFloat(token.buyVolume || 0);
+      const sellVolume = parseFloat(token.sellVolume || 0);
+      const balance = parseFloat(token.balance || 0);
+      const realizedPnl = parseFloat(token.realizedPnl || 0);
+      const realizedPnlPct = parseFloat(token.realizedPnlPercentage || 0);
+      const holdingTime = parseInt(token.holdingTime || 0);
+      
+      return {
+        // Identity
+        trade_id: `${token.tokenContractAddress || token.tokenAddress}_${index}`,
+        token_address: token.tokenContractAddress || token.tokenAddress,
+        token_symbol: token.tokenSymbol,
+        token_name: token.tokenSymbol,
+        
+        // Prices (OKX gives averages)
+        entry_price: parseFloat(token.buyAvgPrice || 0),
+        exit_price: parseFloat(token.sellAvgPrice || 0),
+        quantity: sellVolume, // Use sell volume as quantity for closed trades
+        
+        // Values
+        entry_value: buyVolume,
+        exit_value: sellVolume,
+        
+        // PnL
+        realized_pnl: realizedPnl,
+        realized_roi: realizedPnlPct,
+        
+        // Holding
+        holding_seconds: holdingTime,
+        holding_hours: holdingTime / 3600,
+        holding_days: holdingTime / 86400,
+        
+        // Win/loss
+        win: realizedPnl > 0,
+        
+        // Status
+        status: balance > 0 ? 'open' : 'closed',
+        
+        // Market cap bracket (from OKX mcapTxsBuyList - will be enriched later)
+        mcap_bracket: 1, // Default to $100k-$1M
+        
+        // Risk
+        riskLevel: parseInt(token.riskLevel || token.riskControlLevel || 1),
+        
+        // Placeholder fields for skills assessment (will be enriched with OHLC data)
+        max_price_during_hold: 0,
+        max_potential_roi: 0,
+        time_to_peak_seconds: 0,
+        time_to_peak_hours: 0,
+        early_exit: false
+      };
+    });
     
     // Filter to closed trades only for metrics (skip open positions)
-    let closedTrades = trades.filter(t => t.status === 'closed');
+    const closedTrades = trades.filter(t => t.status === 'closed');
     
     if (closedTrades.length === 0) {
+      // Return empty metrics structure with all required fields
       return res.json({
         wallet_address: walletAddress,
         chain,
+        total_trades: 0,
+        win_count: 0,
+        loss_count: 0,
+        win_rate: 0,
+        total_realized_pnl: 0,
+        avg_realized_roi: 0,
+        median_realized_roi: 0,
+        total_realized_pnl_wins: 0,
+        total_realized_pnl_losses: 0,
+        avg_holding_hours: 0,
+        median_holding_hours: 0,
+        avg_holding_hours_winners: 0,
+        avg_holding_hours_losers: 0,
+        median_max_potential_roi: 0,
+        entry_skill_score: 0,
+        exit_skill_score: 0,
+        overall_skill_score: 0,
+        copy_trade_rating: 'N/A',
+        market_cap_strategy: {
+          favorite_bracket: 0,
+          success_by_bracket: []
+        },
         message: 'No closed trades found for metrics computation',
         metrics: null
       });
