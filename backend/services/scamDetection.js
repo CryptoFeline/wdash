@@ -82,117 +82,17 @@ function analyzeScamTokens(trades) {
 }
 
 /**
- * Calculate statistics excluding scam tokens
- * 
- * @param {Array} trades - Array of trade objects (flagged with is_scam_token)
- * @returns {Object} - Clean stats excluding scam tokens
- */
-function calculateCleanStats(trades) {
-  const validTrades = trades.filter(t => !t.is_scam_token);
-  const closedTrades = validTrades.filter(t => !t.open_position);
-  
-  const wins = closedTrades.filter(t => t.win);
-  const losses = closedTrades.filter(t => !t.win);
-  
-  // Filter outliers for average calculation
-  const validWins = wins.filter(t => t.realized_roi <= MAX_ROI_FOR_AVERAGE);
-  const extremeWins = wins.filter(t => t.realized_roi > MAX_ROI_FOR_AVERAGE);
-  
-  const totalRealizedPnl = closedTrades.reduce((sum, t) => sum + (t.realized_pnl || 0), 0);
-  
-  const avgWinSize = validWins.length > 0 
-    ? validWins.reduce((sum, t) => sum + t.realized_roi, 0) / validWins.length 
-    : 0;
-    
-  const avgWinSizeWithOutliers = wins.length > 0 
-    ? wins.reduce((sum, t) => sum + t.realized_roi, 0) / wins.length 
-    : 0;
-    
-  const avgLossSize = losses.length > 0 
-    ? losses.reduce((sum, t) => sum + Math.abs(t.realized_roi), 0) / losses.length 
-    : 0;
-  
-  const winRate = closedTrades.length > 0 
-    ? (wins.length / closedTrades.length) * 100 
-    : 0;
-  
-  return {
-    totalTrades: validTrades.length,
-    closedTrades: closedTrades.length,
-    openPositions: validTrades.filter(t => t.open_position).length,
-    wins: wins.length,
-    losses: losses.length,
-    winRate: parseFloat(winRate.toFixed(2)),
-    totalRealizedPnl: parseFloat(totalRealizedPnl.toFixed(2)),
-    avgWinSize: parseFloat(avgWinSize.toFixed(2)),
-    avgWinSizeWithOutliers: parseFloat(avgWinSizeWithOutliers.toFixed(2)),
-    outliersExcluded: extremeWins.length,
-    avgLossSize: parseFloat(avgLossSize.toFixed(2))
-  };
-}
-
-/**
- * Calculate statistics including scam tokens (for comparison)
- * 
- * @param {Array} trades - Array of all trades
- * @returns {Object} - Raw stats including scam tokens
- */
-function calculateRawStats(trades) {
-  const closedTrades = trades.filter(t => !t.open_position);
-  
-  const wins = closedTrades.filter(t => t.win);
-  const losses = closedTrades.filter(t => !t.win);
-  
-  // Filter outliers for average calculation
-  const validWins = wins.filter(t => t.realized_roi <= MAX_ROI_FOR_AVERAGE);
-  const extremeWins = wins.filter(t => t.realized_roi > MAX_ROI_FOR_AVERAGE);
-  
-  const totalRealizedPnl = closedTrades.reduce((sum, t) => sum + (t.realized_pnl || 0), 0);
-  
-  const avgWinSize = validWins.length > 0 
-    ? validWins.reduce((sum, t) => sum + t.realized_roi, 0) / validWins.length 
-    : 0;
-    
-  const avgWinSizeWithOutliers = wins.length > 0 
-    ? wins.reduce((sum, t) => sum + t.realized_roi, 0) / wins.length 
-    : 0;
-    
-  const avgLossSize = losses.length > 0 
-    ? losses.reduce((sum, t) => sum + Math.abs(t.realized_roi), 0) / losses.length 
-    : 0;
-  
-  const winRate = closedTrades.length > 0 
-    ? (wins.length / closedTrades.length) * 100 
-    : 0;
-  
-  return {
-    totalTrades: trades.length,
-    closedTrades: closedTrades.length,
-    openPositions: trades.filter(t => t.open_position).length,
-    wins: wins.length,
-    losses: losses.length,
-    winRate: parseFloat(winRate.toFixed(2)),
-    totalRealizedPnl: parseFloat(totalRealizedPnl.toFixed(2)),
-    avgWinSize: parseFloat(avgWinSize.toFixed(2)),
-    avgWinSizeWithOutliers: parseFloat(avgWinSizeWithOutliers.toFixed(2)),
-    outliersExcluded: extremeWins.length,
-    avgLossSize: parseFloat(avgLossSize.toFixed(2))
-  };
-}
-
-/**
  * Generate comprehensive scam detection report
  * 
  * @param {Array} trades - Array of trade objects with liquidity data
- * @returns {Object} - Complete analysis with scam detection and dual stats
+ * @returns {Object} - Complete analysis with scam detection
  */
 function generateScamReport(trades) {
   // Analyze scam tokens
   const scamAnalysis = analyzeScamTokens(trades);
   
-  // Calculate stats
-  const rawStats = calculateRawStats(scamAnalysis.allTrades);
-  const cleanStats = calculateCleanStats(scamAnalysis.allTrades);
+  // Don't calculate stats here - that's done in metricsComputation.js
+  // Just return the scam detection analysis
   
   return {
     scamDetection: {
@@ -208,16 +108,6 @@ function generateScamReport(trades) {
         rug_score: t.rug_score
       }))
     },
-    stats: {
-      raw: {
-        ...rawStats,
-        note: '⚠️ INCLUDES SCAM TOKENS - STATS MAY BE INFLATED'
-      },
-      clean: {
-        ...cleanStats,
-        note: '✅ EXCLUDES SCAM TOKENS - TRUE PERFORMANCE'
-      }
-    },
     trades: scamAnalysis.allTrades
   };
 }
@@ -225,8 +115,6 @@ function generateScamReport(trades) {
 export {
   isScamToken,
   analyzeScamTokens,
-  calculateCleanStats,
-  calculateRawStats,
   generateScamReport,
   MIN_LIQUIDITY_THRESHOLD,
   MAX_ROI_FOR_AVERAGE
