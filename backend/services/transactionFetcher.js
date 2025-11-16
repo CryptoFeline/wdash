@@ -19,9 +19,20 @@
  */
 
 import axios from 'axios';
+import NodeCache from 'node-cache';
+
+// Transaction cache - 5 minute TTL
+const transactionCache = new NodeCache({
+  stdTTL: 300, // 5 minutes
+  checkperiod: 60,
+  useClones: false
+});
+
+// In-flight request deduplication
+const inflightRequests = new Map();
 
 /**
- * Fetch all individual transactions for a wallet
+ * Fetch all individual transactions for a wallet with caching
  * 
  * @param {string} walletAddress - Wallet address to fetch
  * @param {string} chain - Chain ('sol', 'eth', etc.)
@@ -29,11 +40,48 @@ import axios from 'axios';
  * @returns {Promise<Array>} Array of individual transaction records
  */
 export async function fetchAllTransactions(walletAddress, chain = 'sol', options = {}) {
+  const cacheKey = `${chain}:${walletAddress}`;
+  
+  // Check cache first
+  const cached = transactionCache.get(cacheKey);
+  if (cached) {
+    console.log(`[TransactionFetcher] CACHE HIT: ${walletAddress} (${cached.length} transactions)`);
+    return cached;
+  }
+  
+  // Check if request is already in flight
+  if (inflightRequests.has(cacheKey)) {
+    console.log(`[TransactionFetcher] DEDUPE: Waiting for in-flight request for ${walletAddress}`);
+    return await inflightRequests.get(cacheKey);
+  }
+  
+  // Start new fetch
+  const fetchPromise = _fetchAllTransactionsUncached(walletAddress, chain, options);
+  inflightRequests.set(cacheKey, fetchPromise);
+  
+  try {
+    const transactions = await fetchPromise;
+    
+    // Cache the result
+    transactionCache.set(cacheKey, transactions);
+    console.log(`[TransactionFetcher] CACHED: ${walletAddress} (${transactions.length} transactions, TTL: 300s)`);
+    
+    return transactions;
+  } finally {
+    inflightRequests.delete(cacheKey);
+  }
+}
+
+/**
+ * Internal uncached fetch with rate limit handling
+ */
+async function _fetchAllTransactionsUncached(walletAddress, chain = 'sol', options = {}) {
   const {
     pageSize = 100, // Max transactions per page (OKX default: 10)
     maxPages = 50,   // Safety limit to prevent infinite loops
     filterRisk = true, // Filter risky transactions
-    tradeTypes = [1, 2] // 1 = BUY, 2 = SELL
+    tradeTypes = [1, 2], // 1 = BUY, 2 = SELL
+    pageDelay = 200  // Delay between pages in ms (prevent rate limiting)
   } = options;
   
   console.log(`[TransactionFetcher] Fetching transactions for ${walletAddress} on ${chain}`);
@@ -71,6 +119,11 @@ export async function fetchAllTransactions(walletAddress, chain = 'sol', options
     hasNext = pageTransactions.length === pageSize;
     
     console.log(`[TransactionFetcher] Page ${currentPage}: ${pageTransactions.length} transactions (total: ${allTransactions.length})`);
+    
+    // Add delay between pages to prevent rate limiting (except on last page)
+    if (hasNext && pageDelay > 0) {
+      await new Promise(resolve => setTimeout(resolve, pageDelay));
+    }
   }
   
   console.log(`[TransactionFetcher] Fetched ${allTransactions.length} total transactions across ${currentPage} pages`);
@@ -211,7 +264,7 @@ function getChainId(chain) {
 }
 
 /**
- * Fetch transactions with retry logic
+ * Fetch transactions with retry logic and 429 handling
  */
 export async function fetchAllTransactionsWithRetry(walletAddress, chain = 'sol', options = {}, maxRetries = 3) {
   let lastError;
@@ -224,9 +277,16 @@ export async function fetchAllTransactionsWithRetry(walletAddress, chain = 'sol'
       lastError = error;
       console.error(`[TransactionFetcher] Attempt ${attempt} failed:`, error.message);
       
+      // Check if it's a rate limit error (429)
+      const is429 = error.response?.status === 429 || 
+                   error.message?.includes('429') || 
+                   error.message?.includes('Too Many Requests');
+      
       if (attempt < maxRetries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff, max 5s
-        console.log(`[TransactionFetcher] Retrying in ${delay}ms...`);
+        // Use longer delay for rate limit errors
+        const baseDelay = is429 ? 5000 : 1000; // 5s for 429, 1s otherwise
+        const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 10000); // Max 10s
+        console.log(`[TransactionFetcher] ${is429 ? 'RATE LIMIT' : 'ERROR'} - Retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
