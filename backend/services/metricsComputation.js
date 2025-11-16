@@ -228,7 +228,27 @@ export function computeMetrics(trades) {
   }
   
   // Generate scam detection report
-  const scamReport = scamDetection.generateScamReport(trades);
+  let scamReport;
+  try {
+    scamReport = scamDetection.generateScamReport(trades);
+  } catch (error) {
+    console.error('[Metrics] Error generating scam report:', error);
+    // Return minimal safe response
+    scamReport = {
+      scamDetection: {
+        totalScamTokens: 0,
+        scamParticipationRate: 0,
+        riskLevel: 'LOW',
+        warning: null,
+        scamTokenDetails: []
+      },
+      stats: {
+        raw: { totalTrades: 0, avgWinSize: 0, note: 'Error during analysis' },
+        clean: { totalTrades: 0, avgWinSize: 0, note: 'Error during analysis' }
+      },
+      trades: trades
+    };
+  }
   
   // Use clean stats (excluding scam tokens) for metrics
   const validTrades = scamReport.trades.filter(t => !t.is_scam_token);
