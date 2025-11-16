@@ -222,7 +222,7 @@ function generateScamReport(trades) {
   };
 }
 
-module.exports = {
+export {
   isScamToken,
   analyzeScamTokens,
   calculateCleanStats,

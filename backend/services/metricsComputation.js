@@ -10,7 +10,7 @@
  * - Scam token detection and filtering
  */
 
-const scamDetection = require('./scamDetection');
+import * as scamDetection from './scamDetection.js';
 
 /**
  * Calculate median value from array
