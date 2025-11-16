@@ -169,7 +169,7 @@ router.get('/trades/:walletAddress', async (req, res) => {
     // DISABLED BY DEFAULT - GMGN OHLC API causes rate limiting (429 errors)
     // Enable with ?enrichPrices=true if needed
     const enablePriceEnrichment = req.query.enrichPrices === 'true';
-    const enableRiskCheck = req.query.checkRisks !== 'false';
+    const enableRiskCheck = req.query.checkRisks === 'true'; // DISABLED by default (causes OKX 429s)
     
     if (enablePriceEnrichment && closedTrades.length > 0) {
       console.log(`[Analysis API] Enriching ${closedTrades.length} closed trades with OHLC data...`);
@@ -184,6 +184,8 @@ router.get('/trades/:walletAddress', async (req, res) => {
       console.log(`[Analysis API] Running enhanced risk checks...`);
       enrichedClosedTrades = await enrichTradesWithRiskCheck(enrichedClosedTrades, chain);
       console.log(`[Analysis API] Risk checks complete`);
+    } else if (closedTrades.length > 0) {
+      console.log(`[Analysis API] OKX Risk Check DISABLED (use ?checkRisks=true to enable)`);
     }
     
     // Combine all trades (closed + open)
@@ -306,7 +308,7 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     // Step 4: Enrichment options
     // DISABLED BY DEFAULT - GMGN OHLC API causes rate limiting (429 errors)
     const enablePriceEnrichment = req.query.enrichPrices === 'true';
-    const enableRiskCheck = req.query.checkRisks !== 'false';
+    const enableRiskCheck = req.query.checkRisks === 'true'; // DISABLED by default (causes OKX 429s)
     const enableMcapEnrichment = req.query.enrichMcap !== 'false';
     const filterRisky = req.query.filterRisky === 'true';
     
@@ -331,6 +333,8 @@ router.get('/metrics/:walletAddress', async (req, res) => {
       console.log(`[Analysis API] Running enhanced risk checks...`);
       closedTrades = await enrichTradesWithRiskCheck(closedTrades, chain);
       console.log(`[Analysis API] Risk checks complete`);
+    } else {
+      console.log(`[Analysis API] OKX Risk Check DISABLED (use ?checkRisks=true to enable)`);
     }
     
     // Filter risky trades if requested
