@@ -166,16 +166,20 @@ router.get('/trades/:walletAddress', async (req, res) => {
     }
     
     // Step 4: Enrich closed trades with price data (skip open positions)
-    const enablePriceEnrichment = req.query.enrichPrices !== 'false';
+    // DISABLED BY DEFAULT - GMGN OHLC API causes rate limiting (429 errors)
+    // Enable with ?enrichPrices=true if needed
+    const enablePriceEnrichment = req.query.enrichPrices === 'true';
     const enableRiskCheck = req.query.checkRisks !== 'false';
     
     if (enablePriceEnrichment && closedTrades.length > 0) {
       console.log(`[Analysis API] Enriching ${closedTrades.length} closed trades with OHLC data...`);
       enrichedClosedTrades = await enrichTradesWithPrices(enrichedClosedTrades, chain);
       console.log(`[Analysis API] Price enrichment complete`);
+    } else if (closedTrades.length > 0) {
+      console.log(`[Analysis API] Price enrichment DISABLED (use ?enrichPrices=true to enable)`);
     }
     
-    // Step 4: Risk check (already have risk levels from OKX, but can enhance)
+    // Step 5: Risk check (already have risk levels from OKX, but can enhance)
     if (enableRiskCheck) {
       console.log(`[Analysis API] Running enhanced risk checks...`);
       enrichedClosedTrades = await enrichTradesWithRiskCheck(enrichedClosedTrades, chain);
@@ -300,7 +304,8 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     }
     
     // Step 4: Enrichment options
-    const enablePriceEnrichment = req.query.enrichPrices !== 'false';
+    // DISABLED BY DEFAULT - GMGN OHLC API causes rate limiting (429 errors)
+    const enablePriceEnrichment = req.query.enrichPrices === 'true';
     const enableRiskCheck = req.query.checkRisks !== 'false';
     const enableMcapEnrichment = req.query.enrichMcap !== 'false';
     const filterRisky = req.query.filterRisky === 'true';
@@ -317,6 +322,8 @@ router.get('/metrics/:walletAddress', async (req, res) => {
       console.log(`[Analysis API] Enriching ${closedTrades.length} trades with OHLC data...`);
       closedTrades = await enrichTradesWithPrices(closedTrades, chain);
       console.log(`[Analysis API] Price enrichment complete`);
+    } else {
+      console.log(`[Analysis API] Price enrichment DISABLED (use ?enrichPrices=true to enable)`);
     }
     
     // Enhanced risk check (OKX already provides risk levels)
