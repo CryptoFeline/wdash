@@ -154,8 +154,22 @@ export function analyzePriceMovement(candles, entryTimestamp, entryPrice, exitTi
   }
   
   // Calculate ROI from entry price
-  const maxPriceRoi = ((maxPrice - entryPrice) / entryPrice) * 100;
-  const maxDrawdownRoi = ((minPrice - entryPrice) / entryPrice) * 100;
+  // Cap extreme values for storage/display (but still calculate accurately)
+  const MAX_REASONABLE_ROI = 1000000; // 1,000,000% cap (10,000x) for display
+  
+  let maxPriceRoi = ((maxPrice - entryPrice) / entryPrice) * 100;
+  let maxDrawdownRoi = ((minPrice - entryPrice) / entryPrice) * 100;
+  
+  // Cap extreme values for storage (prevents Infinity, NaN, and astronomical values)
+  if (!isFinite(maxPriceRoi) || Math.abs(maxPriceRoi) > MAX_REASONABLE_ROI) {
+    const originalRoi = maxPriceRoi;
+    maxPriceRoi = maxPriceRoi > 0 ? MAX_REASONABLE_ROI : -MAX_REASONABLE_ROI;
+    console.log(`[Enrichment] Capping extreme max_potential_roi: ${isFinite(originalRoi) ? originalRoi.toFixed(0) : 'Infinity'}% -> ${maxPriceRoi}% (entry: $${entryPrice.toFixed(10)}, peak: $${maxPrice.toFixed(10)})`);
+  }
+  
+  if (!isFinite(maxDrawdownRoi) || Math.abs(maxDrawdownRoi) > MAX_REASONABLE_ROI) {
+    maxDrawdownRoi = maxDrawdownRoi > 0 ? MAX_REASONABLE_ROI : -MAX_REASONABLE_ROI;
+  }
   
   // Check if peak/trough happened before exit
   const peakBeforeExit = exitTimestamp ? peakTimestamp < exitTimestamp : false;
@@ -172,6 +186,11 @@ export function analyzePriceMovement(candles, entryTimestamp, entryPrice, exitTi
     // Find max high in first hour
     const maxIn1h = Math.max(...candlesFirst1h.map(c => c.high));
     immediateMove1h = ((maxIn1h - entryPrice) / entryPrice) * 100;
+    
+    // Cap extreme immediate moves
+    if (!isFinite(immediateMove1h) || Math.abs(immediateMove1h) > MAX_REASONABLE_ROI) {
+      immediateMove1h = immediateMove1h > 0 ? MAX_REASONABLE_ROI : -MAX_REASONABLE_ROI;
+    }
     
     // Classify entry quality based on immediate price action
     if (immediateMove1h >= 50) {
@@ -191,6 +210,11 @@ export function analyzePriceMovement(candles, entryTimestamp, entryPrice, exitTi
   let currentPriceRoi = 0;
   if (currentPrice) {
     currentPriceRoi = ((currentPrice - entryPrice) / entryPrice) * 100;
+    
+    // Cap extreme current ROI
+    if (!isFinite(currentPriceRoi) || Math.abs(currentPriceRoi) > MAX_REASONABLE_ROI) {
+      currentPriceRoi = currentPriceRoi > 0 ? MAX_REASONABLE_ROI : -MAX_REASONABLE_ROI;
+    }
   }
   
   return { 
@@ -337,9 +361,22 @@ export async function enrichTradeWithPrices(trade, chain = 'eth') {
     const exitedBeforePeak = trade.exit_timestamp && analysis.peakBeforeExit === false;
     
     // Capture efficiency: how much of potential upside was realized
-    const captureEfficiency = analysis.maxPriceRoi > 0 
-      ? (trade.realized_roi / analysis.maxPriceRoi) * 100 
-      : 0;
+    // Cap to ±10,000% to prevent extreme values (e.g., when max_potential_roi is capped)
+    const MAX_CAPTURE_EFFICIENCY = 10000; // ±10,000%
+    
+    let captureEfficiency = 0;
+    if (analysis.maxPriceRoi > 0) {
+      captureEfficiency = (trade.realized_roi / analysis.maxPriceRoi) * 100;
+      
+      // Cap extreme values
+      if (!isFinite(captureEfficiency) || Math.abs(captureEfficiency) > MAX_CAPTURE_EFFICIENCY) {
+        const originalEff = captureEfficiency;
+        captureEfficiency = captureEfficiency > 0 ? MAX_CAPTURE_EFFICIENCY : -MAX_CAPTURE_EFFICIENCY;
+        if (Math.abs(originalEff) > 1000) { // Only log if really extreme
+          console.log(`[Enrichment] Capping capture_efficiency: ${isFinite(originalEff) ? originalEff.toFixed(0) : 'Infinity'}% -> ${captureEfficiency}%`);
+        }
+      }
+    }
     
     // Log enrichment results
     const statusEmoji = analysis.peakBeforeExit ? '✅' : '❌';

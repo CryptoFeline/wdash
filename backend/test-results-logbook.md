@@ -2,24 +2,24 @@
 
 **Wallet**: `2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo`
 **Window**: 30 days
-**Test Time**: 2025-11-16T13:55:23.972Z
+**Test Time**: 2025-11-16T15:03:56.187Z
 
 ---
 
 ## WALLET PROFILE
 
-**Timestamp**: 2025-11-16T13:54:34.300Z
+**Timestamp**: 2025-11-16T15:03:04.027Z
 
 ```json
 {
-  "totalPnl": "422289.299971577",
+  "totalPnl": "422289.2999715771",
   "totalPnlRoi": "2245.01%",
   "totalWinRate": "64.00%",
   "totalTxsBuy": 41,
   "totalTxsSell": 19,
-  "totalVolumeBuy": "188316.83439985666",
+  "totalVolumeBuy": "188316.83439985657",
   "totalVolumeSell": "441099.4180323038",
-  "nativeTokenBalance": "0.001500000 SOL ($0.208904236745886290188500000)",
+  "nativeTokenBalance": "0.001500000 SOL ($0.210084416307596330107500000)",
   "unrealizedPnl": "48674578985.490269257833775637160879",
   "favoriteMcapType": "4",
   "topTokens": [
@@ -43,7 +43,7 @@
 
 ## TOKEN LIST
 
-**Timestamp**: 2025-11-16T13:54:35.571Z
+**Timestamp**: 2025-11-16T15:03:05.348Z
 
 ```json
 {
@@ -557,14 +557,14 @@
 
 ## TRADING HISTORY (7D)
 
-**Timestamp**: 2025-11-16T13:54:36.859Z
+**Timestamp**: 2025-11-16T15:03:06.661Z
 
 ```json
 {
   "totalTrades": 39,
   "tradesInWindow": 39,
   "windowDays": 30,
-  "cutoffTime": "2025-10-17T13:54:33.922Z",
+  "cutoffTime": "2025-10-17T15:03:03.634Z",
   "trades": [
     {
       "type": "BUY",
@@ -964,7 +964,7 @@
 
 ## FIFO RECONSTRUCTION
 
-**Timestamp**: 2025-11-16T13:54:37.863Z
+**Timestamp**: 2025-11-16T15:03:07.665Z
 
 ```json
 {
@@ -1079,8 +1079,8 @@
       "token_address": "4VCAv2JiLiUmuAqiGWZj8qugNkcGaJmMFej9KL78VBcm",
       "entry_timestamp": 1761312950000,
       "exit_timestamp": null,
-      "holding_time_ms": 1988327863,
-      "holding_time_hours": "552.31",
+      "holding_time_ms": 1992437665,
+      "holding_time_hours": "553.45",
       "amount": 179.03480299999995,
       "entry_price": 0.009140180236879479,
       "exit_price": null,
@@ -1100,8 +1100,8 @@
       "token_address": "4VCAv2JiLiUmuAqiGWZj8qugNkcGaJmMFej9KL78VBcm",
       "entry_timestamp": 1761313611000,
       "exit_timestamp": null,
-      "holding_time_ms": 1987666863,
-      "holding_time_hours": "552.13",
+      "holding_time_ms": 1991776665,
+      "holding_time_hours": "553.27",
       "amount": 1090.153416,
       "entry_price": 0.023433844330163527,
       "exit_price": null,
@@ -1121,8 +1121,8 @@
       "token_address": "4VCAv2JiLiUmuAqiGWZj8qugNkcGaJmMFej9KL78VBcm",
       "entry_timestamp": 1761313886000,
       "exit_timestamp": null,
-      "holding_time_ms": 1987391863,
-      "holding_time_hours": "552.05",
+      "holding_time_ms": 1991501665,
+      "holding_time_hours": "553.19",
       "amount": 534.957232,
       "entry_price": 0.030848458738155726,
       "exit_price": null,
@@ -1142,8 +1142,8 @@
       "token_address": "CujUTBWpBoNjtcMQsY3KRk1qL5BanDvD2jFNAk4ERh1h",
       "entry_timestamp": 1761483743000,
       "exit_timestamp": null,
-      "holding_time_ms": 1817534863,
-      "holding_time_hours": "504.87",
+      "holding_time_ms": 1821644665,
+      "holding_time_hours": "506.01",
       "amount": 47573744.292236,
       "entry_price": 0.000087002527582751,
       "exit_price": null,
@@ -1163,8 +1163,8 @@
       "token_address": "BdimREtvUDaCnkajUGiP3DkbuFHznWDx2wmXimHBKnwk",
       "entry_timestamp": 1761593285000,
       "exit_timestamp": null,
-      "holding_time_ms": 1707992863,
-      "holding_time_hours": "474.44",
+      "holding_time_ms": 1712102665,
+      "holding_time_hours": "475.58",
       "amount": 47573744.292236,
       "entry_price": 0.000088228224674025,
       "exit_price": null,
@@ -1184,8 +1184,8 @@
       "token_address": "EhUNsnEhN2AiyzK2mWoGBGjN6UAZ3C1ybcV2zbTpK1iN",
       "entry_timestamp": 1761601563000,
       "exit_timestamp": null,
-      "holding_time_ms": 1699714863,
-      "holding_time_hours": "472.14",
+      "holding_time_ms": 1703824665,
+      "holding_time_hours": "473.28",
       "amount": 47573744.292236,
       "entry_price": 0.000087415486459381,
       "exit_price": null,
@@ -1245,8 +1245,8 @@
       "token_address": "DExkVNuAtmyJ9UBbxjKzciQ34LPYbTy3SkRjQZzSa7UW",
       "entry_timestamp": 1761776171000,
       "exit_timestamp": null,
-      "holding_time_ms": 1525106863,
-      "holding_time_hours": "423.64",
+      "holding_time_ms": 1529216665,
+      "holding_time_hours": "424.78",
       "amount": 23715.757817002013,
       "entry_price": 0.00008608435305918,
       "exit_price": null,
@@ -1286,8 +1286,8 @@
       "token_address": "3DKQipwzUARoGp4RGsyyfq4j2sieCy1rarbEtdwKEWdy",
       "entry_timestamp": 1761776542000,
       "exit_timestamp": null,
-      "holding_time_ms": 1524735863,
-      "holding_time_hours": "423.54",
+      "holding_time_ms": 1528845665,
+      "holding_time_hours": "424.68",
       "amount": 30008760.594914,
       "entry_price": 0.000086238114343032,
       "exit_price": null,
@@ -1327,8 +1327,8 @@
       "token_address": "Fy6LPZYrJVPcaMDT1gi5modKzXdLTRy45HgoSDguMzS9",
       "entry_timestamp": 1763181760000,
       "exit_timestamp": null,
-      "holding_time_ms": 119517863,
-      "holding_time_hours": "33.20",
+      "holding_time_ms": 123627665,
+      "holding_time_hours": "34.34",
       "amount": 47456722.730769,
       "entry_price": 0.000088217853560686,
       "exit_price": null,
@@ -1368,8 +1368,8 @@
       "token_address": "5PNqXhVEUXX4FBRrS6Ad9GfZbXuEoSR5UWqJfLALAV3x",
       "entry_timestamp": 1763182023000,
       "exit_timestamp": null,
-      "holding_time_ms": 119254863,
-      "holding_time_hours": "33.13",
+      "holding_time_ms": 123364665,
+      "holding_time_hours": "34.27",
       "amount": 47761356.184387,
       "entry_price": 0.000088224072216654,
       "exit_price": null,
@@ -1409,8 +1409,8 @@
       "token_address": "5CwekrADX3MqPLT2tYReJhjpnmPDmFwf8153znVay2av",
       "entry_timestamp": 1763186666000,
       "exit_timestamp": null,
-      "holding_time_ms": 114611863,
-      "holding_time_hours": "31.84",
+      "holding_time_ms": 118721665,
+      "holding_time_hours": "32.98",
       "amount": 47661108.088979,
       "entry_price": 0.000088696690070214,
       "exit_price": null,
@@ -1450,8 +1450,8 @@
       "token_address": "9cGzx2bU5kWKaWTSQrHsWGMHREa5WE8HnosqydsXPYob",
       "entry_timestamp": 1763197233000,
       "exit_timestamp": null,
-      "holding_time_ms": 104044863,
-      "holding_time_hours": "28.90",
+      "holding_time_ms": 108154665,
+      "holding_time_hours": "30.04",
       "amount": 47858254.667501,
       "entry_price": 0.000087477833500505,
       "exit_price": null,
@@ -1471,8 +1471,8 @@
       "token_address": "9cGzx2bU5kWKaWTSQrHsWGMHREa5WE8HnosqydsXPYob",
       "entry_timestamp": 1763199998000,
       "exit_timestamp": null,
-      "holding_time_ms": 101279863,
-      "holding_time_hours": "28.13",
+      "holding_time_ms": 105389665,
+      "holding_time_hours": "29.27",
       "amount": 9884.822612,
       "entry_price": 0.028573097473405626,
       "exit_price": null,
@@ -1512,8 +1512,8 @@
       "token_address": "3XndMXbsHQQpAhzv9U2UAtVumVjeRkJLtpNyRd94qsnJ",
       "entry_timestamp": 1763209116000,
       "exit_timestamp": null,
-      "holding_time_ms": 92161863,
-      "holding_time_hours": "25.60",
+      "holding_time_ms": 96271665,
+      "holding_time_hours": "26.74",
       "amount": 24363.213385999203,
       "entry_price": 0.000143608224674025,
       "exit_price": null,
@@ -1533,8 +1533,8 @@
       "token_address": "3XndMXbsHQQpAhzv9U2UAtVumVjeRkJLtpNyRd94qsnJ",
       "entry_timestamp": 1763209399000,
       "exit_timestamp": null,
-      "holding_time_ms": 91878863,
-      "holding_time_hours": "25.52",
+      "holding_time_ms": 95988665,
+      "holding_time_hours": "26.66",
       "amount": 107913.040924,
       "entry_price": 0.00013039202564878,
       "exit_price": null,
@@ -1554,8 +1554,8 @@
       "token_address": "4qbHjy5Pg7CtXiqNhK3YLxAcgisWYB86woaLy9U5VAqr",
       "entry_timestamp": 1763209615000,
       "exit_timestamp": null,
-      "holding_time_ms": 91662863,
-      "holding_time_hours": "25.46",
+      "holding_time_ms": 95772665,
+      "holding_time_hours": "26.60",
       "amount": 48872549.019607,
       "entry_price": 0.000143853761283854,
       "exit_price": null,
@@ -1595,8 +1595,8 @@
       "token_address": "AmjWdQ4jZgJLdLAKZAzVpvfKSmZwdtP3Kn8Rgk37VxEy",
       "entry_timestamp": 1763209778000,
       "exit_timestamp": null,
-      "holding_time_ms": 91499863,
-      "holding_time_hours": "25.42",
+      "holding_time_ms": 95609665,
+      "holding_time_hours": "26.56",
       "amount": 24363.201701000333,
       "entry_price": 0.000143874222668006,
       "exit_price": null,
@@ -1636,8 +1636,8 @@
       "token_address": "2sfEsV2HZpX31CKLHim1DwgV4mSngZsEacU4MGg6qNCn",
       "entry_timestamp": 1763255902000,
       "exit_timestamp": null,
-      "holding_time_ms": 45375863,
-      "holding_time_hours": "12.60",
+      "holding_time_ms": 49485665,
+      "holding_time_hours": "13.75",
       "amount": 48528645.316506,
       "entry_price": 0.000141848545636913,
       "exit_price": null,
@@ -1677,8 +1677,8 @@
       "token_address": "98dbVQiXXXDuNLwCiJyYWHmpwoUaUxZvFJnKAEBtNGnk",
       "entry_timestamp": 1763256251000,
       "exit_timestamp": null,
-      "holding_time_ms": 45026863,
-      "holding_time_hours": "12.51",
+      "holding_time_ms": 49136665,
+      "holding_time_hours": "13.65",
       "amount": 48514594.550516,
       "entry_price": 0.000142094082246743,
       "exit_price": null,
@@ -1698,8 +1698,8 @@
       "token_address": "98dbVQiXXXDuNLwCiJyYWHmpwoUaUxZvFJnKAEBtNGnk",
       "entry_timestamp": 1763257163000,
       "exit_timestamp": null,
-      "holding_time_ms": 44114863,
-      "holding_time_hours": "12.25",
+      "holding_time_ms": 48224665,
+      "holding_time_hours": "13.40",
       "amount": 9386.409805,
       "entry_price": 0.02209630777994782,
       "exit_price": null,
@@ -1739,8 +1739,8 @@
       "token_address": "8vrT7Kvg67ySxL7brqvv3TXpXAv5yUMwi72m7467DaSX",
       "entry_timestamp": 1763257988000,
       "exit_timestamp": null,
-      "holding_time_ms": 43289863,
-      "holding_time_hours": "12.02",
+      "holding_time_ms": 47399665,
+      "holding_time_hours": "13.17",
       "amount": 48333122.314316,
       "entry_price": 0.000141684854563694,
       "exit_price": null,
@@ -1760,8 +1760,8 @@
       "token_address": "B7CTRhApmEnuS3UFFaRmXYkhmc92dzxQt68Dn2od7mMm",
       "entry_timestamp": 1763263084000,
       "exit_timestamp": null,
-      "holding_time_ms": 38193862,
-      "holding_time_hours": "10.61",
+      "holding_time_ms": 42303664,
+      "holding_time_hours": "11.75",
       "amount": 48872549.019607,
       "entry_price": 0.000143833299899702,
       "exit_price": null,
@@ -1784,7 +1784,7 @@
 
 ## RUG DETECTION
 
-**Timestamp**: 2025-11-16T13:54:59.330Z
+**Timestamp**: 2025-11-16T15:03:30.408Z
 
 ```json
 {
@@ -2232,7 +2232,7 @@
 
 ## OHLC ENRICHMENT
 
-**Timestamp**: 2025-11-16T13:55:23.970Z
+**Timestamp**: 2025-11-16T15:03:56.185Z
 
 ```json
 {
@@ -2606,7 +2606,7 @@
 
 ## FINAL ANALYSIS
 
-**Timestamp**: 2025-11-16T13:55:23.972Z
+**Timestamp**: 2025-11-16T15:03:56.187Z
 
 ```json
 {
