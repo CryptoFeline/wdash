@@ -1279,3 +1279,226 @@ x-zkdex-env: 0
   "msg": ""
 }
 ```
+
+---
+
+14. Token Overview (GET)
+
+- Example: `https://web3.okx.com/priapi/v1/dx/market/v2/token/overview?chainId=501&tokenContractAddress=AU92aF81CMsTnU7PND4rhybmHp6ffdcCfyJkVagRpump&t=1763236197745`
+- **Purpose**: Get comprehensive token metadata, liquidity, deployer analysis, rug detection flags, and social links
+- **Key Fields**:
+  - `basicInfo`: Token identity, deployer stats (devCreateTokenCount, devRugPullTokenCount)
+  - `marketInfo`: Market cap, total liquidity, holders, price changes, risk levels
+  - `bundleHoldingRatio` / `devHoldingRatio`: Ownership concentration
+  - `tagList`: Risk flags (lowLiquidity, devHoldingStatus_sell, snipers, etc.)
+  - `socialMedia`: Twitter, Telegram, website, description
+- **Use Cases**:
+  - Rug detection (devRugPullTokenCount > 0 = deployer has rug history)
+  - Liquidity verification (totalLiquidity for open positions)
+  - Deployer reputation (devCreateTokenCount)
+  - Social link enrichment
+- Response:
+
+```json
+{
+  "code": 0,
+  "data": {
+    "basicInfo": {
+      "chainLogoUrl": "https://static.coinall.ltd/cdn/wallet/logo/SOL-20220525.png",
+      "chainName": "Solana",
+      "devCreateTokenCount": "12", // number of tokens created by deployer
+      "devRugPullTokenCount": "3", // number of tokens the developer removed liquidity from
+      "explorerUrl": "https://web3.okx.com/explorer/solana/token/AU92aF81CMsTnU7PND4rhybmHp6ffdcCfyJkVagRpump",
+      "isInternal": "0",
+      "isMeme": "1",
+      "isNativeToken": "false",
+      "isNotSupportTxNativeToken": "0",
+      "launchedTokenCount": "1",
+      "tokenContractAddress": "AU92aF81CMsTnU7PND4rhybmHp6ffdcCfyJkVagRpump",
+      "tokenName": "Dark Whale Network", // Token name
+      "tokenSymbol": "DARKWHALE" // Token symbol
+    },
+    "bundleHoldingRatio": "0", // ratio of bundle buyers of the token (bought on token deploy)
+    "devHoldingRatio": "0", // nratio of developer holdings
+    "learnMore": {
+      "explorer": "",
+      "officialWebSite": "https://darkwhale.net/",
+      "whitePaper": ""
+    },
+    "marketInfo": {
+      "burntLiquidity": "", // burned liquidity
+      "circulatingSupply": "999837662.0896870000", // circulating supply if the token
+      "fdv": "3276.103095602370779639", // FDV of token in USD
+      "holders": "93", // Amount of token holders
+      "lpTokenBurntRatio": "", // burned liquidity token ratio
+      "marketCap": "3276.103095602370779639", // Token Market cap
+      "maxSupply": "999837662.0896870000", // Total token supply
+      "priceChange1H": "-0.58",
+      "priceChange24H": "-10.46",
+      "priceChange4H": "0.85",
+      "priceChange5M": "0",
+      "riskControlLevel": "3",
+      "riskLevel": "3",
+      "snipersClear": "6", // Snipers who sold all
+      "snipersTotal": "8", // total token snipers
+      "suspiciousRatio": "0",
+      "tokenCreateTime": "1763100173000", // Token creation time
+      "tokenCreatorAddress": "6y63UNDghu7GuQgicGcwhjw3dpkGypiBD7Z1Vd6AEtMF", // token creator
+      "totalLiquidity": "5952.42789679170818447721552996" // Total Liquidity USD
+    },
+    "memeInfo": {
+      "createTime": "1763100173000",
+      "creatorAddress": "6y63UNDghu7GuQgicGcwhjw3dpkGypiBD7Z1Vd6AEtMF",
+      "hotSpotTagList": [
+        {
+          "linkUrl": "https://pump.fun/coin/AU92aF81CMsTnU7PND4rhybmHp6ffdcCfyJkVagRpump",
+          "logoUrl": "https://static.coinall.ltd/cdn/web3/dex/market/pumpfun_v2.png",
+          "moduleTagName": "Pump.fun", // Token was initially launched here
+          "moduleType": "1"
+        }
+      ],
+      "progress": "",
+      "tokenSymbol": "DARKWHALE",
+      "transactions": "18",
+      "volume": "368.53796333128"
+    },
+    "snipersClear": "6",
+    "snipersTotal": "8",
+    "socialMedia": {
+      "description": "Darkwhale is a decentralized privacy infrastructure that enables completely anonymous transactions on Solana using zero-knowledge proof technology.",
+      "discord": "",
+      "facebook": "",
+      "github": "",
+      "medium": "",
+      "officialWebsite": "https://darkwhale.net/",
+      "reddit": "",
+      "score": "",
+      "telegram": "https://t.me/darkwhale_net",
+      "twitter": "https://x.com/darkwhale_net",
+      "twitterDetailInfo": {
+        "twitter": "https://x.com/darkwhale_net",
+        "type": "1"
+      },
+      "twitterLinkType": "-1"
+    },
+    "suspiciousHoldingRatio": "",
+    "tagList": [
+      ["lowLiquidity"],
+      ["devHoldingStatus_sell"],
+      ["devHoldingRatio_0"],
+      ["snipersClear_6"],
+      ["snipersTotal_8"],
+      ["smartMoneyBuy"],
+      ["ds_paid"]
+    ],
+    "tokenTagVO": {
+      "smartMoneySell": {
+        "tagExt": null,
+        "tagType": "NO_VALUE",
+        "tagValue": ""
+      },
+      "pumpfun": {
+        "tagExt": null,
+        "tagType": "NO_VALUE",
+        "tagValue": ""
+      },
+      "ds_paid": {
+        "tagExt": null,
+        "tagType": "NO_VALUE",
+        "tagValue": ""
+      },
+      "smartMoneyBuy": {
+        "tagExt": null,
+        "tagType": "NO_VALUE",
+        "tagValue": ""
+      },
+      "bundleHoldingRatioAth": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "0.157871"
+      },
+      "snipersTotal": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "8"
+      },
+      "creatorMigrationCnt": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "1"
+      },
+      "quickMigration": {
+        "tagExt": null,
+        "tagType": "NO_VALUE",
+        "tagValue": ""
+      },
+      "sniperHoldingRatio": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "0"
+      },
+      "devHoldingRatio": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "0"
+      },
+      "bundleHolderAmount": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "0"
+      },
+      "bundleHoldingTokenAmount": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "0"
+      },
+      "snipersClear": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "6"
+      },
+      "lowLiquidity": {
+        "tagExt": null,
+        "tagType": "NO_VALUE",
+        "tagValue": ""
+      },
+      "devHoldingStatus": {
+        "tagExt": null,
+        "tagType": "DISCRETE_VALUE",
+        "tagValue": "sell"
+      },
+      "bundleHoldingRatio": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "0"
+      },
+      "creatorMintCnt": {
+        "tagExt": null,
+        "tagType": "CONTINUOUS_VALUE",
+        "tagValue": "12"
+      },
+      "smartMoneyHoldingStatus": {
+        "tagExt": null,
+        "tagType": "DISCRETE_VALUE",
+        "tagValue": "smartMoneySellAll"
+      },
+      "smartMoneySellAll": {
+        "tagExt": null,
+        "tagType": "NO_VALUE",
+        "tagValue": ""
+      }
+    },
+    "tokenThirdPartInfo": {
+      "bubbleMapsUrl": "https://faster100x.com/en/embedded?source=okx.com&tokenAddress=AU92aF81CMsTnU7PND4rhybmHp6ffdcCfyJkVagRpump", // Bubble maps link via FasterMaps
+      "mapWebSiteColorLogo": "https://static.coinall.ltd/cdn/web3/dex/market/faster100-color.png",
+      "mapWebSiteGreyLogo": "https://static.coinall.ltd/cdn/web3/dex/market/faster100-grey.png",
+      "mapWebSiteName": "FasterMaps",
+      "mapWebSiteUrl": "https://faster100x.com/en/embedded?source=okx.com&tokenAddress=AU92aF81CMsTnU7PND4rhybmHp6ffdcCfyJkVagRpump"
+    }
+  },
+  "detailMsg": "",
+  "error_code": "0",
+  "error_message": "",
+  "msg": ""
+}
+```

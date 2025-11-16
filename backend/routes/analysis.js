@@ -5,6 +5,9 @@ import { enrichTradesWithPrices } from '../services/priceEnrichment.js';
 import { enrichTradesWithRiskCheck, filterRiskyTrades } from '../services/riskCheck.js';
 import { enrichTradesWithMarketCap, calculateMcapDistribution } from '../services/marketCapService.js';
 import { calculateDiversityMetrics, calculateTemporalDiversity } from '../services/diversityMetrics.js';
+import { fetchAllTransactionsWithRetry, getTransactionSummary } from '../services/transactionFetcher.js';
+import { reconstructFIFOTrades, validateFIFOReconstruction } from '../services/fifoReconstruction.js';
+import { formatForAdvancedAnalysis } from '../services/tokenAggregation.js';
 import axios from 'axios';
 
 const router = express.Router();
@@ -86,134 +89,95 @@ router.get('/summary/:walletAddress', async (req, res) => {
 /**
  * GET /api/analysis/trades/:walletAddress
  * 
- * Returns reconstructed trades using FIFO algorithm
+ * Returns FIFO-reconstructed trades from individual transactions
+ * 
+ * Uses OKX Endpoint #7 (wallet-profile/trade-history) to fetch individual
+ * buy/sell transactions, then reconstructs matched trades using FIFO algorithm
+ * per DEEP_ANALYSIS_PLAN.md
  */
 router.get('/trades/:walletAddress', async (req, res) => {
   try {
     const { walletAddress } = req.params;
-    const chain = req.query.chain || 'eth';
+    const chain = req.query.chain || 'sol';
     
-    console.log(`[Analysis API] Reconstructing trades for ${walletAddress} on ${chain}`);
+    console.log(`[Analysis API] Fetching individual transactions for ${walletAddress} on ${chain}`);
     
-    // Fetch from OKX API (correct endpoint with all required params)
-    const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
-    const okxUrl = `https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list`;
-    const response = await axios.get(okxUrl, {
-      params: {
-        walletAddress,
-        chainId,
-        isAsc: false,
-        sortType: 1, // Sort by PnL
-        filterEmptyBalance: false, // All tokens including sold
-        offset: 0,
-        limit: 100,
-        t: Date.now()
-      },
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'application/json'
-      },
-      timeout: 15000
+    // Step 1: Fetch ALL individual transactions using OKX Endpoint #7
+    const transactions = await fetchAllTransactionsWithRetry(walletAddress, chain, {
+      pageSize: 100,
+      maxPages: 50,
+      filterRisk: true,
+      tradeTypes: [1, 2] // BUY and SELL
     });
     
-    if (response.data?.code !== '0' && response.data?.code !== 0) {
-      console.error('[Analysis API] OKX API error:', response.data);
-      return res.status(404).json({ error: 'Wallet not found or OKX API error' });
+    if (transactions.length === 0) {
+      return res.json({
+        wallet_address: walletAddress,
+        chain,
+        trades: [],
+        open_positions: [],
+        total_count: 0,
+        closed_count: 0,
+        open_count: 0,
+        message: 'No transactions found for this wallet'
+      });
     }
     
-    if (!response.data?.data?.tokenList) {
-      console.error('[Analysis API] No token list in OKX response');
-      return res.status(404).json({ error: 'No trade data available' });
+    console.log(`[Analysis API] Fetched ${transactions.length} individual transactions`);
+    
+    // Log transaction summary
+    const txSummary = getTransactionSummary(transactions);
+    console.log(`[Analysis API] Transaction summary:`, txSummary);
+    
+    // Step 2: Reconstruct FIFO trades from individual transactions
+    console.log(`[Analysis API] Reconstructing FIFO trades...`);
+    const fifoResult = reconstructFIFOTrades(transactions);
+    
+    // Validate reconstruction
+    validateFIFOReconstruction(transactions, fifoResult);
+    
+    const { closedTrades, openPositions } = fifoResult;
+    
+    console.log(`[Analysis API] FIFO reconstruction complete: ${closedTrades.length} closed, ${openPositions.length} open`);
+    
+    // Step 3: Enrich closed trades with price data (skip open positions)
+    const enablePriceEnrichment = req.query.enrichPrices !== 'false';
+    const enableRiskCheck = req.query.checkRisks !== 'false';
+    
+    let enrichedClosedTrades = closedTrades;
+    
+    if (enablePriceEnrichment && closedTrades.length > 0) {
+      console.log(`[Analysis API] Enriching ${closedTrades.length} closed trades with OHLC data...`);
+      enrichedClosedTrades = await enrichTradesWithPrices(closedTrades, chain);
+      console.log(`[Analysis API] Price enrichment complete`);
     }
     
-    const walletData = response.data.data;
-    
-    // OKX token-list returns aggregated trade data, not individual transactions
-    // Convert to our expected trade format
-    const trades = (walletData.tokenList || []).map((token, index) => ({
-      trade_id: `${token.tokenContractAddress || token.tokenAddress}_agg`,
-      token_address: token.tokenContractAddress || token.tokenAddress,
-      token_symbol: token.tokenSymbol,
-      token_name: token.tokenSymbol, // OKX doesn't provide name in token-list
-      logo_url: token.tokenLogoUrl,
-      
-      // Buy side
-      buy_price_avg: parseFloat(token.buyAvgPrice || 0),
-      buy_volume: parseFloat(token.buyVolume || 0),
-      buy_quantity: parseFloat(token.buyVolume || 0),
-      total_buy_txs: parseInt(token.totalTxBuy || 0),
-      
-      // Sell side  
-      sell_price_avg: parseFloat(token.sellAvgPrice || 0),
-      sell_volume: parseFloat(token.sellVolume || 0),
-      sell_quantity: parseFloat(token.sellVolume || 0),
-      total_sell_txs: parseInt(token.totalTxSell || 0),
-      
-      // PnL metrics
-      realized_pnl: parseFloat(token.realizedPnl || 0),
-      realized_pnl_percent: parseFloat(token.realizedPnlPercentage || 0),
-      unrealized_pnl: parseFloat(token.unrealizedPnl || 0),
-      unrealized_pnl_percent: parseFloat(token.unrealizedPnlPercentage || 0),
-      total_pnl: parseFloat(token.totalPnl || 0),
-      total_pnl_percent: parseFloat(token.totalPnlPercentage || 0),
-      
-      // Current position
-      current_balance: parseFloat(token.balance || 0),
-      current_balance_usd: parseFloat(token.balanceUsd || 0),
-      hold_avg_price: parseFloat(token.holdAvgPrice || 0),
-      holding_time: parseInt(token.holdingTime || 0),
-      
-      // Risk
-      risk_level: parseInt(token.riskLevel || token.riskControlLevel || 1),
-      
-      // Status
-      status: parseFloat(token.balance || 0) > 0 ? 'open' : 'closed',
-      
-      // Timestamps
-      latest_time: parseInt(token.latestTime || Date.now()),
-      entry_time: parseInt(token.latestTime || Date.now()), // Approximation
-      exit_time: parseFloat(token.balance || 0) > 0 ? null : parseInt(token.latestTime || Date.now())
-    }));
-    
-    console.log(`[Analysis API] Returning ${trades.length} aggregated trades for ${walletAddress}`);
-    
-    // Enrich closed trades with price data (skip open positions)
-    const enablePriceEnrichment = req.query.enrichPrices !== 'false'; // Default: true
-    const enableRiskCheck = req.query.checkRisks !== 'false'; // Default: true
-    
-    if (enablePriceEnrichment) {
-      const closedTrades = trades.filter(t => t.status === 'closed');
-      if (closedTrades.length > 0) {
-        console.log(`[Analysis API] Enriching ${closedTrades.length} closed trades with OHLC data...`);
-        const enrichedClosed = await enrichTradesWithPrices(closedTrades, chain);
-        
-        // Merge enriched trades back
-        const enrichedMap = new Map(enrichedClosed.map(t => [t.trade_id, t]));
-        trades = trades.map(t => enrichedMap.get(t.trade_id) || t);
-        
-        console.log(`[Analysis API] Price enrichment complete`);
-      }
-    }
-    
-    // Risk check for all trades
+    // Step 4: Risk check (already have risk levels from OKX, but can enhance)
     if (enableRiskCheck) {
-      console.log(`[Analysis API] Running risk checks for ${trades.length} trades...`);
-      trades = await enrichTradesWithRiskCheck(trades, chain);
+      console.log(`[Analysis API] Running enhanced risk checks...`);
+      enrichedClosedTrades = await enrichTradesWithRiskCheck(enrichedClosedTrades, chain);
       console.log(`[Analysis API] Risk checks complete`);
     }
     
-    const riskyTradesCount = trades.filter(t => t.is_risky).length;
+    // Combine all trades (closed + open)
+    const allTrades = [...enrichedClosedTrades, ...openPositions];
+    const riskyTradesCount = allTrades.filter(t => t.is_risky || t.risk_level >= 4).length;
     
     res.json({
       wallet_address: walletAddress,
       chain,
-      trades,
-      total_count: trades.length,
-      open_positions: trades.filter(t => t.status === 'open').length,
-      closed_trades: trades.filter(t => t.status === 'closed').length,
+      trades: allTrades,
+      closed_trades: enrichedClosedTrades,
+      open_positions: openPositions,
+      total_count: allTrades.length,
+      closed_count: enrichedClosedTrades.length,
+      open_count: openPositions.length,
       risky_trades: riskyTradesCount,
       enriched: enablePriceEnrichment,
-      risk_checked: enableRiskCheck
+      risk_checked: enableRiskCheck,
+      transaction_summary: txSummary,
+      data_source: 'OKX Endpoint #7 (individual transactions)',
+      reconstruction_method: 'FIFO'
     });
   } catch (error) {
     console.error('[Analysis API] Error reconstructing trades:', error.message);
@@ -227,121 +191,27 @@ router.get('/trades/:walletAddress', async (req, res) => {
 /**
  * GET /api/analysis/metrics/:walletAddress
  * 
- * Returns computed metrics from reconstructed trades
+ * Returns computed metrics from FIFO-reconstructed trades
+ * 
+ * Uses OKX Endpoint #7 to fetch individual transactions, reconstructs FIFO trades,
+ * then computes all metrics per DEEP_ANALYSIS_PLAN.md
  */
 router.get('/metrics/:walletAddress', async (req, res) => {
   try {
     const { walletAddress } = req.params;
-    const chain = req.query.chain || 'eth';
+    const chain = req.query.chain || 'sol';
     
     console.log(`[Analysis API] Computing metrics for ${walletAddress} on ${chain}`);
     
-    // Fetch from OKX API (correct endpoint with all required params)
-    const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
-    const okxUrl = `https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list`;
-    const response = await axios.get(okxUrl, {
-      params: {
-        walletAddress,
-        chainId,
-        isAsc: false,
-        sortType: 1, // Sort by PnL
-        filterEmptyBalance: false, // All tokens including sold
-        offset: 0,
-        limit: 100,
-        t: Date.now()
-      },
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'application/json'
-      },
-      timeout: 15000
+    // Step 1: Fetch individual transactions using OKX Endpoint #7
+    const transactions = await fetchAllTransactionsWithRetry(walletAddress, chain, {
+      pageSize: 100,
+      maxPages: 50,
+      filterRisk: true,
+      tradeTypes: [1, 2]
     });
     
-    if (response.data?.code !== '0' && response.data?.code !== 0) {
-      console.error('[Analysis API] OKX API error:', response.data);
-      return res.status(404).json({ error: 'Wallet not found or OKX API error' });
-    }
-    
-    if (!response.data?.data?.tokenList) {
-      console.error('[Analysis API] No token list in OKX response');
-      return res.status(404).json({ error: 'No trade data available' });
-    }
-    
-    const walletData = response.data.data;
-    
-    // Convert OKX token list to trade format for metrics computation
-    // OKX returns aggregated data per token, we treat each token as a "trade"
-    const trades = (walletData.tokenList || []).map((token, index) => {
-      const buyVolume = parseFloat(token.buyVolume || 0);
-      const sellVolume = parseFloat(token.sellVolume || 0);
-      const balance = parseFloat(token.balance || 0);
-      const realizedPnl = parseFloat(token.realizedPnl || 0);
-      const realizedPnlPct = parseFloat(token.realizedPnlPercentage || 0);
-      const holdingTime = parseInt(token.holdingTime || 0); // in seconds
-      const latestTime = parseInt(token.latestTime || Date.now()); // last trade timestamp
-      
-      // Calculate approximate entry/exit timestamps
-      // For closed positions: exitTime = latestTime, entryTime = latestTime - holdingTime
-      // For open positions: entryTime = latestTime - holdingTime, exitTime = null
-      const exitTimestamp = balance > 0 ? null : latestTime;
-      const entryTimestamp = latestTime - (holdingTime * 1000); // Convert seconds to ms
-      
-      return {
-        // Identity
-        trade_id: `${token.tokenContractAddress || token.tokenAddress}_${index}`,
-        token_address: token.tokenContractAddress || token.tokenAddress,
-        token_symbol: token.tokenSymbol,
-        token_name: token.tokenSymbol,
-        
-        // Prices (OKX gives averages)
-        entry_price: parseFloat(token.buyAvgPrice || 0),
-        exit_price: parseFloat(token.sellAvgPrice || 0),
-        quantity: sellVolume, // Use sell volume as quantity for closed trades
-        
-        // Values
-        entry_value: buyVolume,
-        exit_value: sellVolume,
-        
-        // PnL
-        realized_pnl: realizedPnl,
-        realized_roi: realizedPnlPct,
-        
-        // Holding
-        holding_seconds: holdingTime,
-        holding_hours: holdingTime / 3600,
-        holding_days: holdingTime / 86400,
-        
-        // Timestamps (required for OHLC enrichment)
-        entry_timestamp: entryTimestamp,
-        exit_timestamp: exitTimestamp,
-        latest_time: latestTime,
-        
-        // Win/loss
-        win: realizedPnl > 0,
-        
-        // Status
-        status: balance > 0 ? 'open' : 'closed',
-        
-        // Market cap bracket (from OKX mcapTxsBuyList - will be enriched later)
-        mcap_bracket: 1, // Default to $100k-$1M
-        
-        // Risk
-        riskLevel: parseInt(token.riskLevel || token.riskControlLevel || 1),
-        
-        // Placeholder fields for skills assessment (will be enriched with OHLC data)
-        max_price_during_hold: 0,
-        max_potential_roi: 0,
-        time_to_peak_seconds: 0,
-        time_to_peak_hours: 0,
-        early_exit: false
-      };
-    });
-    
-    // Filter to closed trades only for metrics (skip open positions)
-    const closedTrades = trades.filter(t => t.status === 'closed');
-    
-    if (closedTrades.length === 0) {
-      // Return empty metrics structure with all required fields
+    if (transactions.length === 0) {
       return res.json({
         wallet_address: walletAddress,
         chain,
@@ -349,34 +219,46 @@ router.get('/metrics/:walletAddress', async (req, res) => {
         win_count: 0,
         loss_count: 0,
         win_rate: 0,
-        total_realized_pnl: 0,
-        avg_realized_roi: 0,
-        median_realized_roi: 0,
-        total_realized_pnl_wins: 0,
-        total_realized_pnl_losses: 0,
+        total_pnl: 0,
+        avg_roi: 0,
+        median_roi: 0,
         avg_holding_hours: 0,
-        median_holding_hours: 0,
-        avg_holding_hours_winners: 0,
-        avg_holding_hours_losers: 0,
-        median_max_potential_roi: 0,
-        entry_skill_score: 0,
-        exit_skill_score: 0,
-        overall_skill_score: 0,
-        copy_trade_rating: 'N/A',
-        market_cap_strategy: {
-          favorite_bracket: 0,
-          success_by_bracket: []
-        },
-        message: 'No closed trades found for metrics computation',
-        metrics: null
+        message: 'No transactions found for this wallet'
       });
     }
     
-    // Enrich with price data for accurate skill scoring
-    const enablePriceEnrichment = req.query.enrichPrices !== 'false'; // Default: true
-    const enableRiskCheck = req.query.checkRisks !== 'false'; // Default: true
-    const enableMcapEnrichment = req.query.enrichMcap !== 'false'; // Default: true
-    const filterRisky = req.query.filterRisky !== 'false'; // Default: true (exclude risky from metrics)
+    console.log(`[Analysis API] Fetched ${transactions.length} individual transactions`);
+    
+    // Step 2: Reconstruct FIFO trades
+    const fifoResult = reconstructFIFOTrades(transactions);
+    validateFIFOReconstruction(transactions, fifoResult);
+    
+    let { closedTrades, openPositions } = fifoResult;
+    
+    if (closedTrades.length === 0) {
+      return res.json({
+        wallet_address: walletAddress,
+        chain,
+        total_trades: 0,
+        win_count: 0,
+        loss_count: 0,
+        win_rate: 0,
+        total_pnl: 0,
+        avg_roi: 0,
+        median_roi: 0,
+        avg_holding_hours: 0,
+        open_positions: openPositions.length,
+        message: 'No closed trades found (only open positions)'
+      });
+    }
+    
+    console.log(`[Analysis API] FIFO reconstruction: ${closedTrades.length} closed, ${openPositions.length} open`);
+    
+    // Step 3: Enrichment options
+    const enablePriceEnrichment = req.query.enrichPrices !== 'false';
+    const enableRiskCheck = req.query.checkRisks !== 'false';
+    const enableMcapEnrichment = req.query.enrichMcap !== 'false';
+    const filterRisky = req.query.filterRisky === 'true';
     
     // Enrich with market cap data
     if (enableMcapEnrichment) {
@@ -385,21 +267,21 @@ router.get('/metrics/:walletAddress', async (req, res) => {
       console.log(`[Analysis API] Market cap enrichment complete`);
     }
     
-    // Enrich with OHLC price data
+    // Enrich with OHLC price data for max_potential_roi
     if (enablePriceEnrichment) {
-      console.log(`[Analysis API] Enriching ${closedTrades.length} trades with OHLC data for metrics...`);
+      console.log(`[Analysis API] Enriching ${closedTrades.length} trades with OHLC data...`);
       closedTrades = await enrichTradesWithPrices(closedTrades, chain);
-      console.log(`[Analysis API] Price enrichment complete for metrics`);
+      console.log(`[Analysis API] Price enrichment complete`);
     }
     
-    // Risk check trades
+    // Enhanced risk check (OKX already provides risk levels)
     if (enableRiskCheck) {
-      console.log(`[Analysis API] Running risk checks for ${closedTrades.length} trades...`);
+      console.log(`[Analysis API] Running enhanced risk checks...`);
       closedTrades = await enrichTradesWithRiskCheck(closedTrades, chain);
-      console.log(`[Analysis API] Risk checks complete for metrics`);
+      console.log(`[Analysis API] Risk checks complete`);
     }
     
-    // Filter out risky trades for clean metrics
+    // Filter risky trades if requested
     const allTradesCount = closedTrades.length;
     let riskyTradesCount = 0;
     
@@ -420,7 +302,7 @@ router.get('/metrics/:walletAddress', async (req, res) => {
       }
     }
     
-    // Compute metrics
+    // Step 4: Compute metrics per DEEP_ANALYSIS_PLAN.md
     const metrics = computeMetrics(closedTrades);
     
     // Add market cap distribution
@@ -432,17 +314,31 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     metrics.diversity = calculateDiversityMetrics(closedTrades);
     metrics.temporal_diversity = calculateTemporalDiversity(closedTrades);
     
-    console.log(`[Analysis API] Computed metrics for ${walletAddress}: ${metrics.total_trades} trades, ${metrics.win_rate.toFixed(1)}% win rate`);
+    // Step 5: Format for Advanced Analysis tab
+    // Provides per-trade, per-token, and 7D overview data
+    const advancedAnalysisData = formatForAdvancedAnalysis(closedTrades, openPositions);
+    
+    console.log(`[Analysis API] Metrics computed: ${metrics.total_trades} trades, ${metrics.win_rate.toFixed(1)}% win rate`);
     
     res.json({
       wallet_address: walletAddress,
       chain,
+      
+      // Core metrics
       metrics,
+      
+      // Advanced Analysis tab data (per-trade, per-token, 7D overview)
+      advanced_analysis: advancedAnalysisData,
+      
+      // Metadata
       all_trades_count: allTradesCount,
       risky_trades_filtered: riskyTradesCount,
+      open_positions_count: openPositions.length,
       enriched: enablePriceEnrichment,
       risk_checked: enableRiskCheck,
-      filtered_risky: filterRisky
+      filtered_risky: filterRisky,
+      data_source: 'OKX Endpoint #7 (individual transactions)',
+      reconstruction_method: 'FIFO'
     });
   } catch (error) {
     console.error('[Analysis API] Error computing metrics:', error.message);

@@ -83,7 +83,7 @@ export function calculateDiversityMetrics(trades) {
     .reduce((sum, sq) => sum + sq, 0);
   
   // Count tokens by trade frequency
-  const singleTradeTokes = Array.from(tokenStats.values()).filter(t => t.tradeCount === 1).length;
+  const singleTradeTokens = Array.from(tokenStats.values()).filter(t => t.tradeCount === 1).length;
   const multiTradeTokens = totalUniqueTokens - singleTradeTokens;
   
   // Average trades per token
@@ -119,7 +119,7 @@ export function calculateDiversityMetrics(trades) {
     top_3_tokens_pnl_percent: top3TokensPercent,
     top_5_tokens_pnl_percent: top5TokensPercent,
     avg_trades_per_token: avgTradesPerToken,
-    tokens_with_single_trade: singleTradeTokes,
+    tokens_with_single_trade: singleTradeTokens,
     tokens_with_multiple_trades: multiTradeTokens,
     most_traded_tokens: mostTradedTokens,
     concentration_rating: concentrationRating
