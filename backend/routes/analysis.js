@@ -103,13 +103,20 @@ router.get('/trades/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] Fetching individual transactions for ${walletAddress} on ${chain}`);
     
-    // Step 1: Fetch ALL individual transactions using OKX Endpoint #7
-    const transactions = await fetchAllTransactionsWithRetry(walletAddress, chain, {
+    // Step 1: Fetch individual transactions using OKX Endpoint #7
+    // Limit to 7 days to match GMGN dashboard timeframe
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const allTransactions = await fetchAllTransactionsWithRetry(walletAddress, chain, {
       pageSize: 100,
-      maxPages: 50,
+      maxPages: 50, // Safety limit (5000 txs max)
       filterRisk: true,
       tradeTypes: [1, 2] // BUY and SELL
     });
+    
+    // Filter to last 7 days only (match GMGN dashboard)
+    const transactions = allTransactions.filter(tx => tx.blockTime >= sevenDaysAgo);
+    
+    console.log(`[Analysis API] Filtered ${allTransactions.length} transactions to ${transactions.length} (last 7 days)`);
     
     if (transactions.length === 0) {
       return res.json({
@@ -142,7 +149,9 @@ router.get('/trades/:walletAddress', async (req, res) => {
     console.log(`[Analysis API] FIFO reconstruction complete: ${closedTrades.length} closed, ${openPositions.length} open`);
     
     // Step 3: Enrich with token overview (rug detection, liquidity checks)
-    const enableTokenOverview = req.query.enableTokenOverview !== 'false';
+    // DISABLED BY DEFAULT - causes timeouts on wallets with many trades (GMGN API is slow)
+    // Enable with ?enableTokenOverview=true if needed
+    const enableTokenOverview = req.query.enableTokenOverview === 'true';
     let enrichedClosedTrades = closedTrades;
     let enrichedOpenPositions = openPositions;
     
@@ -152,6 +161,8 @@ router.get('/trades/:walletAddress', async (req, res) => {
       console.log(`[Analysis API] Enriching ${openPositions.length} open positions with token overview...`);
       enrichedOpenPositions = await enrichTradesWithTokenOverview(openPositions, chain);
       console.log(`[Analysis API] Token overview enrichment complete`);
+    } else {
+      console.log(`[Analysis API] Token overview enrichment DISABLED (use ?enableTokenOverview=true to enable)`);
     }
     
     // Step 4: Enrich closed trades with price data (skip open positions)
@@ -216,12 +227,19 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     console.log(`[Analysis API] Computing metrics for ${walletAddress} on ${chain}`);
     
     // Step 1: Fetch individual transactions using OKX Endpoint #7
-    const transactions = await fetchAllTransactionsWithRetry(walletAddress, chain, {
+    // Limit to 7 days to match GMGN dashboard timeframe
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const allTransactions = await fetchAllTransactionsWithRetry(walletAddress, chain, {
       pageSize: 100,
-      maxPages: 50,
+      maxPages: 50, // Safety limit (5000 txs max)
       filterRisk: true,
       tradeTypes: [1, 2]
     });
+    
+    // Filter to last 7 days only (match GMGN dashboard)
+    const transactions = allTransactions.filter(tx => tx.blockTime >= sevenDaysAgo);
+    
+    console.log(`[Analysis API] Filtered ${allTransactions.length} transactions to ${transactions.length} (last 7 days)`);
     
     if (transactions.length === 0) {
       return res.json({
@@ -267,7 +285,9 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     console.log(`[Analysis API] FIFO reconstruction: ${closedTrades.length} closed, ${openPositions.length} open`);
     
     // Step 3: Enrich with token overview (rug detection, liquidity checks)
-    const enableTokenOverview = req.query.enableTokenOverview !== 'false';
+    // DISABLED BY DEFAULT - causes timeouts on wallets with many trades (GMGN API is slow)
+    // Enable with ?enableTokenOverview=true if needed
+    const enableTokenOverview = req.query.enableTokenOverview === 'true';
     
     if (enableTokenOverview) {
       console.log(`[Analysis API] Enriching ${closedTrades.length} closed trades with token overview (rug detection)...`);
@@ -275,6 +295,8 @@ router.get('/metrics/:walletAddress', async (req, res) => {
       console.log(`[Analysis API] Enriching ${openPositions.length} open positions with token overview...`);
       openPositions = await enrichTradesWithTokenOverview(openPositions, chain);
       console.log(`[Analysis API] Token overview enrichment complete`);
+    } else {
+      console.log(`[Analysis API] Token overview enrichment DISABLED (use ?enableTokenOverview=true to enable)`);
     }
     
     // Step 4: Enrichment options

@@ -3,10 +3,15 @@
  * 
  * Identifies low-liquidity scam tokens that inflate PnL metrics with unrealizable gains.
  * Based on OKX validation test results showing 56% scam participation in test wallet.
+ * 
+ * Uses market cap as proxy for liquidity when GMGN data unavailable:
+ * - OKX provides mcap field for each transaction
+ * - Low mcap (<$100K) indicates scam token (can't be sold)
  */
 
-// Threshold for minimum acceptable liquidity (in USD)
-const MIN_LIQUIDITY_THRESHOLD = 1000; // $1000
+// Threshold for minimum acceptable market cap/liquidity (in USD)
+const MIN_MARKET_CAP_THRESHOLD = 100000; // $100K market cap
+const MIN_LIQUIDITY_THRESHOLD = 1000;     // $1K liquidity (GMGN data)
 
 // Maximum ROI to include in average calculations (prevents billion% outliers)
 const MAX_ROI_FOR_AVERAGE = 10000; // 10,000%
@@ -15,24 +20,46 @@ const MAX_ROI_FOR_AVERAGE = 10000; // 10,000%
  * Detect if a trade is a scam token
  * 
  * Scam tokens are characterized by:
- * 1. Very low liquidity (<$1000) - cannot be sold
+ * 1. Very low liquidity/market cap - cannot be sold
  * 2. Open position (still holding) - never exited
  * 3. Often shows inflated unrealized PnL that can never be realized
  * 
- * @param {Object} trade - Trade object with liquidity and position data
+ * Uses liquidity_usd if available (from GMGN), otherwise falls back to mcap (from OKX)
+ * 
+ * @param {Object} trade - Trade object with liquidity/mcap and position data
  * @returns {boolean} - True if scam token detected
  */
 function isScamToken(trade) {
-  // Support both field names: liquidity (validation test) and liquidity_usd (tokenOverviewService)
-  const liquidity = trade.liquidity_usd || trade.liquidity || 0;
   const isOpen = trade.open_position === true;
   
+  // Skip closed positions (already exited successfully)
+  if (!isOpen) {
+    return false;
+  }
+  
+  // Get liquidity/market cap indicator
+  // Priority: liquidity_usd (GMGN) > liquidity > mcap (OKX) > entry_mcap (OKX)
+  let liquidityIndicator = 0;
+  let threshold = MIN_MARKET_CAP_THRESHOLD;
+  
+  if (trade.liquidity_usd !== undefined && trade.liquidity_usd !== null) {
+    liquidityIndicator = trade.liquidity_usd;
+    threshold = MIN_LIQUIDITY_THRESHOLD; // Use stricter threshold for actual liquidity
+  } else if (trade.liquidity !== undefined && trade.liquidity !== null) {
+    liquidityIndicator = trade.liquidity;
+    threshold = MIN_LIQUIDITY_THRESHOLD;
+  } else if (trade.mcap !== undefined && trade.mcap !== null) {
+    liquidityIndicator = trade.mcap;
+  } else if (trade.entry_mcap !== undefined && trade.entry_mcap !== null) {
+    liquidityIndicator = trade.entry_mcap;
+  }
+  
   // Flag as scam if:
-  // - Very low liquidity (< $1000) AND
-  // - Open position (still holding, never sold)
+  // - Open position (still holding) AND
+  // - Very low liquidity/market cap (can't be sold)
   // 
   // This indicates a token that appears valuable but cannot be sold
-  if (isOpen && liquidity < MIN_LIQUIDITY_THRESHOLD) {
+  if (isOpen && liquidityIndicator < threshold) {
     return true;
   }
   
@@ -116,6 +143,7 @@ export {
   isScamToken,
   analyzeScamTokens,
   generateScamReport,
+  MIN_MARKET_CAP_THRESHOLD,
   MIN_LIQUIDITY_THRESHOLD,
   MAX_ROI_FOR_AVERAGE
 };
