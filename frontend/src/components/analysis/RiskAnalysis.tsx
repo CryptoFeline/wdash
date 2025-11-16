@@ -52,11 +52,93 @@ export default function RiskAnalysis({ metrics, trades }: RiskAnalysisProps) {
   );
   const cannotExit = trades.filter(t => t.can_exit === false).length;
 
-  // Developer rug history
+    // Developer rug history
   const devsWithRugHistory = trades.filter(t => t.dev_rugged_tokens && t.dev_rugged_tokens > 0);
+
+  // Scam detection from metrics
+  const scamDetection = metrics.scam_detection;
+  const hasScamDetection = scamDetection && scamDetection.total_scam_tokens > 0;
 
   return (
     <div className="space-y-6">
+      {/* Scam Token Detection Alert */}
+      {hasScamDetection && (
+        <div className={`border rounded-lg p-4 ${
+          scamDetection.risk_level === 'CRITICAL' ? 'bg-red-500/10 border-red-500/50' :
+          scamDetection.risk_level === 'HIGH' ? 'bg-orange-500/10 border-orange-500/50' :
+          scamDetection.risk_level === 'MODERATE' ? 'bg-yellow-500/10 border-yellow-500/50' :
+          'bg-blue-500/10 border-blue-500/50'
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className={`h-5 w-5 ${
+              scamDetection.risk_level === 'CRITICAL' ? 'text-red-500' :
+              scamDetection.risk_level === 'HIGH' ? 'text-orange-500' :
+              scamDetection.risk_level === 'MODERATE' ? 'text-yellow-500' :
+              'text-blue-500'
+            }`} />
+            <h3 className={`text-lg font-semibold ${
+              scamDetection.risk_level === 'CRITICAL' ? 'text-red-500' :
+              scamDetection.risk_level === 'HIGH' ? 'text-orange-500' :
+              scamDetection.risk_level === 'MODERATE' ? 'text-yellow-600' :
+              'text-blue-600'
+            }`}>
+              Scam Token Detection
+            </h3>
+            <Badge variant={
+              scamDetection.risk_level === 'CRITICAL' ? 'destructive' :
+              scamDetection.risk_level === 'HIGH' ? 'destructive' :
+              scamDetection.risk_level === 'MODERATE' ? 'secondary' :
+              'outline'
+            }>
+              {scamDetection.risk_level} RISK
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Scam Tokens</p>
+              <p className="text-2xl font-bold text-red-500">{scamDetection.total_scam_tokens}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Participation Rate</p>
+              <p className="text-2xl font-bold text-orange-500">{scamDetection.scam_participation_rate.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Clean Trades</p>
+              <p className="text-2xl font-bold text-green-500">{metrics.total_trades}</p>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground mb-2">
+            {scamDetection.warning}
+          </p>
+          {metrics._raw_stats && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <p className="text-xs text-muted-foreground mb-2">📊 Impact of Scam Filtering:</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Raw Trades:</span> 
+                  <span className="ml-2 font-semibold">{metrics._raw_stats.totalTrades}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Clean Trades:</span> 
+                  <span className="ml-2 font-semibold text-green-500">{metrics.total_trades}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Raw Avg Win:</span> 
+                  <span className="ml-2 font-semibold text-red-500">{metrics._raw_stats.avgWinSize.toFixed(1)}%</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">True Avg Win:</span> 
+                  <span className="ml-2 font-semibold text-green-500">{(metrics.total_realized_pnl_wins / metrics.win_count).toFixed(1)}%</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                ✅ All metrics shown are calculated from legitimate trades only
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Rug Detection Alert */}
       {ruggedTrades.length > 0 && (
         <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4">
@@ -68,6 +150,7 @@ export default function RiskAnalysis({ metrics, trades }: RiskAnalysisProps) {
             <div>
               <p className="text-xs text-muted-foreground">Total Rugged</p>
               <p className="text-2xl font-bold text-red-500">{ruggedTrades.length}</p>
+```
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Hard Rugs</p>

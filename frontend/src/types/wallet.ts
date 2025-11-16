@@ -201,4 +201,26 @@ export interface WalletAnalysisMetrics {
       trade_count: number;
     }>;
   };
+  
+  // Scam Detection (NEW)
+  scam_detection?: {
+    total_scam_tokens: number;
+    scam_participation_rate: number;   // % (e.g., 56.41)
+    risk_level: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+    warning: string;
+    scam_token_details: Array<{
+      symbol: string;
+      token: string;
+      liquidity: number;
+      unrealized_pnl: number;
+      rug_score: number;
+    }>;
+  };
+  
+  _raw_stats?: {
+    totalTrades: number;
+    winRate: number;
+    avgWinSize: number;
+    note: string;
+  };
 }
