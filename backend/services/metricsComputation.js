@@ -7,7 +7,10 @@
  * - Holding time analysis (winners vs losers)
  * - Entry/Exit skill scoring
  * - Market cap strategy analysis
+ * - Scam token detection and filtering
  */
+
+const scamDetection = require('./scamDetection');
 
 /**
  * Calculate median value from array
@@ -214,35 +217,51 @@ export function computeMetrics(trades) {
       market_cap_strategy: {
         favorite_bracket: 0,
         success_by_bracket: []
+      },
+      scam_detection: {
+        total_scam_tokens: 0,
+        scam_participation_rate: 0,
+        risk_level: 'N/A',
+        warning: null
       }
     };
   }
   
-  // Basic counts
-  const totalTrades = trades.length;
-  const winners = trades.filter(t => t.win);
-  const losers = trades.filter(t => !t.win);
+  // Generate scam detection report
+  const scamReport = scamDetection.generateScamReport(trades);
+  
+  // Use clean stats (excluding scam tokens) for metrics
+  const validTrades = scamReport.trades.filter(t => !t.is_scam_token);
+  
+  // Basic counts (from clean trades)
+  const totalTrades = validTrades.length;
+  const winners = validTrades.filter(t => t.win);
+  const losers = validTrades.filter(t => !t.win);
   const winCount = winners.length;
   const lossCount = losers.length;
-  const winRate = (winCount / totalTrades) * 100;
+  const winRate = totalTrades > 0 ? (winCount / totalTrades) * 100 : 0;
   
-  // PnL aggregates
-  const totalRealizedPnl = trades.reduce((sum, t) => sum + t.realized_pnl, 0);
-  const totalRealizedPnlWins = winners.reduce((sum, t) => sum + t.realized_pnl, 0);
-  const totalRealizedPnlLosses = losers.reduce((sum, t) => sum + t.realized_pnl, 0);
+  // PnL aggregates (from clean trades)
+  const totalRealizedPnl = validTrades.reduce((sum, t) => sum + (t.realized_pnl || 0), 0);
+  const totalRealizedPnlWins = winners.reduce((sum, t) => sum + (t.realized_pnl || 0), 0);
+  const totalRealizedPnlLosers = losers.reduce((sum, t) => sum + (t.realized_pnl || 0), 0);
   
-  // ROI stats
-  const rois = trades.map(t => t.realized_roi);
-  const avgRealizedRoi = rois.reduce((sum, roi) => sum + roi, 0) / totalTrades;
+  // ROI stats (from clean trades, with outlier filtering)
+  const rois = validTrades.map(t => t.realized_roi || 0);
+  const avgRealizedRoi = rois.length > 0 
+    ? rois.reduce((sum, roi) => sum + roi, 0) / rois.length 
+    : 0;
   const medianRealizedRoi = calculateMedian(rois);
   
-  // Holding time stats
-  const holdingHours = trades.map(t => t.holding_hours);
-  const avgHoldingHours = holdingHours.reduce((sum, h) => sum + h, 0) / totalTrades;
+  // Holding time stats (from clean trades)
+  const holdingHours = validTrades.map(t => t.holding_hours || 0);
+  const avgHoldingHours = holdingHours.length > 0
+    ? holdingHours.reduce((sum, h) => sum + h, 0) / holdingHours.length
+    : 0;
   const medianHoldingHours = calculateMedian(holdingHours);
   
-  const winnerHoldingHours = winners.map(t => t.holding_hours);
-  const loserHoldingHours = losers.map(t => t.holding_hours);
+  const winnerHoldingHours = winners.map(t => t.holding_hours || 0);
+  const loserHoldingHours = losers.map(t => t.holding_hours || 0);
   const avgHoldingHoursWinners = winnerHoldingHours.length > 0
     ? winnerHoldingHours.reduce((sum, h) => sum + h, 0) / winnerHoldingHours.length
     : 0;
@@ -250,23 +269,23 @@ export function computeMetrics(trades) {
     ? loserHoldingHours.reduce((sum, h) => sum + h, 0) / loserHoldingHours.length
     : 0;
   
-  // Max potential analysis - use safe defaults if fields are missing
-  const maxPotentialRois = trades
+  // Max potential analysis - use safe defaults if fields are missing (from clean trades)
+  const maxPotentialRois = validTrades
     .map(t => t.max_potential_roi || 0)
     .filter(roi => roi > 0);
   const medianMaxPotentialRoi = maxPotentialRois.length > 0 
     ? calculateMedian(maxPotentialRois)
     : 0;
   
-  // Skill scores
-  const entrySkillScore = calculateEntrySkillScore(trades);
-  const exitSkillScore = calculateExitSkillScore(trades);
+  // Skill scores (from clean trades)
+  const entrySkillScore = calculateEntrySkillScore(validTrades);
+  const exitSkillScore = calculateExitSkillScore(validTrades);
   const overallSkillScore = Math.round((entrySkillScore + exitSkillScore) / 2);
   
-  // Market cap strategy
-  const marketCapStrategy = analyzeMarketCapStrategy(trades);
+  // Market cap strategy (from clean trades)
+  const marketCapStrategy = analyzeMarketCapStrategy(validTrades);
   
-  // Metrics object
+  // Metrics object (clean stats)
   const metrics = {
     total_trades: totalTrades,
     win_count: winCount,
@@ -278,7 +297,7 @@ export function computeMetrics(trades) {
     median_realized_roi: medianRealizedRoi,
     
     total_realized_pnl_wins: totalRealizedPnlWins,
-    total_realized_pnl_losses: totalRealizedPnlLosses,
+    total_realized_pnl_losses: totalRealizedPnlLosers,
     
     avg_holding_hours: avgHoldingHours,
     median_holding_hours: medianHoldingHours,
@@ -291,7 +310,20 @@ export function computeMetrics(trades) {
     exit_skill_score: exitSkillScore,
     overall_skill_score: overallSkillScore,
     
-    market_cap_strategy: marketCapStrategy
+    market_cap_strategy: marketCapStrategy,
+    
+    // Scam detection results
+    scam_detection: {
+      total_scam_tokens: scamReport.scamDetection.totalScamTokens,
+      scam_participation_rate: scamReport.scamDetection.scamParticipationRate,
+      risk_level: scamReport.scamDetection.riskLevel,
+      warning: scamReport.scamDetection.warning,
+      scam_token_details: scamReport.scamDetection.scamTokenDetails
+    },
+    
+    // Include raw stats for comparison (optional, can be removed if not needed in API)
+    _raw_stats: scamReport.stats.raw,
+    _clean_note: '✅ All metrics calculated from legitimate trades only (scam tokens excluded)'
   };
   
   // Copy trade rating

@@ -237,7 +237,19 @@ export async function enrichTradeWithTokenOverview(trade, chain = 'sol') {
     const overview = await fetchTokenOverview(trade.token_address, chain);
     
     if (!overview) {
-      return trade;
+      // CRITICAL: Even if API fails, ensure liquidity field exists (default to 0)
+      // This prevents "unknown" values in scam detection
+      return {
+        ...trade,
+        liquidity_status: 'unknown',
+        liquidity_usd: 0,
+        market_cap_usd: 0,
+        liquidity_ratio: 0,
+        can_exit: null,
+        is_rug: false,
+        rug_score: 0,
+        rug_reasons: ['API unavailable - cannot verify']
+      };
     }
     
     // Analyze rug indicators
@@ -294,7 +306,19 @@ export async function enrichTradeWithTokenOverview(trade, chain = 'sol') {
     };
   } catch (error) {
     console.error(`[TokenOverview] Error enriching ${trade.token_symbol}:`, error.message);
-    return trade;
+    // CRITICAL: Even on error, ensure liquidity field exists (default to 0)
+    // This prevents "unknown" values in scam detection
+    return {
+      ...trade,
+      liquidity_status: 'unknown',
+      liquidity_usd: 0,
+      market_cap_usd: 0,
+      liquidity_ratio: 0,
+      can_exit: null,
+      is_rug: false,
+      rug_score: 0,
+      rug_reasons: ['Enrichment failed - cannot verify']
+    };
   }
 }
 

@@ -1,0 +1,805 @@
+{
+  "timestamp": "2025-11-16T12:25:02.521Z",
+  "wallet": "2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo",
+  "chain": "Solana",
+  "timeframe": "7 days",
+  "steps": [
+    {
+      "step": "STEP_1",
+      "message": "Fetching wallet profile summary (7d)...",
+      "timestamp": "2025-11-16T12:25:02.531Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Wallet Profile Summary",
+      "timestamp": "2025-11-16T12:25:02.531Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/wallet-profile/summary?periodType=3&chainId=501&walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&t=1763295902531"
+      }
+    },
+    {
+      "step": "VALIDATION",
+      "message": "Wallet Summary Datapoints:",
+      "timestamp": "2025-11-16T12:25:02.909Z",
+      "data": null
+    },
+    {
+      "step": "DATA",
+      "message": "Daily PnL: 7 days of data",
+      "timestamp": "2025-11-16T12:25:02.910Z",
+      "data": [
+        {
+          "profit": "0",
+          "timestamp": 1762704000000
+        },
+        {
+          "profit": "0",
+          "timestamp": 1762790400000
+        },
+        {
+          "profit": "0",
+          "timestamp": 1762876800000
+        },
+        {
+          "profit": "50359.580193502905243686444934",
+          "timestamp": 1762963200000
+        },
+        {
+          "profit": "0",
+          "timestamp": 1763049600000
+        },
+        {
+          "profit": "208780.151693000156563486314848",
+          "timestamp": 1763136000000
+        },
+        {
+          "profit": "88596.09228140458054215281504",
+          "timestamp": 1763222400000
+        }
+      ]
+    },
+    {
+      "step": "STEP_2",
+      "message": "Fetching token list with PnL data...",
+      "timestamp": "2025-11-16T12:25:02.910Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 0)",
+      "timestamp": "2025-11-16T12:25:02.910Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=0&limit=50&t=1763295902910"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 50 tokens (offset 0)",
+      "timestamp": "2025-11-16T12:25:03.219Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 50)",
+      "timestamp": "2025-11-16T12:25:03.219Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=50&limit=50&t=1763295903219"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 50 tokens (offset 50)",
+      "timestamp": "2025-11-16T12:25:04.593Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 100)",
+      "timestamp": "2025-11-16T12:25:04.593Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=100&limit=50&t=1763295904593"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 50 tokens (offset 100)",
+      "timestamp": "2025-11-16T12:25:04.863Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 150)",
+      "timestamp": "2025-11-16T12:25:04.863Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=150&limit=50&t=1763295904863"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 50 tokens (offset 150)",
+      "timestamp": "2025-11-16T12:25:05.112Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 200)",
+      "timestamp": "2025-11-16T12:25:05.112Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=200&limit=50&t=1763295905112"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 50 tokens (offset 200)",
+      "timestamp": "2025-11-16T12:25:05.461Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 250)",
+      "timestamp": "2025-11-16T12:25:05.461Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=250&limit=50&t=1763295905461"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 50 tokens (offset 250)",
+      "timestamp": "2025-11-16T12:25:05.751Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 300)",
+      "timestamp": "2025-11-16T12:25:05.751Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=300&limit=50&t=1763295905751"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 50 tokens (offset 300)",
+      "timestamp": "2025-11-16T12:25:06.025Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 350)",
+      "timestamp": "2025-11-16T12:25:06.025Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=350&limit=50&t=1763295906025"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 50 tokens (offset 350)",
+      "timestamp": "2025-11-16T12:25:06.283Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token List (offset 400)",
+      "timestamp": "2025-11-16T12:25:06.283Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/pnl/token-list?walletAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&chainId=501&isAsc=false&sortType=1&filterEmptyBalance=false&offset=400&limit=50&t=1763295906283"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "Fetched 28 tokens (offset 400)",
+      "timestamp": "2025-11-16T12:25:06.578Z",
+      "data": null
+    },
+    {
+      "step": "VALIDATION",
+      "message": "Total tokens fetched: 428",
+      "timestamp": "2025-11-16T12:25:06.578Z",
+      "data": null
+    },
+    {
+      "step": "DATA",
+      "message": "Sample token structure:",
+      "timestamp": "2025-11-16T12:25:06.578Z",
+      "data": {
+        "tokenSymbol": "OKAYGUY",
+        "tokenContractAddress": "B7CTRhApmEnuS3UFFaRmXYkhmc92dzxQt68Dn2od7mMm",
+        "realizedPnl": "0",
+        "totalPnlPercentage": "3741.15",
+        "buyVolume": "7029.5",
+        "sellVolume": "0",
+        "balance": "48872549.019607"
+      }
+    },
+    {
+      "step": "INFO",
+      "message": "Processing 5 tokens (first 5 for testing)",
+      "timestamp": "2025-11-16T12:25:06.578Z",
+      "data": null
+    },
+    {
+      "step": "SEPARATOR",
+      "message": "\n================================================================================\nProcessing Token: OKAYGUY\n================================================================================",
+      "timestamp": "2025-11-16T12:25:06.578Z",
+      "data": null
+    },
+    {
+      "step": "STEP_3",
+      "message": "Fetching trading history for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:06.578Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Trading History for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:06.578Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/trading/kline-bs-point?chainId=501&tokenAddress=B7CTRhApmEnuS3UFFaRmXYkhmc92dzxQt68Dn2od7mMm&fromAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&after=1763295906578&bar=1m&limit=1000&t=1763295906578"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 1 trading points found",
+      "timestamp": "2025-11-16T12:25:06.817Z",
+      "data": null
+    },
+    {
+      "step": "STEP_4",
+      "message": "Performing FIFO reconstruction for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:06.817Z",
+      "data": null
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 1 buys, 0 sells",
+      "timestamp": "2025-11-16T12:25:06.817Z",
+      "data": null
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY FIFO Results:",
+      "timestamp": "2025-11-16T12:25:06.817Z",
+      "data": null
+    },
+    {
+      "step": "STEP_5",
+      "message": "Fetching token overview for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:06.817Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token Overview for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:06.817Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/token/overview?chainId=501&tokenContractAddress=B7CTRhApmEnuS3UFFaRmXYkhmc92dzxQt68Dn2od7mMm&t=1763295906817"
+      }
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY Rug Detection Data:",
+      "timestamp": "2025-11-16T12:25:07.084Z",
+      "data": null
+    },
+    {
+      "step": "STEP_6",
+      "message": "Fetching OHLC data for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:07.084Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: OHLC Data (1h) for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:07.084Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=B7CTRhApmEnuS3UFFaRmXYkhmc92dzxQt68Dn2od7mMm&after=1763263080000&bar=1h&limit=1000&t=1763295907084"
+      }
+    },
+    {
+      "step": "SEPARATOR",
+      "message": "\n================================================================================\nProcessing Token: OKAYGUY\n================================================================================",
+      "timestamp": "2025-11-16T12:25:08.323Z",
+      "data": null
+    },
+    {
+      "step": "STEP_3",
+      "message": "Fetching trading history for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:08.323Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Trading History for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:08.323Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/trading/kline-bs-point?chainId=501&tokenAddress=8vrT7Kvg67ySxL7brqvv3TXpXAv5yUMwi72m7467DaSX&fromAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&after=1763295908323&bar=1m&limit=1000&t=1763295908323"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 2 trading points found",
+      "timestamp": "2025-11-16T12:25:08.619Z",
+      "data": null
+    },
+    {
+      "step": "STEP_4",
+      "message": "Performing FIFO reconstruction for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:08.620Z",
+      "data": null
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 1 buys, 1 sells",
+      "timestamp": "2025-11-16T12:25:08.620Z",
+      "data": null
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY FIFO Results:",
+      "timestamp": "2025-11-16T12:25:08.621Z",
+      "data": null
+    },
+    {
+      "step": "STEP_5",
+      "message": "Fetching token overview for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:08.621Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token Overview for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:08.621Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/token/overview?chainId=501&tokenContractAddress=8vrT7Kvg67ySxL7brqvv3TXpXAv5yUMwi72m7467DaSX&t=1763295908621"
+      }
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY Rug Detection Data:",
+      "timestamp": "2025-11-16T12:25:08.878Z",
+      "data": null
+    },
+    {
+      "step": "STEP_6",
+      "message": "Fetching OHLC data for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:08.878Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: OHLC Data (1h) for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:08.878Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=8vrT7Kvg67ySxL7brqvv3TXpXAv5yUMwi72m7467DaSX&after=1763257980000&bar=1h&limit=1000&t=1763295908878"
+      }
+    },
+    {
+      "step": "SEPARATOR",
+      "message": "\n================================================================================\nProcessing Token: OKAYGUY\n================================================================================",
+      "timestamp": "2025-11-16T12:25:10.122Z",
+      "data": null
+    },
+    {
+      "step": "STEP_3",
+      "message": "Fetching trading history for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:10.122Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Trading History for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:10.122Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/trading/kline-bs-point?chainId=501&tokenAddress=98dbVQiXXXDuNLwCiJyYWHmpwoUaUxZvFJnKAEBtNGnk&fromAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&after=1763295910122&bar=1m&limit=1000&t=1763295910122"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 3 trading points found",
+      "timestamp": "2025-11-16T12:25:10.367Z",
+      "data": null
+    },
+    {
+      "step": "STEP_4",
+      "message": "Performing FIFO reconstruction for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:10.367Z",
+      "data": null
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 2 buys, 1 sells",
+      "timestamp": "2025-11-16T12:25:10.367Z",
+      "data": null
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY FIFO Results:",
+      "timestamp": "2025-11-16T12:25:10.367Z",
+      "data": null
+    },
+    {
+      "step": "STEP_5",
+      "message": "Fetching token overview for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:10.367Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token Overview for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:10.367Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/token/overview?chainId=501&tokenContractAddress=98dbVQiXXXDuNLwCiJyYWHmpwoUaUxZvFJnKAEBtNGnk&t=1763295910367"
+      }
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY Rug Detection Data:",
+      "timestamp": "2025-11-16T12:25:10.698Z",
+      "data": null
+    },
+    {
+      "step": "STEP_6",
+      "message": "Fetching OHLC data for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:10.698Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: OHLC Data (1h) for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:10.698Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=98dbVQiXXXDuNLwCiJyYWHmpwoUaUxZvFJnKAEBtNGnk&after=1763256240000&bar=1h&limit=1000&t=1763295910698"
+      }
+    },
+    {
+      "step": "SEPARATOR",
+      "message": "\n================================================================================\nProcessing Token: OKAYGUY\n================================================================================",
+      "timestamp": "2025-11-16T12:25:12.097Z",
+      "data": null
+    },
+    {
+      "step": "STEP_3",
+      "message": "Fetching trading history for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:12.098Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Trading History for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:12.098Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/trading/kline-bs-point?chainId=501&tokenAddress=2sfEsV2HZpX31CKLHim1DwgV4mSngZsEacU4MGg6qNCn&fromAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&after=1763295912098&bar=1m&limit=1000&t=1763295912098"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 2 trading points found",
+      "timestamp": "2025-11-16T12:25:12.432Z",
+      "data": null
+    },
+    {
+      "step": "STEP_4",
+      "message": "Performing FIFO reconstruction for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:12.432Z",
+      "data": null
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 1 buys, 1 sells",
+      "timestamp": "2025-11-16T12:25:12.432Z",
+      "data": null
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY FIFO Results:",
+      "timestamp": "2025-11-16T12:25:12.433Z",
+      "data": null
+    },
+    {
+      "step": "STEP_5",
+      "message": "Fetching token overview for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:12.433Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token Overview for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:12.433Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/token/overview?chainId=501&tokenContractAddress=2sfEsV2HZpX31CKLHim1DwgV4mSngZsEacU4MGg6qNCn&t=1763295912433"
+      }
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY Rug Detection Data:",
+      "timestamp": "2025-11-16T12:25:12.777Z",
+      "data": null
+    },
+    {
+      "step": "STEP_6",
+      "message": "Fetching OHLC data for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:12.777Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: OHLC Data (1h) for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:12.777Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=2sfEsV2HZpX31CKLHim1DwgV4mSngZsEacU4MGg6qNCn&after=1763255880000&bar=1h&limit=1000&t=1763295912777"
+      }
+    },
+    {
+      "step": "SEPARATOR",
+      "message": "\n================================================================================\nProcessing Token: OKAYGUY\n================================================================================",
+      "timestamp": "2025-11-16T12:25:14.009Z",
+      "data": null
+    },
+    {
+      "step": "STEP_3",
+      "message": "Fetching trading history for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:14.009Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Trading History for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:14.009Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/trading/kline-bs-point?chainId=501&tokenAddress=AmjWdQ4jZgJLdLAKZAzVpvfKSmZwdtP3Kn8Rgk37VxEy&fromAddress=2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo&after=1763295914009&bar=1m&limit=1000&t=1763295914009"
+      }
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 2 trading points found",
+      "timestamp": "2025-11-16T12:25:14.252Z",
+      "data": null
+    },
+    {
+      "step": "STEP_4",
+      "message": "Performing FIFO reconstruction for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:14.252Z",
+      "data": null
+    },
+    {
+      "step": "DATA",
+      "message": "OKAYGUY: 1 buys, 1 sells",
+      "timestamp": "2025-11-16T12:25:14.252Z",
+      "data": null
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY FIFO Results:",
+      "timestamp": "2025-11-16T12:25:14.252Z",
+      "data": null
+    },
+    {
+      "step": "STEP_5",
+      "message": "Fetching token overview for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:14.252Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: Token Overview for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:14.252Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v1/dx/market/v2/token/overview?chainId=501&tokenContractAddress=AmjWdQ4jZgJLdLAKZAzVpvfKSmZwdtP3Kn8Rgk37VxEy&t=1763295914252"
+      }
+    },
+    {
+      "step": "VALIDATION",
+      "message": "OKAYGUY Rug Detection Data:",
+      "timestamp": "2025-11-16T12:25:14.577Z",
+      "data": null
+    },
+    {
+      "step": "STEP_6",
+      "message": "Fetching OHLC data for OKAYGUY...",
+      "timestamp": "2025-11-16T12:25:14.578Z",
+      "data": null
+    },
+    {
+      "step": "API_CALL",
+      "message": "Fetching: OHLC Data (1h) for OKAYGUY",
+      "timestamp": "2025-11-16T12:25:14.578Z",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=AmjWdQ4jZgJLdLAKZAzVpvfKSmZwdtP3Kn8Rgk37VxEy&after=1763209740000&bar=1h&limit=1000&t=1763295914578"
+      }
+    },
+    {
+      "step": "SUMMARY",
+      "message": "\n\n╔════════════════════════════════════════════════════════════╗",
+      "timestamp": "2025-11-16T12:25:15.833Z",
+      "data": null
+    }
+  ],
+  "datapoints": {
+    "wallet_summary": {
+      "totalPnl": {
+        "value": "422289.299971577",
+        "valid": true
+      },
+      "totalPnlRoi": {
+        "value": "2245.01",
+        "valid": true
+      },
+      "totalWinRate": {
+        "value": "64.00",
+        "valid": true
+      },
+      "totalTxsBuy": {
+        "value": 41,
+        "valid": true
+      },
+      "totalTxsSell": {
+        "value": 19,
+        "valid": true
+      },
+      "avgCostBuy": {
+        "value": "4593.0935219477",
+        "valid": true
+      },
+      "unrealizedPnl": {
+        "value": "48674578985.490269257833775637160879",
+        "valid": true
+      },
+      "favoriteMcapType": {
+        "value": "4",
+        "valid": true
+      },
+      "dailyPnLRecords": {
+        "value": 7,
+        "valid": true
+      },
+      "mcapDistribution": {
+        "value": [
+          0,
+          20,
+          0,
+          21,
+          0
+        ],
+        "valid": true
+      }
+    },
+    "token_list": {
+      "totalTokens": {
+        "value": 428,
+        "valid": true
+      }
+    },
+    "fifo": {
+      "OKAYGUY_totalTrades": {
+        "value": 2,
+        "valid": true
+      },
+      "OKAYGUY_closedTrades": {
+        "value": 1,
+        "valid": true
+      },
+      "OKAYGUY_openPositions": {
+        "value": 1,
+        "valid": true
+      },
+      "OKAYGUY_totalPnL": {
+        "value": "10681.68",
+        "valid": true
+      },
+      "OKAYGUY_avgROI": {
+        "value": "75.98%",
+        "valid": true
+      },
+      "OKAYGUY_winRate": {
+        "value": "50.0%",
+        "valid": true
+      }
+    },
+    "rug_detection": {
+      "OKAYGUY_devRugHistory": {
+        "value": "0",
+        "valid": true
+      },
+      "OKAYGUY_devHoldingRatio": {
+        "value": 0.6654569866409935,
+        "valid": true
+      },
+      "OKAYGUY_bundleHoldingRatio": {
+        "value": 0.993324,
+        "valid": true
+      },
+      "OKAYGUY_totalLiquidity": {
+        "value": 0.000001755713950183671,
+        "valid": true
+      },
+      "OKAYGUY_liquidityRatio": {
+        "value": "0.00%",
+        "valid": true
+      },
+      "OKAYGUY_snipersExited": {
+        "value": "2/61",
+        "valid": true
+      }
+    }
+  },
+  "issues": [
+    {
+      "message": "Failed to fetch OHLC Data (1h) for OKAYGUY",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=B7CTRhApmEnuS3UFFaRmXYkhmc92dzxQt68Dn2od7mMm&after=1763263080000&bar=1h&limit=1000&t=1763295907084",
+        "error": "OKX API Error: Parameter bar error. Check and try again."
+      },
+      "timestamp": "2025-11-16T12:25:07.320Z"
+    },
+    {
+      "message": "Failed to fetch OHLC Data (1h) for OKAYGUY",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=8vrT7Kvg67ySxL7brqvv3TXpXAv5yUMwi72m7467DaSX&after=1763257980000&bar=1h&limit=1000&t=1763295908878",
+        "error": "OKX API Error: Parameter bar error. Check and try again."
+      },
+      "timestamp": "2025-11-16T12:25:09.121Z"
+    },
+    {
+      "message": "Failed to fetch OHLC Data (1h) for OKAYGUY",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=98dbVQiXXXDuNLwCiJyYWHmpwoUaUxZvFJnKAEBtNGnk&after=1763256240000&bar=1h&limit=1000&t=1763295910698",
+        "error": "OKX API Error: Parameter bar error. Check and try again."
+      },
+      "timestamp": "2025-11-16T12:25:11.094Z"
+    },
+    {
+      "message": "Failed to fetch OHLC Data (1h) for OKAYGUY",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=2sfEsV2HZpX31CKLHim1DwgV4mSngZsEacU4MGg6qNCn&after=1763255880000&bar=1h&limit=1000&t=1763295912777",
+        "error": "OKX API Error: Parameter bar error. Check and try again."
+      },
+      "timestamp": "2025-11-16T12:25:13.007Z"
+    },
+    {
+      "message": "Failed to fetch OHLC Data (1h) for OKAYGUY",
+      "data": {
+        "url": "https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles?chainId=501&address=AmjWdQ4jZgJLdLAKZAzVpvfKSmZwdtP3Kn8Rgk37VxEy&after=1763209740000&bar=1h&limit=1000&t=1763295914578",
+        "error": "OKX API Error: Parameter bar error. Check and try again."
+      },
+      "timestamp": "2025-11-16T12:25:14.832Z"
+    }
+  ],
+  "warnings": [
+    {
+      "message": "Failed to fetch OHLC data for OKAYGUY: OKX API Error: Parameter bar error. Check and try again.",
+      "data": null,
+      "timestamp": "2025-11-16T12:25:07.322Z"
+    },
+    {
+      "message": "Failed to fetch OHLC data for OKAYGUY: OKX API Error: Parameter bar error. Check and try again.",
+      "data": null,
+      "timestamp": "2025-11-16T12:25:09.121Z"
+    },
+    {
+      "message": "Failed to fetch OHLC data for OKAYGUY: OKX API Error: Parameter bar error. Check and try again.",
+      "data": null,
+      "timestamp": "2025-11-16T12:25:11.094Z"
+    },
+    {
+      "message": "Failed to fetch OHLC data for OKAYGUY: OKX API Error: Parameter bar error. Check and try again.",
+      "data": null,
+      "timestamp": "2025-11-16T12:25:13.007Z"
+    },
+    {
+      "message": "Failed to fetch OHLC data for OKAYGUY: OKX API Error: Parameter bar error. Check and try again.",
+      "data": null,
+      "timestamp": "2025-11-16T12:25:14.832Z"
+    }
+  ],
+  "summary": {
+    "totalTokensProcessed": 5,
+    "totalTradesReconstructed": 10,
+    "closedTrades": 4,
+    "openPositions": 6,
+    "tradesWithOHLC": 0,
+    "tradesWithRugData": 10,
+    "ruggedTokens": 10,
+    "totalIssues": 5,
+    "totalWarnings": 5
+  }
+}

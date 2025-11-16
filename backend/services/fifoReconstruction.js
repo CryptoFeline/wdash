@@ -217,6 +217,7 @@ function createTradeRecord(buy, sell, quantity, tokenAddress) {
     
     // Status
     status: 'closed',
+    open_position: false,  // For scam detection compatibility
     
     // Placeholder for enrichment (will be filled by priceEnrichment service)
     max_price_during_hold: 0,
@@ -282,7 +283,8 @@ function createOpenPosition(buy, tokenAddress) {
     risk_level: parseInt(buy.riskControlLevel || 1),
     
     // Status
-    status: 'open'
+    status: 'open',
+    open_position: true  // For scam detection compatibility
   };
 }
 
