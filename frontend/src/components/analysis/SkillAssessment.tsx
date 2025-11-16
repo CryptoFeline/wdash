@@ -41,6 +41,38 @@ export default function SkillAssessment({ metrics, trades }: SkillAssessmentProp
     return '';
   };
 
+  // Calculate entry quality distribution
+  const entryQualityDistribution = {
+    excellent: trades.filter(t => t.entry_quality === 'excellent').length,
+    good: trades.filter(t => t.entry_quality === 'good').length,
+    fair: trades.filter(t => t.entry_quality === 'fair').length,
+    poor: trades.filter(t => t.entry_quality === 'poor').length,
+    bad: trades.filter(t => t.entry_quality === 'bad').length,
+    unknown: trades.filter(t => !t.entry_quality || t.entry_quality === 'unknown').length,
+  };
+
+  // Calculate average capture efficiency
+  const tradesWithCaptureEff = trades.filter(t => t.capture_efficiency !== undefined);
+  const avgCaptureEfficiency = tradesWithCaptureEff.length > 0
+    ? tradesWithCaptureEff.reduce((sum, t) => sum + (t.capture_efficiency || 0), 0) / tradesWithCaptureEff.length
+    : 0;
+
+  // Calculate peak timing stats
+  const tradesWithPeakData = trades.filter(t => t.peak_before_exit !== undefined);
+  const exitedBeforePeak = tradesWithPeakData.filter(t => t.peak_before_exit === false).length;
+  const exitedAfterPeak = tradesWithPeakData.filter(t => t.peak_before_exit === true).length;
+
+  const getEntryQualityColor = (quality: string) => {
+    switch (quality) {
+      case 'excellent': return 'bg-green-600';
+      case 'good': return 'bg-green-500';
+      case 'fair': return 'bg-yellow-500';
+      case 'poor': return 'bg-orange-500';
+      case 'bad': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Skill Scores Grid */}
@@ -111,6 +143,61 @@ export default function SkillAssessment({ metrics, trades }: SkillAssessmentProp
           <p className="text-2xl font-bold text-foreground">{metrics.total_trades}</p>
         </div>
       </div>
+
+      {/* Entry Quality Distribution */}
+      <div className="bg-card rounded-lg border border-border p-4">
+        <h3 className="font-semibold text-foreground mb-3">Entry Quality Distribution</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Object.entries(entryQualityDistribution).map(([quality, count]) => (
+            <div key={quality} className="text-center">
+              <div className={`${getEntryQualityColor(quality)} text-white rounded-lg py-2 px-3 mb-1`}>
+                <p className="text-2xl font-bold">{count}</p>
+              </div>
+              <p className="text-xs text-muted-foreground capitalize">{quality}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-muted-foreground mt-3">
+          Entry quality measures the price movement in the first hour after entry. Excellent entries see +50% or more.
+        </p>
+      </div>
+
+      {/* Capture Efficiency */}
+      {tradesWithCaptureEff.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-card rounded-lg border border-border p-4">
+            <h3 className="font-semibold text-foreground mb-2">Average Capture Efficiency</h3>
+            <div className="flex items-baseline gap-2 mb-2">
+              <p className={`text-4xl font-bold ${avgCaptureEfficiency >= 50 ? 'text-chart-4' : avgCaptureEfficiency >= 25 ? 'text-chart-3' : 'text-destructive'}`}>
+                {avgCaptureEfficiency.toFixed(1)}%
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              On average, you capture {avgCaptureEfficiency.toFixed(1)}% of the maximum potential ROI before exiting.
+              {avgCaptureEfficiency < 50 && ' Consider holding longer to capture more gains.'}
+            </p>
+          </div>
+
+          <div className="bg-card rounded-lg border border-border p-4">
+            <h3 className="font-semibold text-foreground mb-2">Peak Timing Analysis</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Exited Before Peak</span>
+                <span className="text-lg font-bold text-destructive">{exitedBeforePeak} trades</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Exited After Peak</span>
+                <span className="text-lg font-bold text-chart-4">{exitedAfterPeak} trades</span>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              {exitedAfterPeak > exitedBeforePeak 
+                ? 'You tend to hold through the peak, which can reduce profits.'
+                : 'You often exit before the peak, leaving gains on the table.'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

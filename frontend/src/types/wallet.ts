@@ -110,7 +110,7 @@ export interface ReconstructedTrade {
   logoUrl: string;
   
   entry_timestamp: number;             // Unix ms
-  exit_timestamp: number;              // Unix ms
+  exit_timestamp: number | null;       // Unix ms (null for open positions)
   entry_price: number;                 // USD
   exit_price: number;                  // USD
   quantity: number;
@@ -123,14 +123,45 @@ export interface ReconstructedTrade {
   holding_hours: number;               // Computed: seconds / 3600
   holding_days: number;                // Computed: seconds / 86400
   
-  max_price_during_hold: number;       // Highest price in window
-  max_potential_roi: number;           // % (e.g., 45.5)
-  time_to_peak_seconds: number;        // Seconds to max price
-  time_to_peak_hours: number;          // Computed
+  // OHLC Enrichment (OPTIONAL - only present when enriched)
+  max_price_during_hold?: number;      // Highest price after entry
+  max_potential_roi?: number;          // % max upswing from entry
+  max_drawdown?: number;               // Lowest price after entry
+  max_drawdown_roi?: number;           // % max drawdown from entry
+  time_to_peak_hours?: number;         // Hours to reach max price
+  time_to_trough_hours?: number;       // Hours to reach min price
+  peak_timestamp?: number;             // When max price occurred
+  trough_timestamp?: number;           // When min price occurred
+  peak_before_exit?: boolean;          // Did peak happen before exit?
+  trough_before_exit?: boolean;        // Did trough happen before exit?
+  exited_before_peak?: boolean;        // Trader exited before reaching peak
+  immediate_move_1h?: number;          // % price movement in first hour
+  entry_quality?: 'excellent' | 'good' | 'fair' | 'poor' | 'bad' | 'unknown'; // Entry timing quality
+  capture_efficiency?: number;         // % of potential captured (realized_roi / max_potential_roi * 100)
+  ohlc_bar_interval?: string;          // Bar interval used ('1m', '1h', '1d')
+  ohlc_candles_analyzed?: number;      // Number of candles analyzed
   
+  // Rug Detection & Liquidity (OPTIONAL - only present when enriched)
+  is_rug?: boolean;                    // Token flagged as rug
+  rug_type?: 'hard_rug' | 'soft_rug' | null; // Type of rug detected
+  rug_confidence?: number;             // 0-100 confidence score
+  rug_reasons?: string[];              // Array of rug indicators
+  liquidity_status?: 'drained' | 'low' | 'warning' | 'healthy' | 'unknown'; // Liquidity health
+  liquidity_usd?: number;              // Total liquidity in USD
+  market_cap_usd?: number;             // Market cap in USD
+  liquidity_ratio?: number;            // liquidity / mcap ratio
+  can_exit?: boolean;                  // Can position be exited?
+  dev_rugged_tokens?: number;          // devRugPullTokenCount
+  dev_holding_ratio?: number;          // % dev still holds
+  dev_holding_status?: string;         // 'sellAll', 'holding', etc.
+  bundle_holding_ratio?: number;       // % held by bundles
+  smart_money_status?: string;         // Smart money holding status
+  snipers_clear?: number;              // Number of snipers who exited
+  snipers_total?: number;              // Total number of snipers
+  
+  // Legacy fields
   win: boolean;                        // realized_pnl > 0
   early_exit: boolean;                 // realized_roi < max_potential_roi * 0.8
-  
   mcap_bracket: number;                // 0-4 (from summary.mcapTxsBuyList)
   riskLevel: number;                   // 1-5 from tokenData
 }

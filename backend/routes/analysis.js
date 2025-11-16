@@ -8,6 +8,7 @@ import { calculateDiversityMetrics, calculateTemporalDiversity } from '../servic
 import { fetchAllTransactionsWithRetry, getTransactionSummary } from '../services/transactionFetcher.js';
 import { reconstructFIFOTrades, validateFIFOReconstruction } from '../services/fifoReconstruction.js';
 import { formatForAdvancedAnalysis } from '../services/tokenAggregation.js';
+import { enrichTradesWithTokenOverview } from '../services/tokenOverviewService.js';
 import axios from 'axios';
 
 const router = express.Router();
@@ -140,15 +141,26 @@ router.get('/trades/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] FIFO reconstruction complete: ${closedTrades.length} closed, ${openPositions.length} open`);
     
-    // Step 3: Enrich closed trades with price data (skip open positions)
+    // Step 3: Enrich with token overview (rug detection, liquidity checks)
+    const enableTokenOverview = req.query.enableTokenOverview !== 'false';
+    let enrichedClosedTrades = closedTrades;
+    let enrichedOpenPositions = openPositions;
+    
+    if (enableTokenOverview) {
+      console.log(`[Analysis API] Enriching ${closedTrades.length} closed trades with token overview (rug detection)...`);
+      enrichedClosedTrades = await enrichTradesWithTokenOverview(closedTrades, chain);
+      console.log(`[Analysis API] Enriching ${openPositions.length} open positions with token overview...`);
+      enrichedOpenPositions = await enrichTradesWithTokenOverview(openPositions, chain);
+      console.log(`[Analysis API] Token overview enrichment complete`);
+    }
+    
+    // Step 4: Enrich closed trades with price data (skip open positions)
     const enablePriceEnrichment = req.query.enrichPrices !== 'false';
     const enableRiskCheck = req.query.checkRisks !== 'false';
     
-    let enrichedClosedTrades = closedTrades;
-    
     if (enablePriceEnrichment && closedTrades.length > 0) {
       console.log(`[Analysis API] Enriching ${closedTrades.length} closed trades with OHLC data...`);
-      enrichedClosedTrades = await enrichTradesWithPrices(closedTrades, chain);
+      enrichedClosedTrades = await enrichTradesWithPrices(enrichedClosedTrades, chain);
       console.log(`[Analysis API] Price enrichment complete`);
     }
     
@@ -160,15 +172,15 @@ router.get('/trades/:walletAddress', async (req, res) => {
     }
     
     // Combine all trades (closed + open)
-    const allTrades = [...enrichedClosedTrades, ...openPositions];
-    const riskyTradesCount = allTrades.filter(t => t.is_risky || t.risk_level >= 4).length;
+    const allTrades = [...enrichedClosedTrades, ...enrichedOpenPositions];
+    const riskyTradesCount = allTrades.filter(t => t.is_risky || t.risk_level >= 4 || t.is_rug).length;
     
     res.json({
       wallet_address: walletAddress,
       chain,
       trades: allTrades,
       closed_trades: enrichedClosedTrades,
-      open_positions: openPositions,
+      open_positions: enrichedOpenPositions,
       total_count: allTrades.length,
       closed_count: enrichedClosedTrades.length,
       open_count: openPositions.length,
@@ -254,7 +266,18 @@ router.get('/metrics/:walletAddress', async (req, res) => {
     
     console.log(`[Analysis API] FIFO reconstruction: ${closedTrades.length} closed, ${openPositions.length} open`);
     
-    // Step 3: Enrichment options
+    // Step 3: Enrich with token overview (rug detection, liquidity checks)
+    const enableTokenOverview = req.query.enableTokenOverview !== 'false';
+    
+    if (enableTokenOverview) {
+      console.log(`[Analysis API] Enriching ${closedTrades.length} closed trades with token overview (rug detection)...`);
+      closedTrades = await enrichTradesWithTokenOverview(closedTrades, chain);
+      console.log(`[Analysis API] Enriching ${openPositions.length} open positions with token overview...`);
+      openPositions = await enrichTradesWithTokenOverview(openPositions, chain);
+      console.log(`[Analysis API] Token overview enrichment complete`);
+    }
+    
+    // Step 4: Enrichment options
     const enablePriceEnrichment = req.query.enrichPrices !== 'false';
     const enableRiskCheck = req.query.checkRisks !== 'false';
     const enableMcapEnrichment = req.query.enrichMcap !== 'false';

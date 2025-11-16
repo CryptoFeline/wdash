@@ -9,6 +9,7 @@ import TokenDiversityAnalysis from './TokenDiversityAnalysis';
 import SkillAssessment from './SkillAssessment';
 import RiskAnalysis from './RiskAnalysis';
 import TimeSeriesAnalysis from './TimeSeriesAnalysis';
+import TradeDetailsTab from './TradeDetailsTab';
 
 interface AnalysisDashboardProps {
   summary: OKXWalletSummary | undefined;
@@ -54,10 +55,11 @@ export default function AnalysisDashboard({
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="risk">Risk</TabsTrigger>
+          <TabsTrigger value="trades">Trades</TabsTrigger>
           <TabsTrigger value="mcap">Market Cap</TabsTrigger>
           <TabsTrigger value="diversity">Diversity</TabsTrigger>
         </TabsList>
@@ -72,6 +74,10 @@ export default function AnalysisDashboard({
 
         <TabsContent value="risk" className="space-y-6 mt-6">
           <RiskAnalysis metrics={metrics} trades={trades} />
+        </TabsContent>
+
+        <TabsContent value="trades" className="space-y-6 mt-6">
+          <TradeDetailsTab trades={trades} />
         </TabsContent>
 
         <TabsContent value="mcap" className="space-y-6 mt-6">

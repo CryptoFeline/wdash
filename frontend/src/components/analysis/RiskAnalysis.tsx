@@ -1,6 +1,8 @@
 'use client';
 
 import { WalletAnalysisMetrics, ReconstructedTrade } from '@/types/wallet';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, Droplet, Shield } from 'lucide-react';
 
 interface RiskAnalysisProps {
   metrics: WalletAnalysisMetrics | undefined;
@@ -38,8 +40,82 @@ export default function RiskAnalysis({ metrics, trades }: RiskAnalysisProps) {
   const avgWinSize = wins.length > 0 ? wins.reduce((sum, t) => sum + t.realized_roi, 0) / wins.length : 0;
   const avgLossSize = losses.length > 0 ? Math.abs(losses.reduce((sum, t) => sum + t.realized_roi, 0) / losses.length) : 0;
 
+  // Rug detection metrics
+  const ruggedTrades = trades.filter(t => t.is_rug);
+  const hardRugs = ruggedTrades.filter(t => t.rug_type === 'hard_rug').length;
+  const softRugs = ruggedTrades.filter(t => t.rug_type === 'soft_rug').length;
+  const rugExposurePercentage = (ruggedTrades.length / totalTrades) * 100;
+
+  // Liquidity warnings
+  const liquidityIssues = trades.filter(t => 
+    t.liquidity_status === 'drained' || t.liquidity_status === 'low' || t.liquidity_status === 'warning'
+  );
+  const cannotExit = trades.filter(t => t.can_exit === false).length;
+
+  // Developer rug history
+  const devsWithRugHistory = trades.filter(t => t.dev_rugged_tokens && t.dev_rugged_tokens > 0);
+
   return (
     <div className="space-y-6">
+      {/* Rug Detection Alert */}
+      {ruggedTrades.length > 0 && (
+        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <h3 className="text-lg font-semibold text-red-500">Rug Pull Detection Alert</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Total Rugged</p>
+              <p className="text-2xl font-bold text-red-500">{ruggedTrades.length}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Hard Rugs</p>
+              <p className="text-2xl font-bold text-red-600">{hardRugs}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Soft Rugs</p>
+              <p className="text-2xl font-bold text-orange-500">{softRugs}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Exposure</p>
+              <p className="text-2xl font-bold text-red-500">{rugExposurePercentage.toFixed(0)}%</p>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {rugExposurePercentage > 20 
+              ? '⚠️ High rug exposure! Review token selection criteria and due diligence.'
+              : 'Monitor these tokens closely and consider exit strategies.'}
+          </p>
+        </div>
+      )}
+
+      {/* Liquidity Risk */}
+      {liquidityIssues.length > 0 && (
+        <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Droplet className="h-5 w-5 text-yellow-500" />
+            <h3 className="text-lg font-semibold text-yellow-600">Liquidity Warnings</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Tokens with Issues</p>
+              <p className="text-2xl font-bold text-yellow-600">{liquidityIssues.length}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Cannot Exit</p>
+              <p className="text-2xl font-bold text-red-500">{cannotExit}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">% of Portfolio</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {((liquidityIssues.length / totalTrades) * 100).toFixed(0)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Risk Distribution */}
       <div>
         <h3 className="text-lg font-semibold text-foreground mb-4">Risk Distribution</h3>
@@ -101,6 +177,25 @@ export default function RiskAnalysis({ metrics, trades }: RiskAnalysisProps) {
         </div>
       </div>
 
+      {/* Developer Rug History */}
+      {devsWithRugHistory.length > 0 && (
+        <div className="bg-card rounded-lg border border-border p-4">
+          <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-orange-500" />
+            Developer Rug History
+          </h4>
+          <p className="text-sm text-muted-foreground mb-2">
+            {devsWithRugHistory.length} token(s) have developers with previous rug pull history
+          </p>
+          <div className="text-xs text-muted-foreground">
+            Total rugged tokens by these devs: {' '}
+            <span className="font-bold text-foreground">
+              {devsWithRugHistory.reduce((sum, t) => sum + (t.dev_rugged_tokens || 0), 0)}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Risk Summary */}
       <div className="bg-secondary/20 rounded-lg border border-border p-4 space-y-2">
         <h4 className="font-semibold text-foreground">Risk Assessment</h4>
@@ -120,6 +215,18 @@ export default function RiskAnalysis({ metrics, trades }: RiskAnalysisProps) {
               {metrics.avg_holding_hours.toFixed(1)} hours
             </strong>
           </li>
+          {ruggedTrades.length > 0 && (
+            <li>
+              • Rug pull exposure: <strong className="text-red-500">{rugExposurePercentage.toFixed(0)}%</strong>
+              {' '}({ruggedTrades.length} tokens)
+            </li>
+          )}
+          {liquidityIssues.length > 0 && (
+            <li>
+              • Liquidity warnings: <strong className="text-yellow-600">{liquidityIssues.length} tokens</strong>
+              {cannotExit > 0 && ` (${cannotExit} cannot exit)`}
+            </li>
+          )}
         </ul>
       </div>
     </div>
