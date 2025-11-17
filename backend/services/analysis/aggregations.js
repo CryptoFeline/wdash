@@ -179,20 +179,48 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
     chronological_diff: capitalTracking.net_pnl - net_pnl
   };
   
+  // Calculate average loss/win per position
+  const losing_positions = pairedTrades.filter(t => t.realized_pnl < 0);
+  const winning_positions = pairedTrades.filter(t => t.realized_pnl > 0);
+  
+  const total_losses_amount = losing_positions.reduce((sum, t) => sum + Math.abs(t.realized_pnl), 0);
+  const total_wins_amount = winning_positions.reduce((sum, t) => sum + t.realized_pnl, 0);
+  
+  const avg_loss_per_position = total_losing > 0 ? total_losses_amount / total_losing : 0;
+  const avg_win_per_position = total_winning > 0 ? total_wins_amount / total_winning : 0;
+  
+  // Calculate avg hold time across ALL trades (closed + open)
+  const closedHoldTime = pairedTrades.reduce((sum, t) => sum + (t.holding_time_seconds || 0), 0);
+  const now = Date.now();
+  const openHoldTime = openPositions.reduce((sum, t) => {
+    if (t.entry_time) {
+      return sum + ((now - t.entry_time) / 1000);
+    }
+    return sum;
+  }, 0);
+  const total_hold_seconds = closedHoldTime + openHoldTime;
+  const avg_hold_time_seconds = allTrades.length > 0 ? total_hold_seconds / allTrades.length : 0;
+
   return {
-    // Trade counts
-    total_trades: allTrades.length,
-    closed_trades: pairedTrades.length,
-    open_positions: openPositions.length,
-    rugged_positions: rugged_count,
-    winning_trades: total_winning,
-    losing_trades: total_losing,
-    win_rate,
+    // Risk metrics (for Overview tab)
+    risk_metrics: {
+      rugged_positions: rugged_count,
+      confirmed_losses: total_losing,
+      win_breakdown: {
+        wins: total_winning,
+        losses: total_losing
+      },
+      avg_loss_per_position,
+      avg_win_per_position,
+      win_rate
+    },
     
     // Volume metrics (activity tracking only - NOT capital!)
     volume_metrics: {
       total_buy_volume: simple_total_buys,
       total_sell_volume: simple_total_sells,
+      total_volume: simple_total_buys + simple_total_sells,
+      avg_trade_size: allTrades.length > 0 ? simple_total_buys / allTrades.length : 0,
       volume_ratio,
       buy_count,
       sell_count,
@@ -204,22 +232,30 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
     // Capital metrics (chronological tracking - ACCURATE)
     capital_metrics: {
       starting_capital: capitalTracking.starting_capital,
-      peak_deployed: capitalTracking.peak_capital_deployed,
+      peak_deployed: capitalTracking.peak_deployed,
       final_capital: capitalTracking.final_capital,
       net_pnl: capitalTracking.net_pnl,
       wallet_growth_roi: capitalTracking.wallet_growth_roi,
       trading_performance_roi: capitalTracking.trading_performance_roi,
       total_gains: capitalTracking.total_gains,
-      total_losses: capitalTracking.total_losses
+      total_losses: capitalTracking.total_losses,
+      avg_hold_time_seconds
     },
     
-    // PnL breakdown
+    // Trade counts (for Trade-Level Summary)
+    total_trades: allTrades.length,
+    closed_trades: pairedTrades.length,
+    open_positions: openPositions.length,
+    
+    // Legacy fields (kept for compatibility)
+    rugged_positions: rugged_count,
+    winning_trades: total_winning,
+    losing_trades: total_losing,
+    win_rate,
     total_realized_pnl,
     total_confirmed_loss,
     net_pnl,
     avg_roi,
-    
-    // Risk metrics
     rugged_tokens: tokens.filter(t => t.is_rugged).length,
     traded_rug_tokens: tokens.filter(t => t.traded_rug_token).length,
     
