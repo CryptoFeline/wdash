@@ -29,6 +29,7 @@ const router = express.Router();
 // ============================================================
 
 const routeCache = new Map();
+const rugCheckCache = new Map(); // Separate cache for rug-checked data
 
 function getCached(key) {
   const cached = routeCache.get(key);
@@ -42,6 +43,18 @@ function setCache(key, data) {
   routeCache.set(key, { data, timestamp: Date.now() });
 }
 
+function getRugCheckedCache(key) {
+  const cached = rugCheckCache.get(key);
+  if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setRugCheckedCache(key, data) {
+  rugCheckCache.set(key, { data, timestamp: Date.now() });
+}
+
 // ============================================================
 // GET /api/advanced-analysis/:wallet/:chain
 // ============================================================
@@ -50,15 +63,30 @@ router.get('/:wallet/:chain', async (req, res) => {
   try {
     const { wallet, chain } = req.params;
     const cacheKey = `advanced_${wallet}_${chain}`;
+    const skipRugCheck = req.query.skipRugCheck === 'true'; // Phase 1: fast load
     
-    // Check cache
-    const cached = getCached(cacheKey);
-    if (cached) {
+    // Check full cache (with rug checks)
+    const fullCached = getRugCheckedCache(cacheKey);
+    if (fullCached) {
       return res.json({ 
         success: true, 
-        data: cached,
-        cached: true 
+        data: fullCached,
+        cached: true,
+        rugCheckComplete: true
       });
+    }
+    
+    // Check basic cache (without rug checks) - for fast initial load
+    if (skipRugCheck) {
+      const basicCached = getCached(cacheKey);
+      if (basicCached) {
+        return res.json({ 
+          success: true, 
+          data: basicCached,
+          cached: true,
+          rugCheckComplete: false
+        });
+      }
     }
     
     // ========================================
@@ -78,23 +106,32 @@ router.get('/:wallet/:chain', async (req, res) => {
     const { pairedTrades, openPositions } = reconstructTradesWithFIFO(trades);
     
     // ========================================
-    // STEP 3: ENRICH OPEN POSITIONS
+    // STEP 3: ENRICH OPEN POSITIONS (FAST)
     // ========================================
+    // Always enrich with prices first (fast, no API calls)
     
     const enrichedOpenPositions = await enrichOpenPositions(
       openPositions,
       tokenList,
-      chain
+      chain,
+      !skipRugCheck // Only do rug detection if not skipping
     );
     
     // ========================================
-    // STEP 4: CHECK CLOSED TRADES FOR RUGS
+    // STEP 4: CHECK CLOSED TRADES FOR RUGS (SLOW)
     // ========================================
+    // Skip on initial load, run in phase 2
     
-    const rugCheckedClosedTrades = await checkClosedTradesForRugs(
-      pairedTrades,
-      chain
-    );
+    let rugCheckedClosedTrades = pairedTrades;
+    if (!skipRugCheck) {
+      console.log('[Advanced Analytics] Running rug checks on closed trades...');
+      rugCheckedClosedTrades = await checkClosedTradesForRugs(
+        pairedTrades,
+        chain
+      );
+    } else {
+      console.log('[Advanced Analytics] SKIPPING rug checks for fast initial load');
+    }
     
     // ========================================
     // STEP 5: TRACK CAPITAL CHRONOLOGICALLY
@@ -140,17 +177,27 @@ router.get('/:wallet/:chain', async (req, res) => {
         wallet,
         chain,
         timestamp: Date.now(),
-        period: '7_days'
+        period: '7_days',
+        rugCheckComplete: !skipRugCheck
       }
     };
     
     // Cache response
-    setCache(cacheKey, response);
+    if (skipRugCheck) {
+      // Phase 1: Basic cache (fast load)
+      setCache(cacheKey, response);
+      console.log('[Advanced Analytics] ✅ Phase 1 complete (no rug checks)');
+    } else {
+      // Phase 2: Full cache (with rug checks)
+      setRugCheckedCache(cacheKey, response);
+      console.log('[Advanced Analytics] ✅ Phase 2 complete (with rug checks)');
+    }
     
     res.json({
       success: true,
       data: response,
-      cached: false
+      cached: false,
+      rugCheckComplete: !skipRugCheck
     });
     
   } catch (error) {

@@ -12,7 +12,7 @@ import { fetchTokenOverview } from '../okx/fetchers.js';
 // ENRICH OPEN POSITIONS
 // ============================================================
 
-export async function enrichOpenPositions(openPositions, tokenList, chainId) {
+export async function enrichOpenPositions(openPositions, tokenList, chainId, enableRugDetection = true) {
   // Build price map from token list
   const tokenPrices = new Map();
   for (const token of tokenList) {
@@ -38,7 +38,22 @@ export async function enrichOpenPositions(openPositions, tokenList, chainId) {
     position.unrealized_roi = unrealizedRoi;
   }
   
+  // Skip rug detection if disabled (for fast initial load)
+  if (!enableRugDetection) {
+    console.log('[Rug Detection] SKIPPED - will run in phase 2');
+    for (const position of openPositions) {
+      position.current_liquidity = 0;
+      position.is_rug = false;
+      position.rug_reason = [];
+      position.unrealized_pnl_raw = position.unrealized_pnl;
+      position.unrealized_pnl_real = position.unrealized_pnl;
+      position.confirmed_loss = 0;
+    }
+    return openPositions;
+  }
+  
   // Rug detection via liquidity monitoring
+  console.log(`[Rug Detection] Checking ${openPositions.length} open positions...`);
   for (const position of openPositions) {
     try {
       const overview = await fetchTokenOverview(position.token_address, chainId);
