@@ -16,7 +16,10 @@ export async function enrichOpenPositions(openPositions, tokenList, chainId) {
   // Build price map from token list
   const tokenPrices = new Map();
   for (const token of tokenList) {
-    const currentPrice = parseFloat(token.price || 0);
+    const balance = parseFloat(token.balance || 0);
+    const balanceUsd = parseFloat(token.balanceUsd || 0);
+    // Calculate current price from balanceUsd / balance
+    const currentPrice = balance > 0 ? balanceUsd / balance : 0;
     tokenPrices.set(token.tokenContractAddress, currentPrice);
   }
   
