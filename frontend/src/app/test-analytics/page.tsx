@@ -183,39 +183,56 @@ export default function TestAnalyticsPage() {
                 <h3 className="text-lg font-bold mb-3">🚨 Risk Metrics</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-gray-400 text-sm">Rugged Positions</p>
+                    <p className="text-gray-400 text-sm">Open Rugged Positions</p>
                     <p className="text-2xl font-bold text-red-400">
                       {data.overview.rugged_positions}/{data.overview.open_positions}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">Unrealized losses from rugs</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm">Rugged Tokens</p>
+                    <p className="text-gray-400 text-sm">Rugged Tokens (Total)</p>
                     <p className="text-xl font-bold text-red-400">
                       {data.overview.rugged_tokens}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">Includes traded & held rugs</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Traded Rug Tokens</p>
                     <p className="text-xl font-bold text-yellow-400">
                       {data.overview.traded_rug_tokens}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">Exited before rug</p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm">Confirmed Losses</p>
+                    <p className="text-gray-400 text-sm">Rugged Losses</p>
                     <p className="text-xl font-bold text-red-400">
                       -${data.overview.total_confirmed_loss.toFixed(2)}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">From open rugged positions</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Winning Trades</p>
                     <p className="text-xl font-bold text-green-400">
                       {data.overview.winning_trades}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">Profitable closed trades</p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Losing Trades</p>
                     <p className="text-xl font-bold text-red-400">
                       {data.overview.losing_trades}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {data.overview.losing_trades - data.overview.rugged_positions} closed + {data.overview.rugged_positions} rugged
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Total Trades</p>
+                    <p className="text-xl font-bold text-blue-400">
+                      {data.overview.total_trades}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {data.overview.winning_trades}W / {data.overview.losing_trades}L
                     </p>
                   </div>
                 </div>
@@ -239,8 +256,7 @@ export default function TestAnalyticsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-700">
-                      <th className="text-left p-2">Symbol</th>
-                      <th className="text-left p-2 text-xs">Address</th>
+                      <th className="text-left p-2">Token</th>
                       <th className="text-right p-2">Trades</th>
                       <th className="text-right p-2">Invested</th>
                       <th className="text-right p-2">Returned</th>
@@ -252,43 +268,66 @@ export default function TestAnalyticsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(showAllTokens ? data.tokens : data.tokens.slice(0, 10)).map((token: any, idx: number) => (
-                      <tr key={idx} className="border-b border-gray-700 hover:bg-gray-700/50">
-                        <td className="p-2 font-mono font-bold">{token.token_symbol}</td>
-                        <td className="p-2 font-mono text-xs text-gray-400">
-                          {token.token_address.slice(0, 4)}...{token.token_address.slice(-4)}
-                        </td>
-                        <td className="text-right p-2">
-                          {token.total_trades}
-                          <span className="text-gray-500 text-xs ml-1">
-                            ({token.closed_trades}c/{token.open_positions}o)
-                          </span>
-                        </td>
-                        <td className="text-right p-2">${token.total_invested.toFixed(2)}</td>
-                        <td className="text-right p-2">${token.total_returned.toFixed(2)}</td>
-                        <td className={`text-right p-2 font-bold ${token.net_pnl > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {token.net_pnl > 0 ? '+' : ''}${token.net_pnl.toFixed(2)}
-                        </td>
-                        <td className="text-right p-2">{token.win_rate.toFixed(1)}%</td>
-                        <td className="text-right p-2 text-xs">
-                          {token.trading_window_hours ? `${token.trading_window_hours.toFixed(1)}h` : '-'}
-                        </td>
-                        <td className="text-right p-2 text-xs">
-                          {token.avg_holding_hours ? `${token.avg_holding_hours.toFixed(1)}h` : '-'}
-                        </td>
-                        <td className="p-2">
-                          {token.is_rugged && token.is_held && (
-                            <span className="text-red-400">🚨 RUGGED</span>
-                          )}
-                          {token.traded_rug_token && !token.is_held && (
-                            <span className="text-yellow-400">⚠️ EXITED</span>
-                          )}
-                          {token.is_held && !token.is_rugged && (
-                            <span className="text-blue-400">💎 HOLDING</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {(showAllTokens ? data.tokens : data.tokens.slice(0, 10)).map((token: any, idx: number) => {
+                      // Status logic
+                      let status = '';
+                      let statusColor = '';
+                      
+                      if (token.is_rugged && token.is_held) {
+                        // RUGGED: Open position that got rugged (no exit)
+                        status = '🚨 RUGGED';
+                        statusColor = 'text-red-400';
+                      } else if (token.traded_rug_token) {
+                        // ESCAPED: Traded and exited (fully or partially) but token rugged later
+                        const hasOpenPosition = token.open_positions > 0;
+                        status = hasOpenPosition ? '⚠️ ESCAPED (partial)' : '✅ ESCAPED';
+                        statusColor = 'text-yellow-400';
+                      } else if (token.closed_trades > 0 && token.open_positions === 0) {
+                        // EXITED: Fully exited, not a scam
+                        status = '✅ EXITED';
+                        statusColor = 'text-green-400';
+                      } else if (token.closed_trades > 0 && token.open_positions > 0) {
+                        // PARTIAL: Partially exited, still holding, not a scam
+                        status = '📊 PARTIAL';
+                        statusColor = 'text-blue-400';
+                      } else if (token.is_held && !token.is_rugged) {
+                        // HOLDING: Only bought, not sold yet, not a scam
+                        status = '💎 HOLDING';
+                        statusColor = 'text-blue-400';
+                      }
+                      
+                      return (
+                        <tr key={idx} className="border-b border-gray-700 hover:bg-gray-700/50">
+                          <td className="p-2">
+                            <div className="font-mono font-bold">{token.token_symbol}</div>
+                            <div className="font-mono text-xs text-gray-400">
+                              {token.token_address.slice(0, 4)}...{token.token_address.slice(-4)}
+                            </div>
+                          </td>
+                          <td className="text-right p-2">
+                            {token.total_trades}
+                            <span className="text-gray-500 text-xs ml-1">
+                              ({token.closed_trades}c/{token.open_positions}o)
+                            </span>
+                          </td>
+                          <td className="text-right p-2">${token.total_invested.toFixed(2)}</td>
+                          <td className="text-right p-2">${token.total_returned.toFixed(2)}</td>
+                          <td className={`text-right p-2 font-bold ${token.net_pnl > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {token.net_pnl > 0 ? '+' : ''}${token.net_pnl.toFixed(2)}
+                          </td>
+                          <td className="text-right p-2">{token.win_rate.toFixed(1)}%</td>
+                          <td className="text-right p-2 text-xs">
+                            {token.trading_window_hours ? `${token.trading_window_hours.toFixed(1)}h` : '-'}
+                          </td>
+                          <td className="text-right p-2 text-xs">
+                            {token.avg_holding_hours ? `${token.avg_holding_hours.toFixed(1)}h` : '-'}
+                          </td>
+                          <td className={`p-2 text-xs ${statusColor}`}>
+                            {status}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 {!showAllTokens && data.tokens.length > 10 && (
@@ -315,6 +354,42 @@ export default function TestAnalyticsPage() {
                 )}
               </div>
 
+              {/* FIFO Summary Metrics */}
+              <div className="bg-blue-900/30 border border-blue-500 p-4 rounded mb-6">
+                <h3 className="text-lg font-bold mb-3">📊 Trade-Level Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-gray-400 text-sm">Avg Win</p>
+                    <p className="text-lg font-bold text-green-400">
+                      +${(data.trades.closed.filter((t: any) => t.realized_pnl > 0)
+                        .reduce((sum: number, t: any) => sum + t.realized_pnl, 0) / 
+                        data.trades.closed.filter((t: any) => t.realized_pnl > 0).length || 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Avg Loss</p>
+                    <p className="text-lg font-bold text-red-400">
+                      -${Math.abs(data.trades.closed.filter((t: any) => t.realized_pnl < 0)
+                        .reduce((sum: number, t: any) => sum + t.realized_pnl, 0) / 
+                        data.trades.closed.filter((t: any) => t.realized_pnl < 0).length || 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Avg Hold Time</p>
+                    <p className="text-lg font-bold text-blue-400">
+                      {(data.trades.closed.reduce((sum: number, t: any) => sum + (t.holding_time_seconds || 0), 0) / 
+                        data.trades.closed.length / 3600 || 0).toFixed(1)}h
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Best Trade</p>
+                    <p className="text-lg font-bold text-green-400">
+                      +${Math.max(...data.trades.closed.map((t: any) => t.realized_pnl)).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Closed Trades */}
               {data.trades.closed.length > 0 && (
                 <div className="mb-6">
@@ -324,9 +399,8 @@ export default function TestAnalyticsPage() {
                       <thead>
                         <tr className="border-b border-gray-700">
                           <th className="text-left p-2">Token</th>
-                          <th className="text-right p-2">Amount</th>
-                          <th className="text-right p-2">Entry Price</th>
-                          <th className="text-right p-2">Exit Price</th>
+                          <th className="text-right p-2">Entry Price<br/><span className="text-xs text-gray-400">(Buy Amount)</span></th>
+                          <th className="text-right p-2">Exit Price<br/><span className="text-xs text-gray-400">(Sell Amount)</span></th>
                           <th className="text-right p-2">Entry Value</th>
                           <th className="text-right p-2">Exit Value</th>
                           <th className="text-right p-2">PnL</th>
@@ -338,10 +412,20 @@ export default function TestAnalyticsPage() {
                       <tbody>
                         {(showAllTrades ? data.trades.closed : data.trades.closed.slice(0, 20)).map((trade: any, idx: number) => (
                           <tr key={idx} className="border-b border-gray-700 hover:bg-gray-700/50">
-                            <td className="p-2 font-mono text-xs">{trade.token_symbol}</td>
-                            <td className="text-right p-2 text-xs">{trade.amount.toFixed(2)}</td>
-                            <td className="text-right p-2">${trade.entry_price.toFixed(8)}</td>
-                            <td className="text-right p-2">${trade.exit_price.toFixed(8)}</td>
+                            <td className="p-2">
+                              <div className="font-mono text-xs font-bold">{trade.token_symbol}</div>
+                              <div className="font-mono text-xs text-gray-400">
+                                {trade.token_address.slice(0, 4)}...{trade.token_address.slice(-4)}
+                              </div>
+                            </td>
+                            <td className="text-right p-2">
+                              <div>${trade.entry_price.toFixed(8)}</div>
+                              <div className="text-xs text-gray-400">{trade.amount.toFixed(2)}</div>
+                            </td>
+                            <td className="text-right p-2">
+                              <div>${trade.exit_price.toFixed(8)}</div>
+                              <div className="text-xs text-gray-400">{trade.amount.toFixed(2)}</div>
+                            </td>
                             <td className="text-right p-2">${trade.entry_value_usd.toFixed(2)}</td>
                             <td className="text-right p-2">${trade.exit_value_usd.toFixed(2)}</td>
                             <td className={`text-right p-2 font-bold ${trade.realized_pnl > 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -389,23 +473,28 @@ export default function TestAnalyticsPage() {
                       <thead>
                         <tr className="border-b border-gray-700">
                           <th className="text-left p-2">Token</th>
-                          <th className="text-right p-2">Amount</th>
-                          <th className="text-right p-2">Entry Price</th>
+                          <th className="text-right p-2">Entry Price<br/><span className="text-xs text-gray-400">(Buy Amount)</span></th>
                           <th className="text-right p-2">Current Price</th>
                           <th className="text-right p-2">Entry Value</th>
                           <th className="text-right p-2">Current Value</th>
                           <th className="text-right p-2">Unrealized PnL</th>
                           <th className="text-right p-2">ROI</th>
-                          <th className="text-right p-2">Liquidity</th>
                           <th className="text-left p-2">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(showAllTrades ? data.trades.open : data.trades.open.slice(0, 20)).map((position: any, idx: number) => (
                           <tr key={idx} className={`border-b border-gray-700 hover:bg-gray-700/50 ${position.is_rug ? 'bg-red-900/20' : ''}`}>
-                            <td className="p-2 font-mono text-xs">{position.token_symbol}</td>
-                            <td className="text-right p-2 text-xs">{position.amount.toFixed(2)}</td>
-                            <td className="text-right p-2">${position.entry_price.toFixed(8)}</td>
+                            <td className="p-2">
+                              <div className="font-mono text-xs font-bold">{position.token_symbol}</div>
+                              <div className="font-mono text-xs text-gray-400">
+                                {position.token_address.slice(0, 4)}...{position.token_address.slice(-4)}
+                              </div>
+                            </td>
+                            <td className="text-right p-2">
+                              <div>${position.entry_price.toFixed(8)}</div>
+                              <div className="text-xs text-gray-400">{position.amount.toFixed(2)}</div>
+                            </td>
                             <td className="text-right p-2">${position.current_price.toFixed(8)}</td>
                             <td className="text-right p-2">${position.entry_value_usd.toFixed(2)}</td>
                             <td className="text-right p-2">
@@ -435,17 +524,12 @@ export default function TestAnalyticsPage() {
                                 ? '-100.0%'
                                 : (position.unrealized_roi > 0 ? '+' : '') + position.unrealized_roi.toFixed(1) + '%'}
                             </td>
-                            <td className="text-right p-2 text-xs">
-                              {position.current_liquidity !== undefined 
-                                ? `$${position.current_liquidity.toFixed(0)}`
-                                : '-'}
-                            </td>
                             <td className="p-2 text-xs">
                               {position.is_rug && (
                                 <div className="text-red-400">
                                   <div>🚨 RUGGED</div>
                                   {position.rug_reason && position.rug_reason.length > 0 && (
-                                    <div className="text-xs text-gray-400 mt-1">
+                                    <div className="text-xs text-gray-500 mt-1">
                                       {position.rug_reason.join(', ')}
                                     </div>
                                   )}
