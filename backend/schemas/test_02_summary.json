@@ -1,0 +1,18 @@
+{
+  "wallet": "2gwiA6zaf2yRfBVDc5zbPPSq2fT9DSPybRyzvGCE3vYo",
+  "chain": "501",
+  "timestamp": "2025-11-16T21:09:10.800Z",
+  "core_data": {
+    "profile_summary": {
+      "total_pnl": "422289.2999715771",
+      "win_rate": "64.00",
+      "total_buys": 41,
+      "total_sells": 19
+    },
+    "held_tokens_count": 428,
+    "all_tokens_count": 428,
+    "trade_history_count": 60,
+    "unique_tokens_traded": 25
+  },
+  "enrichment_tested": true
+}

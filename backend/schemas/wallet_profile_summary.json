@@ -1,0 +1,106 @@
+{
+  "code": 0,
+  "data": {
+    "avgCostBuy": "4593.0935219477",
+    "datePnlList": [
+      {
+        "profit": "0",
+        "timestamp": 1762790400000
+      },
+      {
+        "profit": "0",
+        "timestamp": 1762876800000
+      },
+      {
+        "profit": "50359.580193502905243686444934",
+        "timestamp": 1762963200000
+      },
+      {
+        "profit": "0",
+        "timestamp": 1763049600000
+      },
+      {
+        "profit": "208780.151693000156563486314848",
+        "timestamp": 1763136000000
+      },
+      {
+        "profit": "88596.09228140458054215281504",
+        "timestamp": 1763222400000
+      },
+      {
+        "profit": "0",
+        "timestamp": 1763308800000
+      }
+    ],
+    "favoriteMcapType": "4",
+    "mcapTxsBuyList": [
+      0,
+      20,
+      0,
+      21,
+      0
+    ],
+    "nativeTokenBalanceAmount": "0.001500000",
+    "nativeTokenBalanceUsd": "0.205244038325023024887000000",
+    "newWinRateDistribution": [
+      14,
+      2,
+      0,
+      0
+    ],
+    "topTokens": [
+      {
+        "innerGotoUrl": "/token/solana/9Ge8uepN6nVakrHgdydW1ErE76xM61fGCNcgdYFDoMya",
+        "pnl": "50359.58019350291",
+        "roi": "1282.045694904767",
+        "tokenAddress": "9Ge8uepN6nVakrHgdydW1ErE76xM61fGCNcgdYFDoMya",
+        "tokenLogo": "https://static.oklink.com/cdn/web3/currency/token/large/501-9Ge8uepN6nVakrHgdydW1ErE76xM61fGCNcgdYFDoMya-107/type=default_90_0?v=1763024785442",
+        "tokenName": "Vultisig Token",
+        "tokenSymbol": "VULT"
+      },
+      {
+        "innerGotoUrl": "/token/solana/8N5STaiTf2LyDUAoQUmKmp2kNJWLcz4rQKVgB5Pd32EU",
+        "pnl": "50226.84970596366",
+        "roi": "34861.262751807255",
+        "tokenAddress": "8N5STaiTf2LyDUAoQUmKmp2kNJWLcz4rQKVgB5Pd32EU",
+        "tokenLogo": "https://static.oklink.com/cdn/web3/currency/token/large/501-8N5STaiTf2LyDUAoQUmKmp2kNJWLcz4rQKVgB5Pd32EU-107/type=default_90_0?v=1763200163540",
+        "tokenName": "Wojak's Brother",
+        "tokenSymbol": "OKAYGUY"
+      },
+      {
+        "innerGotoUrl": "/token/solana/GSDYCubDL7JpQFcqEmqeobHuSxp1X7j6C4t2xYxV6Sr1",
+        "pnl": "40744.18201493109",
+        "roi": "64116.43827345564",
+        "tokenAddress": "GSDYCubDL7JpQFcqEmqeobHuSxp1X7j6C4t2xYxV6Sr1",
+        "tokenLogo": "https://static.oklink.com/cdn/web3/currency/token/large/501-GSDYCubDL7JpQFcqEmqeobHuSxp1X7j6C4t2xYxV6Sr1-107/type=default_90_0?v=1763012353430",
+        "tokenName": "fr3g",
+        "tokenSymbol": "fr3g"
+      }
+    ],
+    "topTokensTotalPnl": "141330.61191439766",
+    "topTokensTotalRoi": "3417.34",
+    "totalPnl": "422289.299971577",
+    "totalPnlRoi": "2245.01",
+    "totalProfitPnl": "48676197544.12025976410411296952859",
+    "totalProfitPnlRoi": "721931.29",
+    "totalTxsBuy": 41,
+    "totalTxsSell": 19,
+    "totalVolumeBuy": "188316.83439985663",
+    "totalVolumeSell": "441099.4180323038",
+    "totalWinRate": "64.00",
+    "unrealizedPnl": "48674578985.490269257833775637160879",
+    "unrealizedPnlRoi": "5399032.98",
+    "winRateList": [
+      "56.00",
+      "4.00",
+      "4.00",
+      "0.00",
+      "0.00",
+      "0.00"
+    ]
+  },
+  "detailMsg": "",
+  "error_code": "0",
+  "error_message": "",
+  "msg": ""
+}

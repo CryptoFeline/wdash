@@ -12,6 +12,7 @@ import prefetchRouter from './routes/prefetch.js';
 import syncRouter from './routes/sync.js';
 import okxRouter from './routes/okx.js';
 import analysisRouter from './routes/analysis.js';
+import advancedAnalysisRouter from './routes/advanced-analysis.js';
 import { requireApiKey } from './middleware/auth.js';
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/prefetch', prefetchRouter);
 app.use('/api/sync', syncRouter);
 app.use('/api/okx', okxRouter); // OKX wallet data
 app.use('/api/analysis', analysisRouter); // Analysis endpoints (trade reconstruction, metrics)
+app.use('/api/advanced-analysis', advancedAnalysisRouter); // NEW: Advanced analytics with FIFO + chronological capital
 app.use('/api', healthRouter);
 
 // Root endpoint
@@ -74,6 +76,7 @@ app.get('/', (req, res) => {
     endpoints: {
       wallets: '/api/wallets?chain=eth&timeframe=7d&tag=all&page=1&limit=50',
       stats: '/api/wallets/stats?chain=eth&timeframe=7d&tag=all',
+      advancedAnalysis: '/api/advanced-analysis/:wallet/:chain',
       health: '/api/health',
       chains: '/api/chains',
       tags: '/api/tags'
@@ -100,6 +103,7 @@ app.listen(PORT, () => {
 ║   Endpoints:                             ║
 ║   - GET /api/wallets                     ║
 ║   - GET /api/wallets/stats               ║
+║   - GET /api/advanced-analysis/:wallet/:chain ║
 ║   - GET /api/health                      ║
 ║   - GET /api/chains                      ║
 ║   - GET /api/tags                        ║

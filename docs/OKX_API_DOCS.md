@@ -431,7 +431,7 @@
 }
 ```
 
-8. Wallet Portfolio (POST)
+8. Wallet Portfolio (POST) - NOT WORKING!
 - Example: `https://web3.okx.com/priapi/v2/wallet/asset/profile/all/explorer?t=1763038772117`
 - Header:
 ```
