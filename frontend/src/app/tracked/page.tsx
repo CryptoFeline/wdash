@@ -24,6 +24,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, Trash2, TrendingUp } from 'lucide-react';
 import { WalletDetailsModal } from '@/components/WalletDetailsModal';
+import AdvancedAnalyticsModal from '@/components/AdvancedAnalyticsModal';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: 50,
@@ -375,13 +376,22 @@ export default function TrackedWalletsPage() {
               onRowClick={handleWalletClick}
             />
 
-            {/* Deep Analysis Modal */}
+            {/* Advanced Analytics Modal - NEW */}
+            <AdvancedAnalyticsModal
+              wallet={selectedWallet?.wallet_address || ''}
+              chain={chain === 'sol' ? '501' : chain}
+              isOpen={isModalOpen}
+              onClose={handleModalClose}
+            />
+
+            {/* Old Deep Analysis Modal - DEPRECATED, keeping for reference
             <WalletDetailsModal
               wallet={selectedWallet}
               chain={chain}
               isOpen={isModalOpen}
               onClose={handleModalClose}
             />
+            */}
           </>
         )}
       </div>

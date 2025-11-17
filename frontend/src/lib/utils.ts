@@ -61,3 +61,23 @@ export function formatPercent(num: number, decimals: number = 1): string {
   return formatNumber(num, decimals) + '%';
 }
 
+/**
+ * Format USD values with dollar sign and abbreviations
+ * Examples: 1234 → $1.2K, 1234567 → $1.2M, -5000 → -$5.0K
+ */
+export function formatUSD(num: number, decimals: number = 1): string {
+  if (num === null || num === undefined || isNaN(num)) return '$0';
+  
+  const sign = num < 0 ? '-' : '';
+  const absNum = Math.abs(num);
+  
+  // Under $1000, show exact amount with 2 decimals
+  if (absNum < 1000) {
+    return sign + '$' + absNum.toFixed(2);
+  }
+  
+  // Use number formatting for large amounts
+  const formatted = formatNumber(absNum, decimals);
+  return sign + '$' + formatted;
+}
+
