@@ -89,6 +89,29 @@ export function aggregateToTokenLevel(pairedTrades, openPositions) {
       : 0;
     
     token.rug_flags = [...new Set(token.rug_flags)];
+    
+    // Calculate time metrics
+    const tokenTrades = allTrades.filter(t => t.token_address === token.token_address);
+    const timestamps = tokenTrades.map(t => t.entry_time).filter(t => t);
+    if (timestamps.length > 0) {
+      token.first_trade_time = Math.min(...timestamps);
+      token.last_trade_time = Math.max(...timestamps);
+      token.trading_window_hours = (token.last_trade_time - token.first_trade_time) / (1000 * 60 * 60);
+    } else {
+      token.first_trade_time = null;
+      token.last_trade_time = null;
+      token.trading_window_hours = 0;
+    }
+    
+    // Calculate total hold time (sum of all holding periods)
+    const closedTrades = pairedTrades.filter(t => t.token_address === token.token_address);
+    const totalHoldingSeconds = closedTrades.reduce((sum, t) => sum + (t.holding_time_seconds || 0), 0);
+    token.total_holding_hours = totalHoldingSeconds / 3600;
+    token.avg_holding_hours = closedTrades.length > 0 ? token.total_holding_hours / closedTrades.length : 0;
+    
+    // Token amounts (for display)
+    token.total_token_amount_bought = tokenTrades.reduce((sum, t) => sum + (t.amount || 0), 0);
+    token.total_token_amount_sold = closedTrades.reduce((sum, t) => sum + (t.amount || 0), 0);
   }
   
   return Array.from(tokenMap.values());
@@ -106,6 +129,12 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
   const simple_total_buys = allTrades.reduce((sum, t) => sum + t.entry_value_usd, 0);
   const simple_total_sells = pairedTrades.reduce((sum, t) => sum + t.exit_value_usd, 0);
   const volume_ratio = simple_total_sells / simple_total_buys;
+  
+  // Transaction counts
+  const buy_count = allTrades.length; // All trades start with a buy
+  const sell_count = pairedTrades.length; // Closed trades have sells
+  const avg_buy_size = buy_count > 0 ? simple_total_buys / buy_count : 0;
+  const avg_sell_size = sell_count > 0 ? simple_total_sells / sell_count : 0;
   
   // Capital metrics (ACCURATE)
   const total_realized_pnl = pairedTrades.reduce((sum, t) => sum + t.realized_pnl, 0);
@@ -146,6 +175,10 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
       total_buy_volume: simple_total_buys,
       total_sell_volume: simple_total_sells,
       volume_ratio,
+      buy_count,
+      sell_count,
+      avg_buy_size,
+      avg_sell_size,
       note: "Volume metrics track trading activity, not capital efficiency"
     },
     
