@@ -177,10 +177,10 @@ export async function fetchTokenOverview(tokenAddress, chainId) {
   
   try {
     const data = await fetchOKX(
-      'https://web3.okx.com/priapi/v1/defi/cross-chain/nft/overview/token-market',
+      'https://web3.okx.com/priapi/v1/dx/market/v2/token/overview',
       {
         tokenContractAddress: tokenAddress,
-        chainIndex: chainId,
+        chainId: chainId,
         t: Date.now()
       },
       cacheKey

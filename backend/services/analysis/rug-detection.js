@@ -76,27 +76,10 @@ export async function enrichOpenPositions(openPositions, tokenList, chainId) {
       // Rate limiting
       await new Promise(r => setTimeout(r, 100));
     } catch (error) {
-      // 404 errors likely mean token was delisted/rugged
-      const is404 = error.message?.includes('404') || error.message?.includes('Not Found');
-      
+      console.warn(`Failed to check rug status for ${position.token_symbol}:`, error.message);
       position.current_liquidity = 0;
-      position.is_rug = is404; // ✅ 404 = likely rugged/delisted
-      position.rug_reason = is404 ? ['Token delisted from OKX (API 404)'] : [];
-      
-      // CORRECTED: Treat 404 as confirmed loss
-      position.unrealized_pnl_raw = position.unrealized_pnl;
-      position.unrealized_pnl_real = is404 ? -position.entry_value_usd : position.unrealized_pnl;
-      position.confirmed_loss = is404 ? position.entry_value_usd : 0;
-      
-      if (is404) {
-        position.realized_roi = -100; // Treat as total loss
-        position.is_realized_loss = true; // Include in win rate
-      }
-      
-      // Only log non-404 errors
-      if (!is404) {
-        console.warn(`Failed to check rug status for ${position.token_symbol}:`, error.message);
-      }
+      position.is_rug = false;
+      position.rug_reason = [];
     }
   }
   
@@ -138,25 +121,8 @@ export async function checkClosedTradesForRugs(pairedTrades, chainId) {
       // Rate limiting
       await new Promise(r => setTimeout(r, 100));
     } catch (error) {
-      // 404 errors likely mean token was delisted/rugged
-      const is404 = error.message?.includes('404') || error.message?.includes('Not Found');
-      
-      if (is404) {
-        // Mark all trades of this token as rugged
-        for (const t of pairedTrades) {
-          if (t.token_address === trade.token_address) {
-            t.is_rug_now = true;
-            t.rug_warning = 'Token later became rug (delisted from OKX - API 404)';
-          }
-        }
-      }
-      
+      console.warn(`Failed to check rug status for ${trade.token_symbol}:`, error.message);
       checkedTokens.add(trade.token_address);
-      
-      // Only log non-404 errors
-      if (!is404) {
-        console.warn(`Failed to check rug status for ${trade.token_symbol}:`, error.message);
-      }
     }
   }
   
