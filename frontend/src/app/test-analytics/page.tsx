@@ -260,6 +260,8 @@ export default function TestAnalyticsPage() {
                       <th className="text-right p-2">Trades</th>
                       <th className="text-right p-2">Invested</th>
                       <th className="text-right p-2">Returned</th>
+                      <th className="text-right p-2">Realized PnL</th>
+                      <th className="text-right p-2">Unrealized PnL</th>
                       <th className="text-right p-2">Net PnL</th>
                       <th className="text-right p-2">Win Rate</th>
                       <th className="text-right p-2">Time Window</th>
@@ -312,6 +314,14 @@ export default function TestAnalyticsPage() {
                           </td>
                           <td className="text-right p-2">${token.total_invested.toFixed(2)}</td>
                           <td className="text-right p-2">${token.total_returned.toFixed(2)}</td>
+                          <td className={`text-right p-2 ${token.total_realized_pnl > 0 ? 'text-green-400' : token.total_realized_pnl < 0 ? 'text-red-400' : ''}`}>
+                            {token.total_realized_pnl > 0 ? '+' : ''}${token.total_realized_pnl.toFixed(2)}
+                          </td>
+                          <td className={`text-right p-2 ${token.total_unrealized_pnl > 0 ? 'text-green-400' : token.total_unrealized_pnl < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                            {token.open_positions > 0 
+                              ? (token.total_unrealized_pnl > 0 ? '+' : '') + '$' + token.total_unrealized_pnl.toFixed(2)
+                              : '-'}
+                          </td>
                           <td className={`text-right p-2 font-bold ${token.net_pnl > 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {token.net_pnl > 0 ? '+' : ''}${token.net_pnl.toFixed(2)}
                           </td>
@@ -356,35 +366,60 @@ export default function TestAnalyticsPage() {
 
               {/* FIFO Summary Metrics */}
               <div className="bg-blue-900/30 border border-blue-500 p-4 rounded mb-6">
-                <h3 className="text-lg font-bold mb-3">📊 Trade-Level Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <h3 className="text-lg font-bold mb-3">📊 Trade-Level Summary (Per Trade Metrics)</h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>
-                    <p className="text-gray-400 text-sm">Avg Win</p>
-                    <p className="text-lg font-bold text-green-400">
-                      +${(data.trades.closed.filter((t: any) => t.realized_pnl > 0)
-                        .reduce((sum: number, t: any) => sum + t.realized_pnl, 0) / 
-                        data.trades.closed.filter((t: any) => t.realized_pnl > 0).length || 0).toFixed(2)}
+                    <p className="text-gray-400 text-sm">Per-Trade Win Rate</p>
+                    <p className="text-lg font-bold text-blue-400">
+                      {((data.overview.winning_trades / data.overview.total_trades) * 100).toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {data.overview.winning_trades}W / {data.overview.total_trades}T
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-400 text-sm">Avg Loss</p>
+                    <p className="text-gray-400 text-sm">Avg Win (Closed)</p>
+                    <p className="text-lg font-bold text-green-400">
+                      +${(data.trades.closed.filter((t: any) => t.realized_pnl > 0)
+                        .reduce((sum: number, t: any) => sum + t.realized_pnl, 0) / 
+                        Math.max(data.trades.closed.filter((t: any) => t.realized_pnl > 0).length, 1)).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Avg Loss (Closed)</p>
                     <p className="text-lg font-bold text-red-400">
                       -${Math.abs(data.trades.closed.filter((t: any) => t.realized_pnl < 0)
                         .reduce((sum: number, t: any) => sum + t.realized_pnl, 0) / 
-                        data.trades.closed.filter((t: any) => t.realized_pnl < 0).length || 0).toFixed(2)}
+                        Math.max(data.trades.closed.filter((t: any) => t.realized_pnl < 0).length, 1)).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-sm">Avg Per-Trade PnL</p>
+                    <p className={`text-lg font-bold ${data.overview.net_pnl / data.overview.total_trades > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {data.overview.net_pnl / data.overview.total_trades > 0 ? '+' : ''}${(data.overview.net_pnl / data.overview.total_trades).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {((data.overview.net_pnl / data.overview.total_trades / (data.overview.capital_metrics.total_buy_volume / data.overview.total_trades)) * 100).toFixed(1)}% avg ROI
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Avg Hold Time</p>
                     <p className="text-lg font-bold text-blue-400">
-                      {(data.trades.closed.reduce((sum: number, t: any) => sum + (t.holding_time_seconds || 0), 0) / 
-                        data.trades.closed.length / 3600 || 0).toFixed(1)}h
+                      {(() => {
+                        const closedSeconds = data.trades.closed.reduce((sum: number, t: any) => sum + (t.holding_time_seconds || 0), 0);
+                        const openSeconds = data.trades.open.reduce((sum: number, t: any) => {
+                          if (t.entry_time) {
+                            return sum + ((Date.now() - t.entry_time) / 1000);
+                          }
+                          return sum;
+                        }, 0);
+                        const totalHours = (closedSeconds + openSeconds) / 3600;
+                        const avgHours = totalHours / (data.trades.closed.length + data.trades.open.length);
+                        return avgHours.toFixed(1);
+                      })()}h
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">Best Trade</p>
-                    <p className="text-lg font-bold text-green-400">
-                      +${Math.max(...data.trades.closed.map((t: any) => t.realized_pnl)).toFixed(2)}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Across all trades
                     </p>
                   </div>
                 </div>

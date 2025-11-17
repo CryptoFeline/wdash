@@ -28,13 +28,15 @@ export function aggregateToTokenLevel(pairedTrades, openPositions) {
         total_invested: 0,
         total_returned: 0,
         total_realized_pnl: 0,
+        total_unrealized_pnl: 0,
         total_confirmed_loss: 0,
         net_pnl: 0,
         avg_roi: 0,
         is_held: false,
         is_rugged: false,
         traded_rug_token: false,
-        rug_flags: []
+        rug_flags: [],
+        current_value_open_positions: 0
       });
     }
     
@@ -45,6 +47,10 @@ export function aggregateToTokenLevel(pairedTrades, openPositions) {
     if (trade.is_open) {
       token.open_positions++;
       token.is_held = true;
+      
+      // Add unrealized PnL and current value for open positions
+      token.total_unrealized_pnl += trade.unrealized_pnl || 0;
+      token.current_value_open_positions += trade.current_value_usd || 0;
       
       if (trade.is_rug) {
         token.rugged_positions++;
@@ -106,8 +112,21 @@ export function aggregateToTokenLevel(pairedTrades, openPositions) {
     // Calculate total hold time (sum of all holding periods)
     const closedTrades = pairedTrades.filter(t => t.token_address === token.token_address);
     const totalHoldingSeconds = closedTrades.reduce((sum, t) => sum + (t.holding_time_seconds || 0), 0);
-    token.total_holding_hours = totalHoldingSeconds / 3600;
-    token.avg_holding_hours = closedTrades.length > 0 ? token.total_holding_hours / closedTrades.length : 0;
+    
+    // Add active hold time for open positions (entry to now)
+    const openTrades = openPositions.filter(t => t.token_address === token.token_address);
+    const now = Date.now();
+    const activeHoldingSeconds = openTrades.reduce((sum, t) => {
+      if (t.entry_time) {
+        return sum + ((now - t.entry_time) / 1000);
+      }
+      return sum;
+    }, 0);
+    
+    token.total_holding_hours = (totalHoldingSeconds + activeHoldingSeconds) / 3600;
+    token.avg_holding_hours = tokenTrades.length > 0 
+      ? token.total_holding_hours / tokenTrades.length 
+      : 0;
     
     // Token amounts (for display)
     token.total_token_amount_bought = tokenTrades.reduce((sum, t) => sum + (t.amount || 0), 0);
