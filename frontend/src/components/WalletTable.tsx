@@ -77,9 +77,11 @@ export default function WalletTable({
 
   const handleRowClick = (wallet: Wallet) => {
     // Open analytics modal on row click
+    // Convert chain name to chain ID (sol -> 501)
+    const chainId = chain === 'sol' ? '501' : chain;
     setAnalyticsWallet({
       address: wallet.wallet_address,
-      chain: chain
+      chain: chainId
     });
     setIsAnalyticsOpen(true);
   };
