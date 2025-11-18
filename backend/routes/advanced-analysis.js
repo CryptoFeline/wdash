@@ -64,6 +64,7 @@ router.get('/:wallet/:chain', async (req, res) => {
     const { wallet, chain } = req.params;
     const cacheKey = `advanced_${wallet}_${chain}`;
     const skipRugCheck = req.query.skipRugCheck === 'true'; // Phase 1: fast load
+    const cacheOnly = req.query.cacheOnly === 'true'; // Polling mode: only check cache
     
     // Check full cache (with rug checks)
     const fullCached = getRugCheckedCache(cacheKey);
@@ -77,7 +78,7 @@ router.get('/:wallet/:chain', async (req, res) => {
     }
     
     // Check basic cache (without rug checks) - for fast initial load
-    if (skipRugCheck) {
+    if (skipRugCheck || cacheOnly) {
       const basicCached = getCached(cacheKey);
       if (basicCached) {
         return res.json({ 
@@ -87,6 +88,15 @@ router.get('/:wallet/:chain', async (req, res) => {
           rugCheckComplete: false
         });
       }
+    }
+    
+    // If cacheOnly mode and no cache found, tell frontend to keep polling
+    if (cacheOnly) {
+      return res.status(202).json({
+        success: false,
+        processing: true,
+        message: 'Data is still being processed. Please retry.'
+      });
     }
     
     // ========================================

@@ -61,40 +61,67 @@ export default function AdvancedAnalyticsModal({
         attempt++;
         
         try {
-          const response = await fetch(`/api/advanced-analysis/${wallet}/${chain}`);
+          // Add timeout to each individual request (5 seconds)
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
           
-          if (response.status === 504) {
-            // Gateway timeout - data is still processing, wait and retry
-            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Still processing, retrying in 2s...`);
+          // First request: trigger processing
+          // Subsequent requests: check for cached result only
+          const url = attempt === 1 
+            ? `/api/advanced-analysis/${wallet}/${chain}`
+            : `/api/advanced-analysis/${wallet}/${chain}?cacheOnly=true`;
+          
+          const response = await fetch(url, { signal: controller.signal });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.status === 504 || response.status === 202) {
+            // Still processing - wait and check cache again
+            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Still processing, checking cache in 2s...`);
             await new Promise(resolve => setTimeout(resolve, 2000));
             continue;
           }
           
           if (!response.ok) {
+            // On first attempt, non-200 might mean it's processing
+            if (attempt === 1) {
+              console.log('[Analytics] First request failed, polling for cached result...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              continue;
+            }
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
           
           const json = await response.json();
 
-          if (json.success) {
+          if (json.success && json.data) {
             setData(json.data);
             setLoading(false);
+            console.log(`[Analytics] ✅ Data loaded on attempt ${attempt}`);
             return; // Success - exit
+          } else if (json.processing) {
+            // Backend says it's still processing
+            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Backend processing...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
           } else {
             setError(json.error || 'Unknown error');
             setLoading(false);
             return;
           }
         } catch (err: any) {
-          // If it's a network error on first attempt, might be processing
-          if (attempt === 1) {
-            console.log('[Analytics] Initial fetch failed, starting polling...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            continue;
+          // Handle abort/timeout
+          if (err.name === 'AbortError') {
+            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Request timed out, retrying...`);
+            if (attempt < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              continue;
+            }
           }
           
-          // On later attempts, if we get an error, wait and retry
+          // Other errors
           if (attempt < maxAttempts) {
+            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Error, retrying:`, err.message);
             await new Promise(resolve => setTimeout(resolve, 2000));
             continue;
           }
@@ -105,7 +132,7 @@ export default function AdvancedAnalyticsModal({
       }
       
       // Max attempts reached without success
-      setError('Request timed out after 60 seconds. This wallet may have too many transactions.');
+      setError('Request timed out after 60 seconds. Please try again or contact support.');
     } catch (err: any) {
       setError(err.message || 'Failed to load analytics');
     } finally {
