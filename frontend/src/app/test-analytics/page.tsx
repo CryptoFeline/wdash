@@ -380,23 +380,23 @@ export default function TestAnalyticsPage() {
                   <div>
                     <p className="text-gray-400 text-sm">Avg Win (Closed)</p>
                     <p className="text-lg font-bold text-green-400">
-                      +${((data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) > 0)
+                      +${(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) > 0)
                         .reduce((sum: number, t: any) => sum + (t.realized_pnl ?? 0), 0) / 
-                        Math.max(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) > 0).length, 1)) ?? 0).toFixed(2)}
+                        Math.max(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) > 0).length, 1)).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Avg Loss (Closed)</p>
                     <p className="text-lg font-bold text-red-400">
-                      -${(Math.abs(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) < 0)
+                      -${Math.abs(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) < 0)
                         .reduce((sum: number, t: any) => sum + (t.realized_pnl ?? 0), 0) / 
-                        Math.max(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) < 0).length, 1)) ?? 0).toFixed(2)}
+                        Math.max(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) < 0).length, 1)).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Avg Per-Trade PnL</p>
                     <p className={`text-lg font-bold ${(data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1) > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {(data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1) > 0 ? '+' : ''}${(((data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1)) ?? 0).toFixed(2)}
+                      {(data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1) > 0 ? '+' : ''}${((data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1)).toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       {((((data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1)) / ((data.overview.capital_metrics?.total_buy_volume ?? 0) / Math.max(data.overview.total_trades ?? 1, 1))) * 100).toFixed(1)}% avg ROI
