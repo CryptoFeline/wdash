@@ -77,7 +77,7 @@ export default function TestAnalyticsPage() {
                 </div>
                 <div className="bg-gray-700 p-4 rounded">
                   <p className="text-gray-400 text-sm">Win Rate</p>
-                  <p className="text-2xl font-bold">{data.overview.win_rate.toFixed(2)}%</p>
+                  <p className="text-2xl font-bold">{(data.overview.win_rate ?? 0).toFixed(2)}%</p>
                 </div>
                 <div className="bg-gray-700 p-4 rounded">
                   <p className="text-gray-400 text-sm">Closed Trades</p>
@@ -96,37 +96,37 @@ export default function TestAnalyticsPage() {
                   <div>
                     <p className="text-gray-400 text-sm">Starting Capital</p>
                     <p className="text-xl font-bold">
-                      ${data.overview.capital_metrics.starting_capital.toFixed(2)}
+                      ${(data.overview.capital_metrics?.starting_capital ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Peak Deployed</p>
                     <p className="text-xl font-bold">
-                      ${data.overview.capital_metrics.peak_deployed.toFixed(2)}
+                      ${(data.overview.capital_metrics?.peak_deployed ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Final Capital</p>
                     <p className="text-xl font-bold">
-                      ${data.overview.capital_metrics.final_capital.toFixed(2)}
+                      ${(data.overview.capital_metrics?.final_capital ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Net PnL</p>
                     <p className="text-xl font-bold text-green-400">
-                      +${data.overview.capital_metrics.net_pnl.toFixed(2)}
+                      +${(data.overview.capital_metrics?.net_pnl ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Trading Performance ROI</p>
                     <p className="text-2xl font-bold text-green-400">
-                      {data.overview.capital_metrics.trading_performance_roi.toFixed(2)}% 🔥
+                      {(data.overview.capital_metrics?.trading_performance_roi ?? 0).toFixed(2)}% 🔥
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Wallet Growth ROI</p>
                     <p className="text-xl font-bold text-blue-400">
-                      {data.overview.capital_metrics.wallet_growth_roi.toFixed(2)}%
+                      {(data.overview.capital_metrics?.wallet_growth_roi ?? 0).toFixed(2)}%
                     </p>
                   </div>
                 </div>
@@ -142,25 +142,25 @@ export default function TestAnalyticsPage() {
                   <div>
                     <p className="text-gray-400 text-sm">Total Buy Volume</p>
                     <p className="text-lg">
-                      ${data.overview.volume_metrics.total_buy_volume.toFixed(2)}
+                      ${(data.overview.volume_metrics?.total_buy_volume ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Total Sell Volume</p>
                     <p className="text-lg">
-                      ${data.overview.volume_metrics.total_sell_volume.toFixed(2)}
+                      ${(data.overview.volume_metrics?.total_sell_volume ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Volume Ratio</p>
                     <p className="text-lg">
-                      {data.overview.volume_metrics.volume_ratio.toFixed(2)}x
+                      {(data.overview.volume_metrics?.volume_ratio ?? 0).toFixed(2)}x
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Avg Trade Size</p>
                     <p className="text-lg">
-                      ${data.overview.volume_metrics.avg_buy_size.toFixed(2)}
+                      ${(data.overview.volume_metrics?.avg_buy_size ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
@@ -206,7 +206,7 @@ export default function TestAnalyticsPage() {
                   <div>
                     <p className="text-gray-400 text-sm">Rugged Losses</p>
                     <p className="text-xl font-bold text-red-400">
-                      -${data.overview.total_confirmed_loss.toFixed(2)}
+                      -${(data.overview.total_confirmed_loss ?? 0).toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">From open rugged positions</p>
                   </div>
@@ -312,25 +312,25 @@ export default function TestAnalyticsPage() {
                               ({token.closed_trades}c/{token.open_positions}o)
                             </span>
                           </td>
-                          <td className="text-right p-2">${token.total_invested.toFixed(2)}</td>
-                          <td className="text-right p-2">${token.total_returned.toFixed(2)}</td>
+                          <td className="text-right p-2">${(token.total_invested ?? 0).toFixed(2)}</td>
+                          <td className="text-right p-2">${(token.total_returned ?? 0).toFixed(2)}</td>
                           <td className={`text-right p-2 ${token.total_realized_pnl > 0 ? 'text-green-400' : token.total_realized_pnl < 0 ? 'text-red-400' : ''}`}>
-                            {token.total_realized_pnl > 0 ? '+' : ''}${token.total_realized_pnl.toFixed(2)}
+                            {token.total_realized_pnl > 0 ? '+' : ''}${(token.total_realized_pnl ?? 0).toFixed(2)}
                           </td>
                           <td className={`text-right p-2 ${token.total_unrealized_pnl > 0 ? 'text-green-400' : token.total_unrealized_pnl < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                             {token.open_positions > 0 
-                              ? (token.total_unrealized_pnl > 0 ? '+' : '') + '$' + token.total_unrealized_pnl.toFixed(2)
+                              ? (token.total_unrealized_pnl > 0 ? '+' : '') + '$' + (token.total_unrealized_pnl ?? 0).toFixed(2)
                               : '-'}
                           </td>
                           <td className={`text-right p-2 font-bold ${token.net_pnl > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {token.net_pnl > 0 ? '+' : ''}${token.net_pnl.toFixed(2)}
+                            {token.net_pnl > 0 ? '+' : ''}${(token.net_pnl ?? 0).toFixed(2)}
                           </td>
-                          <td className="text-right p-2">{token.win_rate.toFixed(1)}%</td>
+                          <td className="text-right p-2">{(token.win_rate ?? 0).toFixed(1)}%</td>
                           <td className="text-right p-2 text-xs">
-                            {token.trading_window_hours ? `${token.trading_window_hours.toFixed(1)}h` : '-'}
+                            {token.trading_window_hours ? `${(token.trading_window_hours ?? 0).toFixed(1)}h` : '-'}
                           </td>
                           <td className="text-right p-2 text-xs">
-                            {token.avg_holding_hours ? `${token.avg_holding_hours.toFixed(1)}h` : '-'}
+                            {token.avg_holding_hours ? `${(token.avg_holding_hours ?? 0).toFixed(1)}h` : '-'}
                           </td>
                           <td className={`p-2 text-xs ${statusColor}`}>
                             {status}
@@ -371,7 +371,7 @@ export default function TestAnalyticsPage() {
                   <div>
                     <p className="text-gray-400 text-sm">Per-Trade Win Rate</p>
                     <p className="text-lg font-bold text-blue-400">
-                      {((data.overview.winning_trades / data.overview.total_trades) * 100).toFixed(1)}%
+                      {(((data.overview.winning_trades ?? 0) / Math.max(data.overview.total_trades ?? 1, 1)) * 100).toFixed(1)}%
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       {data.overview.winning_trades}W / {data.overview.total_trades}T
@@ -380,26 +380,26 @@ export default function TestAnalyticsPage() {
                   <div>
                     <p className="text-gray-400 text-sm">Avg Win (Closed)</p>
                     <p className="text-lg font-bold text-green-400">
-                      +${(data.trades.closed.filter((t: any) => t.realized_pnl > 0)
-                        .reduce((sum: number, t: any) => sum + t.realized_pnl, 0) / 
-                        Math.max(data.trades.closed.filter((t: any) => t.realized_pnl > 0).length, 1)).toFixed(2)}
+                      +${((data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) > 0)
+                        .reduce((sum: number, t: any) => sum + (t.realized_pnl ?? 0), 0) / 
+                        Math.max(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) > 0).length, 1)) ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Avg Loss (Closed)</p>
                     <p className="text-lg font-bold text-red-400">
-                      -${Math.abs(data.trades.closed.filter((t: any) => t.realized_pnl < 0)
-                        .reduce((sum: number, t: any) => sum + t.realized_pnl, 0) / 
-                        Math.max(data.trades.closed.filter((t: any) => t.realized_pnl < 0).length, 1)).toFixed(2)}
+                      -${(Math.abs(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) < 0)
+                        .reduce((sum: number, t: any) => sum + (t.realized_pnl ?? 0), 0) / 
+                        Math.max(data.trades.closed.filter((t: any) => (t.realized_pnl ?? 0) < 0).length, 1)) ?? 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-gray-400 text-sm">Avg Per-Trade PnL</p>
-                    <p className={`text-lg font-bold ${data.overview.net_pnl / data.overview.total_trades > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {data.overview.net_pnl / data.overview.total_trades > 0 ? '+' : ''}${(data.overview.net_pnl / data.overview.total_trades).toFixed(2)}
+                    <p className={`text-lg font-bold ${(data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {(data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1) > 0 ? '+' : ''}${(((data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1)) ?? 0).toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {((data.overview.net_pnl / data.overview.total_trades / (data.overview.capital_metrics.total_buy_volume / data.overview.total_trades)) * 100).toFixed(1)}% avg ROI
+                      {((((data.overview.net_pnl ?? 0) / Math.max(data.overview.total_trades ?? 1, 1)) / ((data.overview.capital_metrics?.total_buy_volume ?? 0) / Math.max(data.overview.total_trades ?? 1, 1))) * 100).toFixed(1)}% avg ROI
                     </p>
                   </div>
                   <div>
@@ -414,8 +414,8 @@ export default function TestAnalyticsPage() {
                           return sum;
                         }, 0);
                         const totalHours = (closedSeconds + openSeconds) / 3600;
-                        const avgHours = totalHours / (data.trades.closed.length + data.trades.open.length);
-                        return avgHours.toFixed(1);
+                        const avgHours = totalHours / Math.max((data.trades.closed.length + data.trades.open.length), 1);
+                        return (avgHours ?? 0).toFixed(1);
                       })()}h
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
@@ -454,24 +454,24 @@ export default function TestAnalyticsPage() {
                               </div>
                             </td>
                             <td className="text-right p-2">
-                              <div>${trade.entry_price.toFixed(8)}</div>
-                              <div className="text-xs text-gray-400">{trade.amount.toFixed(2)}</div>
+                              <div>${(trade.entry_price ?? 0).toFixed(8)}</div>
+                              <div className="text-xs text-gray-400">{(trade.amount ?? 0).toFixed(2)}</div>
                             </td>
                             <td className="text-right p-2">
-                              <div>${trade.exit_price.toFixed(8)}</div>
-                              <div className="text-xs text-gray-400">{trade.amount.toFixed(2)}</div>
+                              <div>${(trade.exit_price ?? 0).toFixed(8)}</div>
+                              <div className="text-xs text-gray-400">{(trade.amount ?? 0).toFixed(2)}</div>
                             </td>
-                            <td className="text-right p-2">${trade.entry_value_usd.toFixed(2)}</td>
-                            <td className="text-right p-2">${trade.exit_value_usd.toFixed(2)}</td>
+                            <td className="text-right p-2">${(trade.entry_value_usd ?? 0).toFixed(2)}</td>
+                            <td className="text-right p-2">${(trade.exit_value_usd ?? 0).toFixed(2)}</td>
                             <td className={`text-right p-2 font-bold ${trade.realized_pnl > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {trade.realized_pnl > 0 ? '+' : ''}${trade.realized_pnl.toFixed(2)}
+                              {trade.realized_pnl > 0 ? '+' : ''}${(trade.realized_pnl ?? 0).toFixed(2)}
                             </td>
                             <td className={`text-right p-2 ${trade.realized_roi > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {trade.realized_roi > 0 ? '+' : ''}{trade.realized_roi.toFixed(1)}%
+                              {trade.realized_roi > 0 ? '+' : ''}{(trade.realized_roi ?? 0).toFixed(1)}%
                             </td>
                             <td className="text-right p-2 text-xs">
                               {trade.holding_time_seconds 
-                                ? `${(trade.holding_time_seconds / 3600).toFixed(1)}h` 
+                                ? `${((trade.holding_time_seconds ?? 0) / 3600).toFixed(1)}h` 
                                 : '-'}
                             </td>
                             <td className="p-2 text-xs">
@@ -527,15 +527,15 @@ export default function TestAnalyticsPage() {
                               </div>
                             </td>
                             <td className="text-right p-2">
-                              <div>${position.entry_price.toFixed(8)}</div>
-                              <div className="text-xs text-gray-400">{position.amount.toFixed(2)}</div>
+                              <div>${(position.entry_price ?? 0).toFixed(8)}</div>
+                              <div className="text-xs text-gray-400">{(position.amount ?? 0).toFixed(2)}</div>
                             </td>
-                            <td className="text-right p-2">${position.current_price.toFixed(8)}</td>
-                            <td className="text-right p-2">${position.entry_value_usd.toFixed(2)}</td>
+                            <td className="text-right p-2">${(position.current_price ?? 0).toFixed(8)}</td>
+                            <td className="text-right p-2">${(position.entry_value_usd ?? 0).toFixed(2)}</td>
                             <td className="text-right p-2">
                               {position.is_rug 
                                 ? <span className="text-red-400">$0.00</span>
-                                : `$${position.current_value_usd.toFixed(2)}`}
+                                : `$${(position.current_value_usd ?? 0).toFixed(2)}`}
                             </td>
                             <td className={`text-right p-2 font-bold ${
                               position.is_rug 
@@ -545,8 +545,8 @@ export default function TestAnalyticsPage() {
                                   : 'text-red-400'
                             }`}>
                               {position.is_rug 
-                                ? `-$${position.confirmed_loss.toFixed(2)}`
-                                : (position.unrealized_pnl > 0 ? '+' : '') + '$' + position.unrealized_pnl.toFixed(2)}
+                                ? `-$${(position.confirmed_loss ?? 0).toFixed(2)}`
+                                : (position.unrealized_pnl > 0 ? '+' : '') + '$' + (position.unrealized_pnl ?? 0).toFixed(2)}
                             </td>
                             <td className={`text-right p-2 ${
                               position.is_rug 
@@ -557,7 +557,7 @@ export default function TestAnalyticsPage() {
                             }`}>
                               {position.is_rug 
                                 ? '-100.0%'
-                                : (position.unrealized_roi > 0 ? '+' : '') + position.unrealized_roi.toFixed(1) + '%'}
+                                : (position.unrealized_roi > 0 ? '+' : '') + (position.unrealized_roi ?? 0).toFixed(1) + '%'}
                             </td>
                             <td className="p-2 text-xs">
                               {position.is_rug && (
