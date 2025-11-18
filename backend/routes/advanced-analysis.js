@@ -188,7 +188,12 @@ router.get('/:wallet/:chain', async (req, res) => {
         chain,
         timestamp: Date.now(),
         period: '7_days',
-        rugCheckComplete: !skipRugCheck
+        rugCheckComplete: !skipRugCheck,
+        nativeBalance: {
+          amount: profileSummary?.nativeTokenBalanceAmount || '0',
+          usd: profileSummary?.nativeTokenBalanceUsd || '0',
+          symbol: chain === '501' ? 'SOL' : chain === '1' ? 'ETH' : chain === '56' ? 'BNB' : chain === '8453' ? 'ETH' : 'NATIVE'
+        }
       }
     };
     

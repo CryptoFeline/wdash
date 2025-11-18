@@ -80,12 +80,6 @@ export default function WalletTable({
     // Convert chain name to chain ID (sol -> 501)
     const chainId = chain === 'sol' ? '501' : chain;
     
-    // Pre-fetch analytics in background (fire-and-forget)
-    // This will start processing and cache the result
-    fetch(`/api/advanced-analysis/${wallet.wallet_address}/${chainId}`).catch(() => {
-      // Ignore errors here - modal will handle them
-    });
-    
     setAnalyticsWallet({
       address: wallet.wallet_address,
       chain: chainId

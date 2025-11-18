@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, BarChart3 } from 'lucide-react';
+import { X, BarChart3, Copy, ExternalLink } from 'lucide-react';
 import AdvancedAnalyticsContent from './AdvancedAnalyticsContent';
 
 interface AdvancedAnalyticsModalProps {
@@ -23,13 +23,32 @@ export default function AdvancedAnalyticsModal({
 
   // Get chain display name
   const getChainName = (chainId: string) => {
-    const chains: Record<string, string> = {
+    const chainMap: Record<string, string> = {
       '501': 'Solana',
       '1': 'Ethereum',
       '8453': 'Base',
-      '56': 'BSC',
+      '56': 'BSC'
     };
-    return chains[chainId] || chainId;
+    return chainMap[chainId] || `Chain ${chainId}`;
+  };
+
+  const getExplorerUrl = (chainId: string, address: string) => {
+    const explorers: Record<string, string> = {
+      '501': `https://solscan.io/account/${address}`,
+      '1': `https://etherscan.io/address/${address}`,
+      '8453': `https://basescan.org/address/${address}`,
+      '56': `https://bscscan.com/address/${address}`
+    };
+    return explorers[chainId] || '#';
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      console.log('[Analytics] Copied to clipboard:', text);
+    } catch (err) {
+      console.error('[Analytics] Failed to copy:', err);
+    }
   };
 
   // Load analytics when modal opens
@@ -53,7 +72,7 @@ export default function AdvancedAnalyticsModal({
     setError(null);
     setData(null);
 
-    const maxAttempts = 30; // Poll for up to 30 attempts (60 seconds with 2s intervals)
+    const maxAttempts = 15; // Poll for up to 15 attempts (45 seconds with 3s intervals)
     let attempt = 0;
 
     try {
@@ -61,9 +80,9 @@ export default function AdvancedAnalyticsModal({
         attempt++;
         
         try {
-          // Add timeout to each individual request (5 seconds)
+          // Add timeout to each individual request (26 seconds to match backend)
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const timeoutId = setTimeout(() => controller.abort(), 26000);
           
           // First request: trigger processing
           // Subsequent requests: check for cached result only
@@ -71,6 +90,7 @@ export default function AdvancedAnalyticsModal({
             ? `/api/advanced-analysis/${wallet}/${chain}`
             : `/api/advanced-analysis/${wallet}/${chain}?cacheOnly=true`;
           
+          console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Fetching:`, url);
           const response = await fetch(url, { signal: controller.signal });
           
           clearTimeout(timeoutId);
@@ -95,47 +115,63 @@ export default function AdvancedAnalyticsModal({
           const json = await response.json();
 
           if (json.success && json.data) {
+            console.log('[Analytics] ✅ Data received on attempt', attempt);
+            console.log('[Analytics] Data structure:', {
+              hasOverview: !!json.data?.overview,
+              hasTokens: !!json.data?.tokens,
+              hasTrades: !!json.data?.trades,
+              tokenCount: json.data?.tokens?.length,
+              tradeCount: json.data?.trades?.length
+            });
             setData(json.data);
             setLoading(false);
-            console.log(`[Analytics] ✅ Data loaded on attempt ${attempt}`);
-            return; // Success - exit
-          } else if (json.processing) {
+            break; // Exit while loop successfully
+          } else if (json.processing || response.status === 202) {
             // Backend says it's still processing
-            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Backend processing...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Still processing, checking cache in 3s...`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
             continue;
           } else {
-            setError(json.error || 'Unknown error');
+            console.error('[Analytics] Unexpected response:', json);
+            setError(json.error || 'Failed to load analytics data');
             setLoading(false);
-            return;
+            break;
           }
         } catch (err: any) {
           // Handle abort/timeout
           if (err.name === 'AbortError') {
-            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Request timed out, retrying...`);
+            console.warn(`[Analytics] Attempt ${attempt}/${maxAttempts} - Request timed out after 26s`);
             if (attempt < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 2000));
+              await new Promise(resolve => setTimeout(resolve, 3000));
               continue;
+            } else {
+              setError('Request timed out. The wallet analysis is taking longer than expected.');
+              setLoading(false);
+              break;
             }
           }
           
           // Other errors
           if (attempt < maxAttempts) {
-            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Error, retrying:`, err.message);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Error, retrying in 3s:`, err.message);
+            await new Promise(resolve => setTimeout(resolve, 3000));
             continue;
           }
           
           // Max attempts reached
-          throw err;
+          setError(err.message || 'Failed to load analytics');
+          setLoading(false);
         }
       }
       
       // Max attempts reached without success
-      setError('Request timed out after 60 seconds. Please try again or contact support.');
+      if (!data && !error) {
+        setError('Request timed out after multiple attempts. Please try again.');
+        setLoading(false);
+      }
     } catch (err: any) {
+      console.error('[Analytics] Fatal error:', err);
       setError(err.message || 'Failed to load analytics');
-    } finally {
       setLoading(false);
     }
   };
@@ -169,29 +205,64 @@ export default function AdvancedAnalyticsModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-black border-b border-gray-800 p-6 flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-blue-400" />
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <BarChart3 className="h-6 w-6" />
                 Advanced Analytics
               </h2>
-              <div className="flex items-center gap-4 text-sm">
-                <div className="text-gray-400">
-                  <span className="text-gray-500">Wallet:</span>
-                  <span className="font-mono ml-2 text-white">{wallet.slice(0, 6)}...{wallet.slice(-4)}</span>
+              <button
+                onClick={onClose}
+                className="text-white/80 hover:text-white transition-colors w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {/* Wallet Address with Actions */}
+              <div className="flex items-center gap-3">
+                <span className="text-gray-200 text-sm">Wallet:</span>
+                <code className="font-mono text-white text-sm bg-black/20 px-3 py-1 rounded">
+                  {wallet}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(wallet)}
+                  className="text-white/70 hover:text-white transition-colors p-1.5 rounded hover:bg-white/10"
+                  title="Copy address"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+                <a
+                  href={getExplorerUrl(chain, wallet)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/70 hover:text-white transition-colors p-1.5 rounded hover:bg-white/10"
+                  title="View on explorer"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+
+              {/* Chain and Native Balance */}
+              <div className="flex items-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-200">Chain:</span>
+                  <span className="text-white font-semibold">{getChainName(chain)}</span>
                 </div>
-                <div className="text-gray-400">
-                  <span className="text-gray-500">Chain:</span>
-                  <span className="ml-2 text-blue-400 font-semibold">{getChainName(chain)}</span>
-                </div>
+                {data?.meta?.nativeBalance && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-200">Native Balance:</span>
+                    <span className="text-white font-semibold">
+                      {parseFloat(data.meta.nativeBalance.amount).toFixed(2)} {data.meta.nativeBalance.symbol || 'SOL'}
+                      <span className="text-gray-300 ml-1">
+                        (${parseFloat(data.meta.nativeBalance.usd || '0').toLocaleString()})
+                      </span>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-800"
-            >
-              <X className="h-6 w-6" />
-            </button>
           </div>
 
           {/* Content */}
