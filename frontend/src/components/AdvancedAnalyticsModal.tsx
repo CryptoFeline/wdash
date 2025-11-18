@@ -53,30 +53,61 @@ export default function AdvancedAnalyticsModal({
     setError(null);
     setData(null);
 
+    const maxAttempts = 30; // Poll for up to 30 attempts (60 seconds with 2s intervals)
+    let attempt = 0;
+
     try {
-      // Set a 25-second timeout to match Netlify function timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      while (attempt < maxAttempts) {
+        attempt++;
+        
+        try {
+          const response = await fetch(`/api/advanced-analysis/${wallet}/${chain}`);
+          
+          if (response.status === 504) {
+            // Gateway timeout - data is still processing, wait and retry
+            console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Still processing, retrying in 2s...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const json = await response.json();
 
-      const response = await fetch(`/api/advanced-analysis/${wallet}/${chain}`, {
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      const json = await response.json();
-
-      if (json.success) {
-        setData(json.data);
-      } else {
-        setError(json.error || 'Unknown error');
+          if (json.success) {
+            setData(json.data);
+            setLoading(false);
+            return; // Success - exit
+          } else {
+            setError(json.error || 'Unknown error');
+            setLoading(false);
+            return;
+          }
+        } catch (err: any) {
+          // If it's a network error on first attempt, might be processing
+          if (attempt === 1) {
+            console.log('[Analytics] Initial fetch failed, starting polling...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+          
+          // On later attempts, if we get an error, wait and retry
+          if (attempt < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+          
+          // Max attempts reached
+          throw err;
+        }
       }
+      
+      // Max attempts reached without success
+      setError('Request timed out after 60 seconds. This wallet may have too many transactions.');
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        setError('Request timed out. This wallet may have too many transactions. Please try again.');
-      } else {
-        setError(err.message);
-      }
+      setError(err.message || 'Failed to load analytics');
     } finally {
       setLoading(false);
     }

@@ -38,30 +38,49 @@ async function fetchOKX(url, params, cacheKey = null) {
   const queryString = new URLSearchParams(params).toString();
   const fullUrl = `${url}?${queryString}`;
   
-  const response = await fetch(fullUrl, {
-    headers: {
-      'Accept': 'application/json',
-      'User-Agent': 'Mozilla/5.0'
+  // Retry logic for rate limiting
+  const maxRetries = 3;
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(fullUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0'
+        }
+      });
+      
+      if (response.status === 429) {
+        // Rate limited - wait and retry
+        const waitTime = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5s
+        console.log(`[OKX API] Rate limited, waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (cacheKey) {
+        setCache(cacheKey, data);
+      }
+      
+      return data;
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        const waitTime = 1000 * attempt;
+        console.log(`[OKX API] Error on attempt ${attempt}, retrying in ${waitTime}ms:`, err.message);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
     }
-  });
-  
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
   
-  const json = await response.json();
-  
-  if (json.code !== 0) {
-    throw new Error(`API Error ${json.code}: ${json.msg}`);
-  }
-  
-  const data = json.data;
-  
-  if (cacheKey) {
-    setCache(cacheKey, data);
-  }
-  
-  return data;
+  throw lastError;
 }
 
 // ============================================================
