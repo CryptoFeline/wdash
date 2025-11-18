@@ -131,6 +131,21 @@ export function aggregateToTokenLevel(pairedTrades, openPositions) {
     // Token amounts (for display)
     token.total_token_amount_bought = tokenTrades.reduce((sum, t) => sum + (t.amount || 0), 0);
     token.total_token_amount_sold = closedTrades.reduce((sum, t) => sum + (t.amount || 0), 0);
+    
+    // Determine token status
+    if (token.is_rugged && token.is_held) {
+      token.status = 'RUGGED'; // Open position that got rugged
+    } else if (token.traded_rug_token) {
+      token.status = token.open_positions > 0 ? 'ESCAPED_PARTIAL' : 'ESCAPED'; // Exited before/after rug
+    } else if (token.closed_trades > 0 && token.open_positions === 0) {
+      token.status = 'EXITED'; // Fully exited, not a scam
+    } else if (token.closed_trades > 0 && token.open_positions > 0) {
+      token.status = 'PARTIAL'; // Partially exited, still holding
+    } else if (token.is_held && !token.is_rugged) {
+      token.status = 'HOLDING'; // Only bought, not sold yet
+    } else {
+      token.status = 'UNKNOWN';
+    }
   }
   
   return Array.from(tokenMap.values());
@@ -145,9 +160,9 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
   const ruggedPositions = openPositions.filter(p => p.is_rug);
   
   // Volume metrics (NOT capital!)
-  const simple_total_buys = allTrades.reduce((sum, t) => sum + t.entry_value_usd, 0);
-  const simple_total_sells = pairedTrades.reduce((sum, t) => sum + t.exit_value_usd, 0);
-  const volume_ratio = simple_total_sells / simple_total_buys;
+  const simple_total_buys = allTrades.reduce((sum, t) => sum + (t.entry_value_usd || 0), 0);
+  const simple_total_sells = pairedTrades.reduce((sum, t) => sum + (t.exit_value_usd || 0), 0);
+  const volume_ratio = simple_total_buys > 0 ? simple_total_sells / simple_total_buys : 0;
   
   // Transaction counts
   const buy_count = allTrades.length; // All trades start with a buy
@@ -156,21 +171,23 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
   const avg_sell_size = sell_count > 0 ? simple_total_sells / sell_count : 0;
   
   // Capital metrics (ACCURATE)
-  const total_realized_pnl = pairedTrades.reduce((sum, t) => sum + t.realized_pnl, 0);
-  const total_confirmed_loss = ruggedPositions.reduce((sum, p) => sum + p.confirmed_loss, 0);
+  const total_realized_pnl = pairedTrades.reduce((sum, t) => sum + (t.realized_pnl || 0), 0);
+  const total_confirmed_loss = ruggedPositions.reduce((sum, p) => sum + (p.confirmed_loss || 0), 0);
   const net_pnl = total_realized_pnl - total_confirmed_loss;
   
   // Win rate (includes rugged as losses)
-  const closed_winning = pairedTrades.filter(t => t.realized_pnl > 0).length;
-  const closed_losing = pairedTrades.filter(t => t.realized_pnl < 0).length;
+  const closed_winning = pairedTrades.filter(t => (t.realized_pnl || 0) > 0).length;
+  const closed_losing = pairedTrades.filter(t => (t.realized_pnl || 0) < 0).length;
   const rugged_count = ruggedPositions.length;
   
   const total_winning = closed_winning;
   const total_losing = closed_losing + rugged_count;
-  const win_rate = total_winning / (total_winning + total_losing) * 100;
+  const win_rate = (total_winning + total_losing) > 0 
+    ? total_winning / (total_winning + total_losing) * 100 
+    : 0;
   
   // Average trade ROI
-  const total_roi = pairedTrades.reduce((sum, t) => sum + t.realized_roi, 0);
+  const total_roi = pairedTrades.reduce((sum, t) => sum + (t.realized_roi || 0), 0);
   const avg_roi = pairedTrades.length > 0 ? total_roi / pairedTrades.length : 0;
   
   // Verification (all methods should match net_pnl)
@@ -180,11 +197,11 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
   };
   
   // Calculate average loss/win per position
-  const losing_positions = pairedTrades.filter(t => t.realized_pnl < 0);
-  const winning_positions = pairedTrades.filter(t => t.realized_pnl > 0);
+  const losing_positions = pairedTrades.filter(t => (t.realized_pnl || 0) < 0);
+  const winning_positions = pairedTrades.filter(t => (t.realized_pnl || 0) > 0);
   
-  const total_losses_amount = losing_positions.reduce((sum, t) => sum + Math.abs(t.realized_pnl), 0);
-  const total_wins_amount = winning_positions.reduce((sum, t) => sum + t.realized_pnl, 0);
+  const total_losses_amount = losing_positions.reduce((sum, t) => sum + Math.abs(t.realized_pnl || 0), 0);
+  const total_wins_amount = winning_positions.reduce((sum, t) => sum + (t.realized_pnl || 0), 0);
   
   const avg_loss_per_position = total_losing > 0 ? total_losses_amount / total_losing : 0;
   const avg_win_per_position = total_winning > 0 ? total_wins_amount / total_winning : 0;
@@ -204,42 +221,42 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
   return {
     // Risk metrics (for Overview tab)
     risk_metrics: {
-      rugged_positions: rugged_count,
-      confirmed_losses: total_losing,
+      rugged_positions: rugged_count || 0,
+      confirmed_losses: total_losing || 0,
       win_breakdown: {
-        wins: total_winning,
-        losses: total_losing
+        wins: total_winning || 0,
+        losses: total_losing || 0
       },
-      avg_loss_per_position,
-      avg_win_per_position,
-      win_rate
+      avg_loss_per_position: avg_loss_per_position || 0,
+      avg_win_per_position: avg_win_per_position || 0,
+      win_rate: win_rate || 0
     },
     
     // Volume metrics (activity tracking only - NOT capital!)
     volume_metrics: {
-      total_buy_volume: simple_total_buys,
-      total_sell_volume: simple_total_sells,
-      total_volume: simple_total_buys + simple_total_sells,
-      avg_trade_size: allTrades.length > 0 ? simple_total_buys / allTrades.length : 0,
-      volume_ratio,
-      buy_count,
-      sell_count,
-      avg_buy_size,
-      avg_sell_size,
+      total_buy_volume: simple_total_buys || 0,
+      total_sell_volume: simple_total_sells || 0,
+      total_volume: (simple_total_buys || 0) + (simple_total_sells || 0),
+      avg_trade_size: allTrades.length > 0 ? (simple_total_buys || 0) / allTrades.length : 0,
+      volume_ratio: volume_ratio || 0,
+      buy_count: buy_count || 0,
+      sell_count: sell_count || 0,
+      avg_buy_size: avg_buy_size || 0,
+      avg_sell_size: avg_sell_size || 0,
       note: "Volume metrics track trading activity, not capital efficiency"
     },
     
     // Capital metrics (chronological tracking - ACCURATE)
     capital_metrics: {
-      starting_capital: capitalTracking.starting_capital,
-      peak_deployed: capitalTracking.peak_deployed,
-      final_capital: capitalTracking.final_capital,
-      net_pnl: capitalTracking.net_pnl,
-      wallet_growth_roi: capitalTracking.wallet_growth_roi,
-      trading_performance_roi: capitalTracking.trading_performance_roi,
-      total_gains: capitalTracking.total_gains,
-      total_losses: capitalTracking.total_losses,
-      avg_hold_time_seconds
+      starting_capital: capitalTracking.starting_capital || 0,
+      peak_deployed: capitalTracking.peak_capital_deployed || 0, // FIX: Use correct field name
+      final_capital: capitalTracking.final_capital || 0,
+      net_pnl: capitalTracking.net_pnl || 0,
+      wallet_growth_roi: capitalTracking.wallet_growth_roi || 0,
+      trading_performance_roi: capitalTracking.trading_performance_roi || 0,
+      total_gains: capitalTracking.total_gains || 0,
+      total_losses: capitalTracking.total_losses || 0,
+      avg_hold_time_seconds: avg_hold_time_seconds || 0
     },
     
     // Trade counts (for Trade-Level Summary)
