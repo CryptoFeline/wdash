@@ -43,6 +43,7 @@ import {
 } from '@/lib/export';
 import { exportToCSV, exportToJSON } from '@/lib/export';
 import { WalletDetailsModal } from './WalletDetailsModal';
+import AdvancedAnalyticsModal from './AdvancedAnalyticsModal';
 import { useTrackedWallets } from '@/hooks/useTrackedWallets';
 
 interface WalletTableProps {
@@ -68,19 +69,19 @@ export default function WalletTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [analyticsWallet, setAnalyticsWallet] = useState<{address: string, chain: string} | null>(null);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
 
   // Tracked wallets hook
   const { isTracked, toggleWallet } = useTrackedWallets();
 
   const handleRowClick = (wallet: Wallet) => {
-    // If parent provides onRowClick, use that (enhanced modal)
-    // Otherwise use the old modal (backward compatibility)
-    if (onRowClick) {
-      onRowClick(wallet);
-    } else {
-      setSelectedWallet(wallet);
-      setIsModalOpen(true);
-    }
+    // Open analytics modal on row click
+    setAnalyticsWallet({
+      address: wallet.wallet_address,
+      chain: chain
+    });
+    setIsAnalyticsOpen(true);
   };
 
   const closeModal = () => {
@@ -753,6 +754,19 @@ export default function WalletTable({
         isOpen={isModalOpen}
         onClose={closeModal}
       />
+
+      {/* Advanced Analytics Modal */}
+      {analyticsWallet && (
+        <AdvancedAnalyticsModal
+          wallet={analyticsWallet.address}
+          chain={analyticsWallet.chain}
+          isOpen={isAnalyticsOpen}
+          onClose={() => {
+            setIsAnalyticsOpen(false);
+            setAnalyticsWallet(null);
+          }}
+        />
+      )}
     </div>
   );
 }
