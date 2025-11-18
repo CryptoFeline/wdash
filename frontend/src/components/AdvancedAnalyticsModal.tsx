@@ -54,7 +54,16 @@ export default function AdvancedAnalyticsModal({
     setData(null);
 
     try {
-      const response = await fetch(`/api/advanced-analysis/${wallet}/${chain}`);
+      // Set a 25-second timeout to match Netlify function timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+      const response = await fetch(`/api/advanced-analysis/${wallet}/${chain}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
       const json = await response.json();
 
       if (json.success) {
@@ -63,7 +72,11 @@ export default function AdvancedAnalyticsModal({
         setError(json.error || 'Unknown error');
       }
     } catch (err: any) {
-      setError(err.message);
+      if (err.name === 'AbortError') {
+        setError('Request timed out. This wallet may have too many transactions. Please try again.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -98,7 +111,7 @@ export default function AdvancedAnalyticsModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-gray-900 to-gray-900/95 border-b border-gray-800 p-6 flex justify-between items-center">
+          <div className="bg-black border-b border-gray-800 p-6 flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold text-white mb-1 flex items-center gap-2">
                 <BarChart3 className="h-6 w-6 text-blue-400" />
