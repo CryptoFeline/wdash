@@ -90,13 +90,63 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
   const closedTrades = data.overview.closed_trades || 0;
   const openTrades = data.overview.open_positions || 0;
 
-  // Tokens data
-  const tokens = data.tokens || [];
+  // ============================================================
+  // DATA PROCESSING & RUG LOGIC
+  // ============================================================
+  
+  // 1. Process Tokens with Rug Logic
+  // Logic: If rugged and held, remaining investment is -100% loss.
+  const tokens = (data.tokens || []).map((t: any) => {
+    const isRugged = t.is_rugged || t.traded_rug_token;
+    
+    // Calculate cost basis of held tokens
+    // Cost Basis = Total Invested - Cost of Sold
+    // Cost of Sold = Total Returned - Realized PnL
+    const costOfSold = (t.total_returned || 0) - (t.total_realized_pnl || 0);
+    const remainingCostBasis = Math.max(0, (t.total_invested || 0) - costOfSold);
+    
+    if (isRugged && remainingCostBasis > 0.000001) { // Use epsilon for float comparison
+      // It's a rug and we still hold some
+      const adjustedUnrealizedPnl = -remainingCostBasis;
+      const adjustedNetPnl = (t.total_realized_pnl || 0) + adjustedUnrealizedPnl;
+      const adjustedRoi = t.total_invested > 0 ? (adjustedNetPnl / t.total_invested) * 100 : -100;
+      
+      return {
+        ...t,
+        total_unrealized_pnl: adjustedUnrealizedPnl,
+        net_pnl: adjustedNetPnl,
+        avg_roi: adjustedRoi,
+        current_value_open_positions: 0, // Force 0 value
+        is_rugged_held: true // Flag for UI
+      };
+    }
+    return t;
+  });
+
+  // 2. Process Open Positions with Rug Logic
+  const openPositionsData = (data.trades?.open || []).map((p: any) => {
+    if (p.is_rug) {
+      return {
+        ...p,
+        current_value_usd: 0,
+        unrealized_pnl: -(p.entry_value_usd || 0),
+        unrealized_roi: -100
+      };
+    }
+    return p;
+  });
+
+  const closedTradesData = data.trades?.closed || [];
+
+  // ============================================================
+  // AGGREGATE CALCULATIONS
+  // ============================================================
+
   const totalTokens = tokens.length;
   const ruggedTokens = tokens.filter((t: any) => t.is_rugged).length;
-  const tradedRugTokens = tokens.filter((t: any) => t.traded_rug_token).length; // Tokens that rugged AFTER we traded
+  const tradedRugTokens = tokens.filter((t: any) => t.traded_rug_token).length;
 
-  // Calculate profitable/losing tokens
+  // Calculate profitable/losing tokens (using adjusted PnL)
   const profitableTokens = tokens.filter((t: any) => (t.net_pnl || 0) > 0);
   const losingTokens = tokens.filter((t: any) => (t.net_pnl || 0) < 0);
   
@@ -108,19 +158,14 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
     ? tokens.reduce((sum: number, t: any) => sum + (t.avg_roi || 0), 0) / totalTokens
     : 0;
 
-  // Calculate total value held (non-rugged only)
+  // Calculate total value held (non-rugged only, rugged forced to 0 above)
   const nonRuggedHeldValue = tokens
-    .filter((t: any) => !t.is_rugged && t.is_held)
     .reduce((sum: number, t: any) => sum + (t.current_value_open_positions || 0), 0);
 
-  // Calculate avg hold time per token (from token-level data)
+  // Calculate avg hold time per token
   const avgHoldTimePerToken = totalTokens > 0
     ? tokens.reduce((sum: number, t: any) => sum + (t.avg_hold_time_seconds || 0), 0) / totalTokens
     : 0;
-
-  // Trades data
-  const closedTradesData = data.trades?.closed || [];
-  const openPositionsData = data.trades?.open || [];
   
   // Win rate calculations
   const totalWinRate = data.overview.win_rate || 0;
@@ -130,14 +175,12 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
     ? tokens.reduce((sum: number, t: any) => sum + (t.win_rate || 0), 0) / totalTokens
     : 0;
   
-  // Avg win rate per trade (same as total win rate for now)
+  // Avg win rate per trade
   const avgTradeWinRate = totalWinRate;
 
   // Time metrics from trades
-  // Include open positions in hold time calculation (time since entry)
   const now = Date.now();
   const openPositionsHoldTime = openPositionsData.reduce((sum: number, p: any) => {
-    // If holding_time_seconds is not provided for open positions, calculate it
     const holdTime = p.holding_time_seconds || (p.entry_time ? (now - p.entry_time) / 1000 : 0);
     return sum + holdTime;
   }, 0);
@@ -151,10 +194,9 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
     ? totalHoldTime / totalTradesForHoldTime
     : 0;
 
-  // Calculate avg trade window (entry to exit time)
-  const avgTradeWindow = avgHoldTimeSeconds; // Same as hold time for closed trades
+  const avgTradeWindow = avgHoldTimeSeconds;
 
-  // Best/Worst trades (Consider both closed and open for PnL)
+  // Best/Worst trades
   const allTradesForStats = [
     ...closedTradesData.map((t: any) => ({ ...t, pnl: t.realized_pnl, roi: t.realized_roi, type: 'closed' })),
     ...openPositionsData.map((t: any) => ({ ...t, pnl: t.unrealized_pnl, roi: t.unrealized_roi, type: 'open' }))
@@ -169,7 +211,6 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
     allTradesForStats[0] || { pnl: 0 }
   );
 
-  // Avg PnL and ROI per trade (using all trades)
   const avgPnlPerTrade = totalTradesForHoldTime > 0
     ? allTradesForStats.reduce((sum: number, t: any) => sum + (t.pnl || 0), 0) / totalTradesForHoldTime
     : 0;
@@ -181,59 +222,62 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
   const capital = data.overview.capital_metrics || {};
   const startingCapital = capital.starting_capital || 0;
   const peakDeployed = capital.peak_deployed || 0;
-  const finalCapital = capital.final_capital || 0;
-  const netPnl = capital.net_pnl || 0;
-  const tradingRoi = capital.trading_performance_roi || 0;
-  const walletGrowthRoi = capital.wallet_growth_roi || 0;
+  
+  // Recalculate PnLs based on adjusted token data
+  const totalRealizedPnl = data.overview.total_realized_pnl || 0;
+  
+  // Total Unrealized PnL (includes rugged losses as negative values now)
+  const totalUnrealizedPnl = tokens.reduce((sum: number, t: any) => sum + (t.total_unrealized_pnl || 0), 0);
+  
+  // Rugged Loss (The amount lost in rugs - absolute value of negative unrealized pnl for rugs)
+  const ruggedUnrealizedLoss = tokens
+    .filter((t: any) => t.is_rugged || t.traded_rug_token)
+    .reduce((sum: number, t: any) => {
+      // Only count negative unrealized pnl (losses)
+      return sum + (t.total_unrealized_pnl < 0 ? Math.abs(t.total_unrealized_pnl) : 0);
+    }, 0);
+
+  // Net PnL = Realized + Unrealized (which now includes rug losses)
+  const netPnl = totalRealizedPnl + totalUnrealizedPnl;
+  
+  // Current Capital = Starting + Net PnL
+  const currentCapital = startingCapital + netPnl;
+
+  // ROI Calculations
+  const unrealizedRoi = startingCapital > 0 ? (totalUnrealizedPnl / startingCapital) * 100 : 0;
+  const ruggedUnrealizedRoi = startingCapital > 0 ? (ruggedUnrealizedLoss / startingCapital) * 100 : 0;
+  const realizedRoi = startingCapital > 0 ? (totalRealizedPnl / startingCapital) * 100 : 0;
+  const netPnlPercent = startingCapital > 0 ? (netPnl / startingCapital) * 100 : 0;
+  const regularRoi = startingCapital > 0 ? ((currentCapital - startingCapital) / startingCapital) * 100 : 0;
+  
+  // Trading ROI (from backend, or recalculate?)
+  // Let's use our calculated Regular ROI as the main metric since it's consistent with our rug logic
+  const tradingRoi = regularRoi; 
+  const avgRoi = tradingRoi;
 
   // Calculate avg deployed capital
   const avgDeployed = (startingCapital + peakDeployed) / 2;
-  
-  // Current capital (realized + unrealized non-rugged)
-  const totalRealizedPnl = data.overview.total_realized_pnl || 0;
-  const totalUnrealizedPnl = tokens
-    .filter((t: any) => !t.is_rugged)
-    .reduce((sum: number, t: any) => sum + (t.total_unrealized_pnl || 0), 0);
-  const ruggedUnrealizedLoss = tokens
-    .filter((t: any) => t.is_rugged)
-    .reduce((sum: number, t: any) => sum + Math.abs(t.total_unrealized_pnl || 0), 0);
-
-  const currentCapital = startingCapital + totalRealizedPnl + totalUnrealizedPnl;
-
-  // Unrealized PnL percentages
-  const unrealizedRoi = startingCapital > 0 ? (totalUnrealizedPnl / startingCapital) * 100 : 0;
-  const ruggedUnrealizedRoi = startingCapital > 0 ? (ruggedUnrealizedLoss / startingCapital) * 100 : 0;
-
-  // Realized PnL percentage
-  const realizedRoi = startingCapital > 0 ? (totalRealizedPnl / startingCapital) * 100 : 0;
-
-  // Net PnL percentage
-  const netPnlPercent = startingCapital > 0 ? (netPnl / startingCapital) * 100 : 0;
-
-  // Regular ROI (current capital vs starting)
-  const regularRoi = startingCapital > 0 ? ((currentCapital - startingCapital) / startingCapital) * 100 : 0;
-
-  // Avg ROI across all trades
-  const avgRoi = tradingRoi; // Use trading ROI as avg
 
   // Risk Analysis - Rugged Balance Ratio
   const ruggedOpenCount = openPositionsData.filter((p: any) => p.is_rug).length;
   const nonRuggedOpenCount = openTrades - ruggedOpenCount;
   const ruggedOpenPercent = openTrades > 0 ? (ruggedOpenCount / openTrades) * 100 : 0;
 
-  // Traded Rugs (includes held rugs + exited rugs that later rugged)
-  const heldRugs = ruggedTokens; // Tokens currently held that are rugged
-  const totalTradedRugs = tradedRugTokens; // Tokens that rugged after we exited
+  // Traded Rugs
+  const heldRugs = ruggedTokens;
+  const totalTradedRugs = tradedRugTokens;
   const tradedRugsPercent = totalTokens > 0 ? (totalTradedRugs / totalTokens) * 100 : 0;
 
-  // Exited Before Rug (tokens we fully exited that later rugged)
+  // Exited Before Rug
   const exitedBeforeRug = tradedRugTokens;
   const escapedPercent = totalTokens > 0 ? (exitedBeforeRug / totalTokens) * 100 : 0;
 
-  // Rugged Losses (deployed capital lost)
-  const ruggedLoss = data.overview.total_confirmed_loss || 0;
-  const totalDeployed = capital.starting_capital || 1; // Avoid division by zero
-  const ruggedLossPercent = (ruggedLoss / totalDeployed) * 100;
+  // Rugged Losses (Total confirmed loss from backend + our calculated unrealized rug loss)
+  // Note: Backend 'total_confirmed_loss' usually means realized losses. 
+  // We want to show the TOTAL value lost to rugs (Realized + Unrealized).
+  const realizedRugLoss = data.overview.total_confirmed_loss || 0;
+  const totalRuggedLoss = realizedRugLoss + ruggedUnrealizedLoss;
+  const ruggedLossPercent = startingCapital > 0 ? (totalRuggedLoss / startingCapital) * 100 : 0;
 
   return (
     <div className="space-y-6">

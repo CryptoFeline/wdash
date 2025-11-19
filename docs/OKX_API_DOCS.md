@@ -1502,3 +1502,240 @@ x-zkdex-env: 0
   "msg": ""
 }
 ```
+
+15. Top-trader Leaderboard (GET)
+
+- Example : `https://web3.okx.com/priapi/v1/dx/market/v2/smartmoney/ranking/content?chainId=501&rankStart=0&periodType=3&rankBy=1&label=all&desc=true&rankEnd=20`
+
+- Tags:
+  - `chainId`: Blockchain ID (e.g., Solana = 501)
+  - `rankStart`: Start index for pagination
+  - `rankEnd`: End index for pagination
+  - `periodType`: Time period (1=24H, 2=3D, 3=7D, 4=30D, 5=90D)
+  - `rankBy`: Ranking metric (1=Profit, 2=ROI, 3=Volume)
+  - `label`: Filter by tag (e.g., all, sniper, dev, fresh, pumpSmartMoney, kol)
+- Response:
+```json
+{
+    "code": 0,
+    "data": {
+        "rankEnd": 20, // end index 
+        "rankStart": 0, // start index
+        "rankingFilter": { // filter criteria
+            "accountId": "", // account ID filter
+            "chainId": "501", // blockchain ID
+            "desc": "true", // descending order
+            "label": "", // label filter - if all then empty
+            "periodType": "3", // time period
+            "pnlMax": "", // max profit
+            "pnlMin": "-2147483648", // min profit
+            "rankBy": "1", // ranking metric
+            "roiMax": "", // max ROI
+            "roiMin": "-2147483648", // min ROI
+            "tradeVolumeMax": "", // max trade volume
+            "tradeVolumeMin": "-2147483648", // min trade volume
+            "txsMax": "9223372036854775807", // max transactions
+            "txsMin": "0", // min transactions
+            "winRateMax": "", // max win rate
+            "winRateMin": "-2147483648" // min win rate
+        },
+        "rankingInfos": [ // list of top traders
+            {
+                "addressAlias": "", // address alias
+                "avgBuySize": "0", // average buy size
+                "chainBWLogoUrl": "https://static.coinall.ltd/cdn/assets/imgs/227/2C597ACB210BFE51.png", // chain black-white logo
+                "chainIconUrl": "https://static.coinall.ltd/cdn/wallet/logo/SOL-20220525.png", // chain color logo
+                "chainId": 501, // blockchain ID
+                "favorite": false, // is favorite
+                "labels": [
+                    "kol" // user labels
+                ],
+                "lastTime": 1763313824000, // last active time
+                "ntb": "", // net token bought
+                "ntbUSD": "", // net token bought in USD
+                "periodType": "3", // time period - 3 is 7 days
+                "pnl": "316154.0198459964", // profit and loss
+                "pnlHistory": [ // PnL Array - PnL per Day (time)
+                    {
+                        "pnl": "316154",
+                        "time": 1763305200000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763308800000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763312400000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763316000000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763319600000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763323200000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763326800000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763330400000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763334000000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763337600000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763341200000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763344800000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763348400000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763352000000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763355600000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763359200000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763362800000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763366400000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763370000000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763373600000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763377200000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763380800000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763384400000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763388000000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763391600000
+                    },
+                    {
+                        "pnl": "316154",
+                        "time": 1763395200000
+                    }
+                ],
+                "roi": "383.767067273913444900", // ROI
+                "t": [ // tags with metadata
+                    {
+                        "e": { // extra metadata
+                            "kolTwitterLink": "https://x.com/c_ckoko", // kol twitter link
+                            "name": "♡小c. (•̀ᴗ•́)و ̑̑", // kol name
+                            "kolTwitterImageFullPath": "https://static.okx.com/cdn/trade/content/2025-06-16/image/b0376275-1923-4199-8d1c-5b510cbeffc7.jpg", // kol twitter image full path
+                            "kolTwitterImage": "/cdn/trade/content/2025-06-16/image/b0376275-1923-4199-8d1c-5b510cbeffc7.jpg" // kol twitter image
+                        },
+                        "k": "kol", // tag key
+                        "m": 1 // tag metadata
+                    }
+                ],
+                "topTokens": [ // top traded tokens by this trader (array)
+                    {
+                        "pnl": "316154.0198459964", // profit and loss for this token
+                        "roi": "383.7670672739134", // ROI for this token
+                        "tokenAddress": "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk", // token address
+                        "tokenSymbol": "USELESS", // token symbol
+                        "tokenUrl": "https://web3.okx.com/cdn/web3/currency/token/large/501-Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk-108/type=default_90_0?v=1755845114460" // token URL
+                    }
+                ],
+                "tx": 35, // total transactions
+                "volume": "398535.7682570297", // total trade volume
+                "walletAddress": "4Sb2EACG2E1kozPxdawTbnCFQBhzUP22Wb6oZbD3DNs8", // wallet address
+                "walletIconUrl": "https://static.coinall.ltd/cdn/trade/content/2025-06-16/image/ b0376275-1923-4199-8d1c-5b510cbeffc7.jpg", // wallet icon URL
+                "walletName": "♡小c. (•̀ᴗ•́)و ̑̑", // wallet name
+                "winRate": "100.0", // win rate percentage
+                "wltn": [] // watched list token names
+            },
+            { ... } // more trader entries
+        ],
+        "totalCount": 3243 // total number of traders (for pagination)
+    },
+    "detailMsg": "",
+    "error_code": "0",
+    "error_message": "",
+    "msg": ""
+}
+```
+- Labels:
+  - `rankEnd`: End index of the ranking list
+  - `rankStart`: Start index of the ranking list
+  - `rankingFilter`: The filter criteria used for the ranking
+  - `rankingInfos`: Array of top trader information
+    - `addressAlias`: Alias for the trader's address
+    - `avgBuySize`: Average size of buy transactions
+    - `chainBWLogoUrl`: Black and white logo URL of the blockchain
+    - `chainIconUrl`: Color logo URL of the blockchain
+    - `chainId`: Blockchain ID
+    - `favorite`: Whether the trader is marked as favorite
+    - `labels`: Array of labels/tags associated with the trader
+    - `lastTime`: Last active timestamp
+    - `ntb`: Net tokens bought
+    - `ntbUSD`: Net tokens bought in USD
+    - `periodType`: Time period for the ranking
+    - `pnl`: Profit and loss amount
+    - `pnlHistory`: Array of daily PnL data points
+      - `pnl`: Profit and loss for the day
+      - `time`: Timestamp for the day
+    - `roi`: Return on investment percentage
+    - `t`: Array of tags with metadata
+      - `k`: Tag key
+      - `m`: Tag metadata
+      - `e`: Extra metadata (e.g., kolTwitterLink, name, kolTwitterImageFullPath, kolTwitterImage)
+    - `topTokens`: Array of top traded tokens by the trader
+      - `pnl`: Profit and loss for the token
+      - `roi`: ROI for the token
+      - `tokenAddress`: Token contract address
+      - `tokenSymbol`: Token symbol
+      - `tokenUrl`: URL of the token image
+    - `tx`: Total number of transactions
+    - `volume`: Total trade volume
+    - `walletAddress`: Wallet address of the trader
+    - `walletIconUrl`: URL of the wallet icon
+    - `walletName`: Name of the wallet/trader
+    - `winRate`: Win rate percentage
+    - `wltn`: Watched list token names
