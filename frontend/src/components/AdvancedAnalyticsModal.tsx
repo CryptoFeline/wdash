@@ -54,23 +54,24 @@ export default function AdvancedAnalyticsModal({
   // Load analytics when modal opens
   useEffect(() => {
     if (isOpen && wallet && chain) {
+      // Reset state when opening
+      setData(null);
+      setError(null);
+      setLoading(true);
       fetchAnalytics();
-    }
-  }, [isOpen, wallet, chain]);
-
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
+    } else if (!isOpen) {
+      // Reset state when closing
       setData(null);
       setError(null);
       setLoading(false);
     }
-  }, [isOpen]);
+  }, [isOpen, wallet, chain]);
 
   const fetchAnalytics = async () => {
-    setLoading(true);
-    setError(null);
-    setData(null);
+    // Don't reset data here - it's already reset in useEffect
+    // setLoading(true);
+    // setError(null);
+    // setData(null);
 
     const maxAttempts = 15; // Poll for up to 15 attempts (45 seconds with 3s intervals)
     let attempt = 0;

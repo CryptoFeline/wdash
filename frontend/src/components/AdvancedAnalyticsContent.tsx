@@ -40,7 +40,7 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
   }
 
   if (!data) {
-    console.log('[AdvancedAnalyticsContent] No data provided');
+    console.log('[AdvancedAnalyticsContent] No data provided, loading:', loading);
     return null;
   }
 
