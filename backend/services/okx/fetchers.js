@@ -56,6 +56,11 @@ async function fetchOKX(url, params, cacheKey = null) {
         const waitTime = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5s
         console.log(`[OKX API] Rate limited, waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
+        
+        // If this was the last attempt, set lastError so we don't throw undefined
+        if (attempt === maxRetries) {
+            lastError = new Error(`OKX API Rate Limit Exceeded (429) after ${maxRetries} attempts`);
+        }
         continue;
       }
       

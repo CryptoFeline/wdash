@@ -30,6 +30,7 @@ const router = express.Router();
 
 const routeCache = new Map();
 const rugCheckCache = new Map(); // Separate cache for rug-checked data
+const processingJobs = new Map(); // Track in-flight requests to prevent duplicates
 
 function getCached(key) {
   const cached = routeCache.get(key);
@@ -92,134 +93,192 @@ router.get('/:wallet/:chain', async (req, res) => {
     
     // If cacheOnly mode and no cache found, tell frontend to keep polling
     if (cacheOnly) {
+      // Check if a job is already running
+      if (processingJobs.has(cacheKey)) {
+        return res.status(202).json({
+          success: false,
+          processing: true,
+          message: 'Data is still being processed. Please retry.'
+        });
+      }
+      
+      // If no job running and no cache, we might need to start one?
+      // But cacheOnly usually implies "don't start new work".
+      // However, if the first request failed but the frontend thinks it started, we might be stuck.
+      // For now, let's assume the frontend will retry without cacheOnly if it gets 404 or similar.
+      // But here we return 202 to keep it polling if it expects it.
       return res.status(202).json({
         success: false,
         processing: true,
         message: 'Data is still being processed. Please retry.'
       });
     }
-    
+
     // ========================================
-    // STEP 1: FETCH DATA
-    // ========================================
-    
-    const [trades, tokenList, profileSummary] = await Promise.all([
-      fetchTradeHistory(wallet, chain),
-      fetchTokenList(wallet, chain),
-      fetchWalletProfileSummary(wallet, chain)
-    ]);
-    
-    // ========================================
-    // STEP 2: FIFO RECONSTRUCTION
+    // DEDUPLICATION: JOIN EXISTING JOB
     // ========================================
     
-    const { pairedTrades, openPositions } = reconstructTradesWithFIFO(trades);
+    let jobPromise = processingJobs.get(cacheKey);
     
-    // ========================================
-    // STEP 3: ENRICH OPEN POSITIONS (FAST)
-    // ========================================
-    // Always enrich with prices first (fast, no API calls)
-    
-    const enrichedOpenPositions = await enrichOpenPositions(
-      openPositions,
-      tokenList,
-      chain,
-      !skipRugCheck // Only do rug detection if not skipping
-    );
-    
-    // ========================================
-    // STEP 4: CHECK CLOSED TRADES FOR RUGS (SLOW)
-    // ========================================
-    // Skip on initial load, run in phase 2
-    
-    let rugCheckedClosedTrades = pairedTrades;
-    if (!skipRugCheck) {
-      console.log('[Advanced Analytics] Running rug checks on closed trades...');
-      rugCheckedClosedTrades = await checkClosedTradesForRugs(
-        pairedTrades,
-        chain
-      );
-    } else {
-      console.log('[Advanced Analytics] SKIPPING rug checks for fast initial load');
-    }
-    
-    // ========================================
-    // STEP 5: TRACK CAPITAL CHRONOLOGICALLY
-    // ========================================
-    
-    const capitalTracking = trackCapitalChronologically(
-      rugCheckedClosedTrades,
-      enrichedOpenPositions
-    );
-    
-    // ========================================
-    // STEP 6: AGGREGATE TO TOKEN LEVEL
-    // ========================================
-    
-    const tokens = aggregateToTokenLevel(
-      rugCheckedClosedTrades,
-      enrichedOpenPositions
-    );
-    
-    // ========================================
-    // STEP 7: AGGREGATE TO OVERVIEW LEVEL
-    // ========================================
-    
-    const overview = aggregateToOverview(
-      rugCheckedClosedTrades,
-      enrichedOpenPositions,
-      tokens,
-      capitalTracking
-    );
-    
-    // ========================================
-    // RESPONSE STRUCTURE
-    // ========================================
-    
-    const response = {
-      overview,
-      tokens,
-      trades: {
-        closed: rugCheckedClosedTrades,
-        open: enrichedOpenPositions
-      },
-      meta: {
-        wallet,
-        chain,
-        timestamp: Date.now(),
-        period: '7_days',
-        rugCheckComplete: !skipRugCheck,
-        nativeBalance: {
-          amount: profileSummary?.nativeTokenBalanceAmount || '0',
-          usd: profileSummary?.nativeTokenBalanceUsd || '0',
-          symbol: chain === '501' ? 'SOL' : chain === '1' ? 'ETH' : chain === '56' ? 'BNB' : chain === '8453' ? 'ETH' : 'NATIVE'
-        }
+    if (jobPromise) {
+      console.log(`[Advanced Analytics] 🔄 Attaching to existing job for ${wallet}`);
+      try {
+        const data = await jobPromise;
+        return res.json({
+          success: true,
+          data,
+          cached: false,
+          rugCheckComplete: !skipRugCheck
+        });
+      } catch (error) {
+        const errorMessage = error ? error.message : 'Unknown Error (undefined)';
+        return res.status(500).json({ success: false, error: errorMessage });
       }
-    };
-    
-    // Cache response
-    if (skipRugCheck) {
-      // Phase 1: Basic cache (fast load)
-      setCache(cacheKey, response);
-      console.log('[Advanced Analytics] ✅ Phase 1 complete (no rug checks)');
-    } else {
-      // Phase 2: Full cache (with rug checks)
-      setRugCheckedCache(cacheKey, response);
-      console.log('[Advanced Analytics] ✅ Phase 2 complete (with rug checks)');
     }
+    
+    // ========================================
+    // START NEW JOB
+    // ========================================
+    
+    jobPromise = (async () => {
+      console.log(`[Advanced Analytics] 🚀 Starting new analysis for ${wallet}`);
+      
+      // ========================================
+      // STEP 1: FETCH DATA
+      // ========================================
+      
+      const [trades, tokenList, profileSummary] = await Promise.all([
+        fetchTradeHistory(wallet, chain),
+        fetchTokenList(wallet, chain),
+        fetchWalletProfileSummary(wallet, chain)
+      ]);
+      
+      // ========================================
+      // STEP 2: FIFO RECONSTRUCTION
+      // ========================================
+      
+      const { pairedTrades, openPositions } = reconstructTradesWithFIFO(trades);
+      
+      // ========================================
+      // STEP 3: ENRICH OPEN POSITIONS (FAST)
+      // ========================================
+      // Always enrich with prices first (fast, no API calls)
+      
+      const enrichedOpenPositions = await enrichOpenPositions(
+        openPositions,
+        tokenList,
+        chain,
+        !skipRugCheck // Only do rug detection if not skipping
+      );
+      
+      // ========================================
+      // STEP 4: CHECK CLOSED TRADES FOR RUGS (SLOW)
+      // ========================================
+      // Skip on initial load, run in phase 2
+      
+      let rugCheckedClosedTrades = pairedTrades;
+      if (!skipRugCheck) {
+        console.log('[Advanced Analytics] Running rug checks on closed trades...');
+        rugCheckedClosedTrades = await checkClosedTradesForRugs(
+          pairedTrades,
+          chain
+        );
+      } else {
+        console.log('[Advanced Analytics] SKIPPING rug checks for fast initial load');
+      }
+      
+      // ========================================
+      // STEP 5: TRACK CAPITAL CHRONOLOGICALLY
+      // ========================================
+      
+      const capitalTracking = trackCapitalChronologically(
+        rugCheckedClosedTrades,
+        enrichedOpenPositions
+      );
+      
+      // ========================================
+      // STEP 6: AGGREGATE TO TOKEN LEVEL
+      // ========================================
+      
+      const tokens = aggregateToTokenLevel(
+        rugCheckedClosedTrades,
+        enrichedOpenPositions
+      );
+      
+      // ========================================
+      // STEP 7: AGGREGATE TO OVERVIEW LEVEL
+      // ========================================
+      
+      const overview = aggregateToOverview(
+        rugCheckedClosedTrades,
+        enrichedOpenPositions,
+        tokens,
+        capitalTracking
+      );
+      
+      // ========================================
+      // RESPONSE STRUCTURE
+      // ========================================
+      
+      const response = {
+        overview,
+        tokens,
+        trades: {
+          closed: rugCheckedClosedTrades,
+          open: enrichedOpenPositions
+        },
+        meta: {
+          wallet,
+          chain,
+          timestamp: Date.now(),
+          period: '7_days',
+          rugCheckComplete: !skipRugCheck,
+          nativeBalance: {
+            amount: profileSummary?.nativeTokenBalanceAmount || '0',
+            usd: profileSummary?.nativeTokenBalanceUsd || '0',
+            symbol: chain === '501' ? 'SOL' : chain === '1' ? 'ETH' : chain === '56' ? 'BNB' : chain === '8453' ? 'ETH' : 'NATIVE'
+          }
+        }
+      };
+      
+      // Cache response
+      if (skipRugCheck) {
+        // Phase 1: Basic cache (fast load)
+        setCache(cacheKey, response);
+        console.log('[Advanced Analytics] ✅ Phase 1 complete (no rug checks)');
+      } else {
+        // Phase 2: Full cache (with rug checks)
+        setRugCheckedCache(cacheKey, response);
+        console.log('[Advanced Analytics] ✅ Phase 2 complete (with rug checks)');
+      }
+      
+      return response;
+    })();
+    
+    // Store promise in map
+    processingJobs.set(cacheKey, jobPromise);
+    
+    // Ensure cleanup when done (success or fail)
+    jobPromise.finally(() => {
+      processingJobs.delete(cacheKey);
+    });
+    
+    // Wait for result
+    const data = await jobPromise;
     
     res.json({
       success: true,
-      data: response,
+      data: data,
       cached: false,
       rugCheckComplete: !skipRugCheck
     });
     
   } catch (error) {
     console.error('Advanced Analytics Error:', error);
+    const errorMessage = error ? error.message : 'Unknown Error (undefined)';
     res.status(500).json({
       success: false,
-      error: error.message
+      error: errorMessage
     });
   }
 });
