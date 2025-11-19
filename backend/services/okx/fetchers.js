@@ -117,18 +117,29 @@ export async function fetchTradeHistory(walletAddress, chainId) {
   let allTrades = [];
   let hasNext = true;
   let reachedOldTrades = false;
+  let beginId = '';
+  let pageCount = 0;
+  const MAX_PAGES = 50; // Safety limit: 5000 trades max
   
-  while (hasNext && !reachedOldTrades) {
+  while (hasNext && !reachedOldTrades && pageCount < MAX_PAGES) {
+    pageCount++;
+    
+    const params = {
+      walletAddress,
+      chainId,
+      pageSize: '100',
+      tradeType: '1,2', // 1=buy, 2=sell
+      filterRisk: 'false',
+      t: Date.now()
+    };
+    
+    if (beginId) {
+      params.beginId = beginId;
+    }
+
     const data = await fetchOKX(
       'https://web3.okx.com/priapi/v1/dx/market/v2/pnl/wallet-profile/trade-history',
-      {
-        walletAddress,
-        chainId,
-        pageSize: '100',
-        tradeType: '1,2', // 1=buy, 2=sell
-        filterRisk: 'false',
-        t: Date.now()
-      }
+      params
     );
     
     const trades = data.rows || [];
@@ -147,8 +158,21 @@ export async function fetchTradeHistory(walletAddress, chainId) {
     hasNext = data.hasNext;
     
     if (hasNext && !reachedOldTrades) {
+      // Update cursor for next page
+      // OKX usually returns 'beginId' in the root, or we use the last trade's ID
+      if (data.beginId) {
+        beginId = data.beginId;
+      } else if (trades.length > 0) {
+        // Fallback: use the ID of the last trade
+        beginId = trades[trades.length - 1].id;
+      }
+      
       await new Promise(r => setTimeout(r, 200)); // Rate limiting
     }
+  }
+  
+  if (pageCount >= MAX_PAGES) {
+    console.warn(`[OKX API] Hit max page limit (${MAX_PAGES}) for trade history`);
   }
   
   return allTrades;
