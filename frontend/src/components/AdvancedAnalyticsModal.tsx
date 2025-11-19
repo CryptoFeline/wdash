@@ -74,6 +74,7 @@ export default function AdvancedAnalyticsModal({
 
     const maxAttempts = 15; // Poll for up to 15 attempts (45 seconds with 3s intervals)
     let attempt = 0;
+    let success = false; // Track if we successfully loaded data
 
     try {
       while (attempt < maxAttempts) {
@@ -125,6 +126,7 @@ export default function AdvancedAnalyticsModal({
             });
             setData(json.data);
             setLoading(false);
+            success = true; // Mark as successful
             break; // Exit while loop successfully
           } else if (json.processing || response.status === 202) {
             // Backend says it's still processing
@@ -165,7 +167,7 @@ export default function AdvancedAnalyticsModal({
       }
       
       // Max attempts reached without success
-      if (!data && !error) {
+      if (!success && !error) {
         setError('Request timed out after multiple attempts. Please try again.');
         setLoading(false);
       }
@@ -205,10 +207,10 @@ export default function AdvancedAnalyticsModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
+          <div className="bg-black p-6">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <BarChart3 className="h-6 w-6" />
+                <BarChart3 className="h-6 w-6 text-green-500" />
                 Advanced Analytics
               </h2>
               <button

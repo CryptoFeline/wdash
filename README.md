@@ -1,6 +1,6 @@
-# GMGN Wallet Dashboard 🚀
+# Wallet Dashboard 🚀
 
-Professional multi-chain wallet tracker with Supabase persistence, historical analytics, and advanced security. Monitor top wallets from GMGN.ai across Solana, Ethereum, BSC, and more.
+Professional multi-chain wallet tracker with Supabase persistence, historical analytics, and advanced security. Monitor top wallets across Solana, Ethereum, BSC, and more.
 
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-green)](https://wdashboard.netlify.app)
 [![Next.js](https://img.shields.io/badge/Next.js-16.0.1-black)](https://nextjs.org)
