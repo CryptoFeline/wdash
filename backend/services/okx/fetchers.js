@@ -65,6 +65,26 @@ async function fetchOKX(url, params, cacheKey = null) {
       
       const data = await response.json();
       
+      // DEBUG: Log API response structure
+      console.log(`[OKX API] URL: ${url}`);
+      
+      // Auto-unwrap OKX response (Standard OKX API format: { code: 0, data: { ... } })
+      if (data && (data.code === 0 || data.code === '0') && data.data) {
+        console.log(`[OKX API] Unwrapping 'data' property for ${url}`);
+        const unwrapped = data.data;
+        
+        if (cacheKey) {
+          setCache(cacheKey, unwrapped);
+        }
+        return unwrapped;
+      }
+      
+      // Handle OKX error codes
+      if (data && data.code && data.code != 0) {
+         console.error(`[OKX API] Error Code: ${data.code}, Msg: ${data.msg}`);
+         throw new Error(`OKX API Error ${data.code}: ${data.msg}`);
+      }
+      
       if (cacheKey) {
         setCache(cacheKey, data);
       }
