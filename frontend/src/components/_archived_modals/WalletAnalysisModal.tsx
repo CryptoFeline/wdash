@@ -165,7 +165,7 @@ export default function WalletAnalysisModal({
 
       {/* Modal */}
       <div className="relative min-h-screen flex items-center justify-center p-4">
-        <div className="relative bg-card border border-border rounded-lg shadow-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="relative bg-card border border-border rounded-lg shadow-lg max-w-6xl w-full h-full overflow-hidden flex flex-col">
           
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border bg-card/50">
