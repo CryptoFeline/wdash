@@ -1,6 +1,13 @@
 import express from 'express';
+import axios from 'axios';
 import { filterQualityWallets, rankWallets } from '../scraper/fetcher.js';
 import { getCacheKey, getCache, setCache, acquireLock, releaseLock } from '../scraper/cache.js';
+import { 
+  upsertWalletsBatch,
+  createSnapshotsBatch,
+  getWallet,
+  updateWalletFlag
+} from '../db/supabase.js';
 
 const router = express.Router();
 
@@ -53,7 +60,48 @@ router.get('/', async (req, res) => {
       // If still no data, fetch it (we have the lock)
       if (!allWallets) {
         try {
-          console.log(`[API] Fetching fresh data for tag: ${tag}...`);
+          console.log(`[API] Cache miss. Fetching from Database (Supabase) for tag: ${tag}...`);
+          
+          // Import Supabase client
+          const { createClient } = await import('@supabase/supabase-js');
+          
+          const supabaseUrl = process.env.SUPABASE_URL;
+          const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+          if (supabaseUrl && supabaseServiceKey) {
+            const supabase = createClient(supabaseUrl, supabaseServiceKey);
+            
+            // Fetch from DB
+            let query = supabase.from('wallets').select('*');
+            
+            if (chain && chain !== 'all') {
+              query = query.eq('chain', chain);
+            }
+            
+            // Fetch up to 1000 most recently synced wallets
+            const { data: dbWallets, error } = await query
+              .order('last_synced', { ascending: false })
+              .limit(1000);
+
+            if (!error && dbWallets && dbWallets.length > 0) {
+              console.log(`[API] Found ${dbWallets.length} wallets in DB.`);
+              // Map DB format to what the frontend expects (dbWallet.data holds the GMGN structure)
+              allWallets = dbWallets.map(w => ({ 
+                ...w.data, 
+                _stored_at: w.last_synced 
+              }));
+            } else {
+              console.log(`[API] No wallets in DB or error: ${error?.message}`);
+              allWallets = [];
+            }
+          } else {
+            console.log(`[API] Supabase not configured.`);
+            allWallets = [];
+          }
+
+          /* 
+          // OLD AUTO-SCRAPE LOGIC - DISABLED
+          // Only fetch from GMGN when explicitly requested via /api/sync
           
           // Import fetchGMGNData for single tag fetches
           const { fetchGMGNData } = await import('../scraper/fetcher.js');
@@ -67,14 +115,17 @@ router.get('/', async (req, res) => {
             const response = await fetchGMGNData({ chain, timeframe, tag, limit: 200 });
             allWallets = response.data?.rank || [];
           }
+          */
 
           // Apply quality filters and ranking
-          const qualityWallets = filterQualityWallets(allWallets);
-          const rankedWallets = rankWallets(qualityWallets);
+          if (allWallets.length > 0) {
+            const qualityWallets = filterQualityWallets(allWallets);
+            const rankedWallets = rankWallets(qualityWallets);
 
-          // Cache the results
-          setCache(cacheKey, rankedWallets);
-          allWallets = rankedWallets;
+            // Cache the results
+            setCache(cacheKey, rankedWallets);
+            allWallets = rankedWallets;
+          }
         } finally {
           // Always release lock
           releaseLock(cacheKey);
@@ -279,6 +330,56 @@ router.get('/sync', async (req, res) => {
       error: 'Failed to fetch wallet data',
       message: error.message
     });
+  }
+});
+
+/**
+ * POST /api/wallets/:address/flag
+ * Update wallet flag status
+ */
+router.post('/:address/flag', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const { chain = 'eth', is_flagged } = req.body;
+    
+    if (typeof is_flagged !== 'boolean') {
+      return res.status(400).json({ error: 'is_flagged must be a boolean' });
+    }
+
+    await updateWalletFlag(address, chain, is_flagged);
+    
+    res.json({ success: true, address, is_flagged });
+  } catch (error) {
+    console.error('[API] Flag update error:', error);
+    res.status(500).json({ error: 'Failed to update flag status' });
+  }
+});
+
+/**
+ * GET /api/wallets/:address/chains
+ * Detect chains for a wallet using OKX API
+ */
+router.get('/:address/chains', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const url = `https://web3.okx.com/priapi/v1/dx/market/v2/pnl/wallet-profile/all-chains?walletAddress=${address}`;
+    
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.okx.com/',
+        'Origin': 'https://www.okx.com'
+      }
+    });
+
+    if (response.data && response.data.code === 0) {
+      res.json(response.data);
+    } else {
+      res.status(500).json({ error: 'Failed to fetch chain data from OKX' });
+    }
+  } catch (error) {
+    console.error('[API] Chain detection error:', error.message);
+    res.status(500).json({ error: 'Chain detection failed' });
   }
 });
 

@@ -21,6 +21,7 @@ import {
   aggregateToTokenLevel,
   aggregateToOverview
 } from '../services/analysis/aggregations.js';
+import { enrichTradesWithCopyTradeAnalysis } from '../services/analysis/copy-trade.js';
 
 const router = express.Router();
 
@@ -186,14 +187,40 @@ router.get('/:wallet/:chain', async (req, res) => {
       } else {
         console.log('[Advanced Analytics] SKIPPING rug checks for fast initial load');
       }
+
+      // ========================================
+      // STEP 4.5: COPY TRADE ANALYSIS (OHLC + SWAPS)
+      // ========================================
+      // Enrich with "Copytrade Entry Price" and potential ROI
       
+      let fullyEnrichedClosedTrades = rugCheckedClosedTrades;
+      let fullyEnrichedOpenPositions = enrichedOpenPositions;
+
+      if (!skipRugCheck) { // Only run in full analysis phase
+        console.log('[Advanced Analytics] Running Copy Trade Analysis...');
+        
+        // Enrich closed trades
+        fullyEnrichedClosedTrades = await enrichTradesWithCopyTradeAnalysis(
+          rugCheckedClosedTrades,
+          chain,
+          wallet
+        );
+
+        // Enrich open positions
+        fullyEnrichedOpenPositions = await enrichTradesWithCopyTradeAnalysis(
+          enrichedOpenPositions,
+          chain,
+          wallet
+        );
+      }
+
       // ========================================
       // STEP 5: TRACK CAPITAL CHRONOLOGICALLY
       // ========================================
       
       const capitalTracking = trackCapitalChronologically(
-        rugCheckedClosedTrades,
-        enrichedOpenPositions
+        fullyEnrichedClosedTrades,
+        fullyEnrichedOpenPositions
       );
       
       // ========================================
@@ -201,8 +228,8 @@ router.get('/:wallet/:chain', async (req, res) => {
       // ========================================
       
       const tokens = aggregateToTokenLevel(
-        rugCheckedClosedTrades,
-        enrichedOpenPositions
+        fullyEnrichedClosedTrades,
+        fullyEnrichedOpenPositions
       );
       
       // ========================================
@@ -210,8 +237,8 @@ router.get('/:wallet/:chain', async (req, res) => {
       // ========================================
       
       const overview = aggregateToOverview(
-        rugCheckedClosedTrades,
-        enrichedOpenPositions,
+        fullyEnrichedClosedTrades,
+        fullyEnrichedOpenPositions,
         tokens,
         capitalTracking
       );
@@ -224,8 +251,8 @@ router.get('/:wallet/:chain', async (req, res) => {
         overview,
         tokens,
         trades: {
-          closed: rugCheckedClosedTrades,
-          open: enrichedOpenPositions
+          closed: fullyEnrichedClosedTrades,
+          open: fullyEnrichedOpenPositions
         },
         meta: {
           wallet,

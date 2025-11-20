@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchWallets, fetchStats } from '@/lib/api';
 import { Wallet, PaginatedResponse, StatsResponse } from '@/types/wallet';
 import WalletTable from '@/components/WalletTable';
-import FilterBar from '@/components/FilterBar';
+import FilterBar from "@/components/FilterBar";
 import StatsCards from '@/components/StatsCards';
 import { StalenessIndicator } from '@/components/StalenessIndicator';
 import { AdvancedFilterValues } from '@/components/AdvancedFilters';
@@ -18,6 +18,7 @@ import { triggerSync } from '@/lib/supabase-client';
 import { Button } from '@/components/ui/button';
 import { BarChart3, Bookmark } from 'lucide-react';
 import { WalletOverviewModal } from '@/components/WalletOverviewModal';
+import WalletSearch from "@/components/WalletSearch";
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: 50,
@@ -143,6 +144,13 @@ export default function Home() {
         // No cache found - wake up backend first
         console.log('[Page] No cache found, waking backend...');
         await wakeupBackend();
+
+        // Trigger "light" sync (OKX + CMC only) on page load to ensure some fresh data
+        // This avoids the heavy GMGN scrape but populates the leaderboard
+        console.log('[Page] Triggering background sync for OKX/CMC...');
+        triggerSync('sol', '7d', 'all', ['okx', 'cmc']).catch(err => 
+          console.error('[Page] Initial sync failed:', err)
+        );
 
         console.log('[Page] Loading initial wallets from Supabase...');
         
@@ -363,12 +371,15 @@ export default function Home() {
             </p>
 
           </div>
-          <Link href="/tracked">
-            <Button variant="outline" className="gap-2">
-              <Bookmark className="w-4 h-4" />
-              Tracked ({getTrackedCount()})
-            </Button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <WalletSearch />
+            <Link href="/tracked">
+              <Button variant="outline" className="gap-2">
+                <Bookmark className="w-4 h-4" />
+                Tracked ({getTrackedCount()})
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Staleness Indicator with Manual Refresh */}

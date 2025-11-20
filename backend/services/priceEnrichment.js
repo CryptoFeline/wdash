@@ -23,13 +23,19 @@ import axios from 'axios';
  * 
  * @param {string} tokenAddress - Token contract address
  * @param {string} chain - 'eth' or 'sol'
- * @param {string} bar - Candle interval: '1m', '5m', '15m', '1h', '4h', '1d'
+ * @param {string} bar - Candle interval: '1m', '5m', '15m', '1H', '4H', '1D'
  * @param {number} limit - Number of candles to fetch (max 1000)
  * @returns {Promise<Array>} Array of OHLC candles (newest first from API)
  */
-export async function fetchOHLCData(tokenAddress, chain = 'eth', bar = '1h', limit = 1000) {
+export async function fetchOHLCData(tokenAddress, chain = 'eth', bar = '1H', limit = 1000) {
   try {
-    const chainId = chain === 'eth' ? '1' : chain === 'sol' ? '501' : '1';
+    let chainId = '1';
+    if (chain === 'eth' || chain === '1') chainId = '1';
+    else if (chain === 'sol' || chain === '501') chainId = '501';
+    else if (chain === 'bsc' || chain === '56') chainId = '56';
+    else if (chain === 'base' || chain === '8453') chainId = '8453';
+    else if (chain === 'arb' || chain === '42161') chainId = '42161';
+    else chainId = chain; // Fallback to passed value
     
     const url = 'https://web3.okx.com/priapi/v5/dex/token/market/dex-token-hlc-candles';
     const params = {
@@ -44,13 +50,15 @@ export async function fetchOHLCData(tokenAddress, chain = 'eth', bar = '1h', lim
       params,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Origin': 'https://www.okx.com',
+        'Referer': 'https://www.okx.com/'
       },
       timeout: 10000
     });
     
     if (response.data?.code !== '0' || !response.data?.data) {
-      console.warn(`[OHLC] Failed to fetch for ${tokenAddress} (bar=${bar}): ${response.data?.msg || 'No data'}`);
+      console.warn(`[OHLC] Failed to fetch for ${tokenAddress} (bar=${bar}). Code: ${response.data?.code}, Msg: ${response.data?.msg}`);
       return [];
     }
     

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, BarChart3, Copy, ExternalLink } from 'lucide-react';
 import AdvancedAnalyticsContent from './AdvancedAnalyticsContent';
+import { useWalletFlags } from '@/hooks/useWalletFlags';
 
 interface AdvancedAnalyticsModalProps {
   wallet: string;
@@ -20,6 +21,9 @@ export default function AdvancedAnalyticsModal({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use the flag hook to auto-flag wallets
+  const { setFlag } = useWalletFlags();
 
   // Get chain display name
   const getChainName = (chainId: string) => {
@@ -27,7 +31,8 @@ export default function AdvancedAnalyticsModal({
       '501': 'Solana',
       '1': 'Ethereum',
       '8453': 'Base',
-      '56': 'BSC'
+      '56': 'BSC',
+      '42161': 'Arbitrum'
     };
     return chainMap[chainId] || `Chain ${chainId}`;
   };
@@ -37,7 +42,8 @@ export default function AdvancedAnalyticsModal({
       '501': `https://solscan.io/account/${address}`,
       '1': `https://etherscan.io/address/${address}`,
       '8453': `https://basescan.org/address/${address}`,
-      '56': `https://bscscan.com/address/${address}`
+      '56': `https://bscscan.com/address/${address}`,
+      '42161': `https://arbiscan.io/address/${address}`
     };
     return explorers[chainId] || '#';
   };
@@ -126,6 +132,16 @@ export default function AdvancedAnalyticsModal({
               tradeCount: json.data?.trades?.length
             });
             setData(json.data);
+            
+            // Check for Rug Detection > 10% and auto-flag
+            // Assuming rugDetection is in json.data.overview.rugDetection or similar
+            // Based on previous context, it might be in overview
+            const rugScore = json.data?.overview?.rugDetection?.score || 0;
+            if (rugScore >= 10) {
+              console.log(`[Analytics] Auto-flagging wallet ${wallet} (Rug Score: ${rugScore}%)`);
+              setFlag(wallet, chain, true);
+            }
+
             setLoading(false);
             success = true; // Mark as successful
             break; // Exit while loop successfully

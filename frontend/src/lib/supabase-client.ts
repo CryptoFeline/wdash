@@ -68,7 +68,7 @@ export function isStale(lastSynced: string | null, thresholdMinutes: number = 30
 /**
  * Trigger backend sync for fresh data
  */
-export async function triggerSync(chain: string = 'eth', timeframe: string = '7d', tag: string = 'all') {
+export async function triggerSync(chain: string = 'eth', timeframe: string = '7d', tag: string = 'all', sources?: string[]) {
   try {
     const response = await fetch('/api/sync', {
       method: 'POST',
@@ -80,6 +80,7 @@ export async function triggerSync(chain: string = 'eth', timeframe: string = '7d
         timeframe,
         tag,
         limit: 200,
+        sources,
       }),
     });
     

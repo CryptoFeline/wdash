@@ -30,7 +30,8 @@ import {
   FileJson,
   Rocket,
   Star,
-  Bookmark
+  Bookmark,
+  Flag
 } from 'lucide-react';
 import {
   formatNumber,
@@ -45,6 +46,7 @@ import { exportToCSV, exportToJSON } from '@/lib/export';
 import { WalletDetailsModal } from './WalletDetailsModal';
 import AdvancedAnalyticsModal from './AdvancedAnalyticsModal';
 import { useTrackedWallets } from '@/hooks/useTrackedWallets';
+import { useWalletFlags } from '@/hooks/useWalletFlags';
 
 interface WalletTableProps {
   wallets: Wallet[];
@@ -74,11 +76,21 @@ export default function WalletTable({
 
   // Tracked wallets hook
   const { isTracked, toggleWallet } = useTrackedWallets();
+  
+  // Flagged wallets hook
+  const { isFlagged, toggleFlag } = useWalletFlags(wallets);
 
   const handleRowClick = (wallet: Wallet) => {
     // Open analytics modal on row click
-    // Convert chain name to chain ID (sol -> 501)
-    const chainId = chain === 'sol' ? '501' : chain;
+    // Convert chain name to chain ID
+    const chainMap: Record<string, string> = {
+      'sol': '501',
+      'eth': '1',
+      'base': '8453',
+      'bsc': '56',
+      'arb': '42161'
+    };
+    const chainId = chainMap[chain] || chain;
     
     setAnalyticsWallet({
       address: wallet.wallet_address,
@@ -158,20 +170,43 @@ export default function WalletTable({
       cell: ({ row }) => {
         const address = row.original.wallet_address;
         const tracked = isTracked(address);
+        const flagged = isFlagged(address);
+        
         return (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 hover:bg-accent"
-            onClick={() => toggleWallet(address, chain)}
-            title={tracked ? 'Remove from tracked' : 'Add to tracked'}
-          >
-            <Bookmark
-              className={`h-4 w-4 transition-colors ${
-                tracked ? 'fill-blue-500 text-blue-500' : 'text-gray-400'
-              }`}
-            />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 hover:bg-accent"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleWallet(address, chain);
+              }}
+              title={tracked ? 'Remove from tracked' : 'Add to tracked'}
+            >
+              <Bookmark
+                className={`h-4 w-4 transition-colors ${
+                  tracked ? 'fill-blue-500 text-blue-500' : 'text-gray-400'
+                }`}
+              />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 hover:bg-accent"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFlag(address, chain);
+              }}
+              title={flagged ? 'Unflag wallet' : 'Flag wallet (Rug Suspect)'}
+            >
+              <Flag
+                className={`h-4 w-4 transition-colors ${
+                  flagged ? 'fill-red-500 text-red-500' : 'text-gray-400'
+                }`}
+              />
+            </Button>
+          </div>
         );
       },
       enableSorting: false,

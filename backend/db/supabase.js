@@ -72,6 +72,7 @@ export async function upsertWalletsBatch(wallets) {
       last_synced: now,
     }));
     
+    // Use upsert with ignoreDuplicates: false (default) to update existing rows
     const { error } = await supabaseClient
       .from('wallets')
       .upsert(formattedWallets, {
@@ -198,6 +199,27 @@ export async function getSnapshots(wallet_address, chain = 'eth', limit = 30) {
   }
 }
 
+/**
+ * Update wallet flag status
+ */
+export async function updateWalletFlag(wallet_address, chain, is_flagged) {
+  const supabaseClient = initSupabase();
+  try {
+    const { error } = await supabaseClient
+      .from('wallets')
+      .update({ is_flagged })
+      .eq('wallet_address', wallet_address)
+      .eq('chain', chain);
+    
+    if (error) throw error;
+    console.log(`[Supabase] Updated flag for ${wallet_address}: ${is_flagged}`);
+    return { success: true };
+  } catch (error) {
+    console.error('[Supabase] Update flag failed:', error);
+    throw error;
+  }
+}
+
 export default {
   upsertWallet,
   upsertWalletsBatch,
@@ -206,4 +228,5 @@ export default {
   createSnapshot,
   createSnapshotsBatch,
   getSnapshots,
+  updateWalletFlag,
 };

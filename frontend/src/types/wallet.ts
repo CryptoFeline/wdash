@@ -76,6 +76,7 @@ export interface Wallet {
   is_blue_verified: boolean;
   twitch_channel_name: string | null;
   score?: number;
+  is_flagged?: boolean;
 }
 
 export interface PaginatedResponse {

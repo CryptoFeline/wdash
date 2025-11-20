@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, RefreshCw, Trash2, TrendingUp } from 'lucide-react';
 import { WalletDetailsModal } from '@/components/WalletDetailsModal';
 import AdvancedAnalyticsModal from '@/components/AdvancedAnalyticsModal';
+import WalletSearch from '@/components/WalletSearch';
 
 const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   pnlMin: 50,
@@ -242,6 +243,9 @@ export default function TrackedWalletsPage() {
               {filteredWallets.length} of {trackedWallets.length} tracked wallets
               {trackedWallets.length > 0 && ` - Last sync: ${formatLastSync(lastSyncTime)}`}
             </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <WalletSearch />
           </div>
         </div>
 

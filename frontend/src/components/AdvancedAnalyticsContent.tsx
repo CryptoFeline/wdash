@@ -765,13 +765,12 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
                 <thead className="bg-gray-900/80">
                   <tr>
                     <th className="text-left p-3 font-semibold">Token</th>
-                    <th className="text-right p-3 font-semibold">Entry Price</th>
-                    <th className="text-right p-3 font-semibold">Exit Price</th>
                     <th className="text-right p-3 font-semibold">Entry Value</th>
                     <th className="text-right p-3 font-semibold">Exit Value</th>
                     <th className="text-right p-3 font-semibold">PnL</th>
                     <th className="text-right p-3 font-semibold">ROI</th>
                     <th className="text-right p-3 font-semibold">Hold Time</th>
+                    <th className="text-center p-3 font-semibold border-l border-r border-blue-500/30 bg-blue-500/10">Copytrade</th>
                     <th className="text-center p-3 font-semibold">Status</th>
                   </tr>
                 </thead>
@@ -821,8 +820,6 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 text-right">${trade.entry_price?.toFixed(8)}</td>
-                        <td className="p-3 text-right">${trade.exit_price?.toFixed(8)}</td>
                         <td className="p-3 text-right">{formatUSD(trade.entry_value_usd)}</td>
                         <td className="p-3 text-right">{formatUSD(trade.exit_value_usd)}</td>
                         <td className="p-3 text-right">
@@ -836,6 +833,66 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
                           </span>
                         </td>
                         <td className="p-3 text-right">{formatTime(trade.holding_time_seconds)}</td>
+                        
+                        {/* Copytrade Column */}
+                        <td className="p-3 border-l border-r border-blue-500/30 bg-blue-500/5">
+                          <div className="flex flex-col gap-1 text-xs">
+                            <div className="flex justify-between gap-2">
+                              <span className="text-gray-400">Entry:</span>
+                              <span className="text-blue-300 font-mono">
+                                {trade.copy_trade_analysis?.entry_price 
+                                  ? `$${trade.copy_trade_analysis.entry_price.toFixed(8)}` 
+                                  : '-'}
+                              </span>
+                            </div>
+                            
+                            {trade.copy_trade_analysis ? (
+                              <>
+                                <div className="flex justify-between gap-2">
+                                  <span className="text-gray-400">Gain:</span>
+                                  <div className="text-right">
+                                    <span className={trade.copy_trade_analysis.possible_gain_1h > 0 ? 'text-green-400' : 'text-gray-500'}>
+                                      {formatPercent(trade.copy_trade_analysis.possible_gain_1h)}
+                                    </span>
+                                    <span className="text-gray-600 mx-1">/</span>
+                                    <span className={trade.copy_trade_analysis.possible_gain_full > 0 ? 'text-green-400' : 'text-gray-500'}>
+                                      {formatPercent(trade.copy_trade_analysis.possible_gain_full)}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex justify-between gap-2">
+                                  <span className="text-gray-400">Loss:</span>
+                                  <div className="text-right">
+                                    <span className={trade.copy_trade_analysis.possible_loss_1h < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                      {formatPercent(trade.copy_trade_analysis.possible_loss_1h)}
+                                    </span>
+                                    <span className="text-gray-600 mx-1">/</span>
+                                    <span className={trade.copy_trade_analysis.possible_loss_full < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                      {formatPercent(trade.copy_trade_analysis.possible_loss_full)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-between gap-2 mt-1 pt-1 border-t border-blue-500/20">
+                                  <span className="text-gray-400">Time to:</span>
+                                  <div className="text-right text-[10px]">
+                                    <span className="text-gray-300" title="Time to 25%">
+                                      {trade.copy_trade_analysis.time_to_25_percent ? formatTime(trade.copy_trade_analysis.time_to_25_percent / 1000) : '-'}
+                                    </span>
+                                    <span className="text-gray-500 mx-1">|</span>
+                                    <span className="text-gray-300" title="Time to 50%">
+                                      {trade.copy_trade_analysis.time_to_50_percent ? formatTime(trade.copy_trade_analysis.time_to_50_percent / 1000) : '-'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-center text-gray-600 py-2">-</div>
+                            )}
+                          </div>
+                        </td>
+
                         <td className="p-3 text-center">
                           {isRuggedLater ? (
                             <div className="flex items-center justify-center gap-1 text-yellow-400">
@@ -861,9 +918,10 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
                 <thead className="bg-gray-900/80">
                   <tr>
                     <th className="text-left p-3 font-semibold">Token</th>
-                    <th className="text-right p-3 font-semibold">Invested</th>
-                    <th className="text-right p-3 font-semibold">Current Price</th>
-                    <th className="text-right p-3 font-semibold">Current Value</th>
+                    <th className="text-right p-3 font-semibold">Entry / Copy Price</th>
+                    <th className="text-right p-3 font-semibold">Potential Gain (1h/Max)</th>
+                    <th className="text-right p-3 font-semibold">Time to 25%/50%</th>
+                    <th className="text-right p-3 font-semibold">Potential Loss (1h/Max)</th>
                     <th className="text-right p-3 font-semibold">Unrealized PnL</th>
                     <th className="text-right p-3 font-semibold">ROI</th>
                     <th className="text-right p-3 font-semibold">Hold Time</th>
@@ -917,9 +975,54 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 text-right">{formatUSD(position.entry_value_usd)}</td>
-                        <td className="p-3 text-right">${position.current_price?.toFixed(8)}</td>
-                        <td className="p-3 text-right">{formatUSD(position.current_value_usd)}</td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-400">Entry: ${position.entry_price?.toFixed(8)}</span>
+                            {position.copy_trade_analysis?.entry_price ? (
+                              <span className="text-xs text-blue-400">Copy: ${position.copy_trade_analysis.entry_price.toFixed(8)}</span>
+                            ) : (
+                              <span className="text-xs text-gray-600">-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end">
+                            {position.copy_trade_analysis ? (
+                              <>
+                                <span className={position.copy_trade_analysis.possible_gain_1h > 0 ? 'text-green-400' : 'text-gray-500'}>
+                                  1h: {formatPercent(position.copy_trade_analysis.possible_gain_1h)}
+                                </span>
+                                <span className={position.copy_trade_analysis.possible_gain_full > 0 ? 'text-green-400' : 'text-gray-500'}>
+                                  Max: {formatPercent(position.copy_trade_analysis.possible_gain_full)}
+                                </span>
+                              </>
+                            ) : <span className="text-gray-600">-</span>}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end">
+                            {position.copy_trade_analysis ? (
+                              <>
+                                <span className="text-xs text-gray-300">25%: {formatTime(position.copy_trade_analysis.time_to_25_percent / 1000)}</span>
+                                <span className="text-xs text-gray-300">50%: {formatTime(position.copy_trade_analysis.time_to_50_percent / 1000)}</span>
+                              </>
+                            ) : <span className="text-gray-600">-</span>}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end">
+                            {position.copy_trade_analysis ? (
+                              <>
+                                <span className={position.copy_trade_analysis.possible_loss_1h < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                  1h: {formatPercent(position.copy_trade_analysis.possible_loss_1h)}
+                                </span>
+                                <span className={position.copy_trade_analysis.possible_loss_full < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                  Max: {formatPercent(position.copy_trade_analysis.possible_loss_full)}
+                                </span>
+                              </>
+                            ) : <span className="text-gray-600">-</span>}
+                          </div>
+                        </td>
                         <td className="p-3 text-right">
                           <span className={`font-semibold ${position.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {position.unrealized_pnl >= 0 ? '+' : ''}{formatUSD(position.unrealized_pnl)}
