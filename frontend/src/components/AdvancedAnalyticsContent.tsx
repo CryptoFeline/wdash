@@ -276,8 +276,8 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
   // Note: Backend 'total_confirmed_loss' usually means realized losses. 
   // We want to show the TOTAL value lost to rugs (Realized + Unrealized).
   const realizedRugLoss = data.overview.total_confirmed_loss || 0;
-  const totalRuggedLoss = realizedRugLoss + ruggedUnrealizedLoss;
-  const ruggedLossPercent = startingCapital > 0 ? (totalRuggedLoss / startingCapital) * 100 : 0;
+  const ruggedLoss = realizedRugLoss + ruggedUnrealizedLoss;
+  const ruggedLossPercent = startingCapital > 0 ? (ruggedLoss / startingCapital) * 100 : 0;
 
   return (
     <div className="space-y-6">
