@@ -209,47 +209,63 @@ export default function AdvancedAnalyticsModal({
       
       console.log(`[Analytics] Running Copy Trade Analysis for ${allTrades.length} trades...`);
       
-      const response = await fetch('/api/advanced-analysis/enrich-copy-trade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          wallet,
-          chain,
-          trades: allTrades
-        })
-      });
+      // Chunk trades to avoid timeouts (batch size 5)
+      const BATCH_SIZE = 5;
+      const enrichedTrades = [];
       
-      if (!response.ok) throw new Error('Failed to run copy trade analysis');
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        // Merge enriched trades back into data
-        // We need to split them back into closed and open
-        // Assuming the order is preserved or we can match by ID/txHash
-        // Actually, the backend returns the enriched array.
-        // Since we sent [closed, open], the result is [enrichedClosed, enrichedOpen]
+      for (let i = 0; i < allTrades.length; i += BATCH_SIZE) {
+        const chunk = allTrades.slice(i, i + BATCH_SIZE);
+        console.log(`[Analytics] Processing chunk ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(allTrades.length/BATCH_SIZE)}...`);
         
-        const enrichedTrades = result.data;
-        const closedCount = data.trades.closed?.length || 0;
+        const response = await fetch('/api/advanced-analysis/enrich-copy-trade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wallet,
+            chain,
+            trades: chunk
+          })
+        });
         
-        const enrichedClosed = enrichedTrades.slice(0, closedCount);
-        const enrichedOpen = enrichedTrades.slice(closedCount);
+        if (!response.ok) {
+          console.error(`[Analytics] Failed to process chunk ${i}: ${response.statusText}`);
+          // Push original trades if failed, to avoid losing data
+          enrichedTrades.push(...chunk);
+          continue;
+        }
         
-        setData((prev: any) => ({
-          ...prev,
-          trades: {
-            ...prev.trades,
-            closed: enrichedClosed,
-            open: enrichedOpen
-          },
-          meta: {
-            ...prev.meta,
-            copyTradeComplete: true
-          }
-        }));
-        console.log('[Analytics] Copy Trade Analysis complete');
+        const result = await response.json();
+        if (result.success && result.data) {
+          enrichedTrades.push(...result.data);
+        } else {
+          enrichedTrades.push(...chunk);
+        }
+        
+        // Small delay to be nice to the backend/rate limits
+        await new Promise(r => setTimeout(r, 500));
       }
+      
+      // Merge enriched trades back into data
+      // We need to split them back into closed and open
+      const closedCount = data.trades.closed?.length || 0;
+      
+      const enrichedClosed = enrichedTrades.slice(0, closedCount);
+      const enrichedOpen = enrichedTrades.slice(closedCount);
+      
+      setData((prev: any) => ({
+        ...prev,
+        trades: {
+          ...prev.trades,
+          closed: enrichedClosed,
+          open: enrichedOpen
+        },
+        meta: {
+          ...prev.meta,
+          copyTradeComplete: true
+        }
+      }));
+      console.log('[Analytics] Copy Trade Analysis complete');
+
     } catch (err) {
       console.error('[Analytics] Copy Trade Error:', err);
       // Don't set main error, just log it? Or show toast?
