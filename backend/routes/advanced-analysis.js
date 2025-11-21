@@ -66,30 +66,30 @@ router.get('/:wallet/:chain', async (req, res) => {
     const { wallet, chain } = req.params;
     const cacheKey = `advanced_${wallet}_${chain}`;
     const skipRugCheck = req.query.skipRugCheck === 'true'; // Phase 1: fast load
+    const skipCopyTrade = req.query.skipCopyTrade !== 'false'; // Default to TRUE (skip) unless explicitly requested
     const cacheOnly = req.query.cacheOnly === 'true'; // Polling mode: only check cache
     
-    // Check full cache (with rug checks)
-    const fullCached = getRugCheckedCache(cacheKey);
-    if (fullCached) {
-      return res.json({ 
-        success: true, 
-        data: fullCached,
-        cached: true,
-        rugCheckComplete: true
-      });
-    }
+    // Check full cache (with rug checks AND copy trade if requested)
+    // Note: We might need separate cache keys if we have different levels of enrichment.
+    // For now, let's assume "full cache" means Rug Check + Copy Trade.
+    // But if user wants Rug Check WITHOUT Copy Trade, we need to handle that.
+    // Let's keep it simple: 
+    // Level 1: Basic (skipRugCheck=true)
+    // Level 2: Rug Checked (skipRugCheck=false, skipCopyTrade=true)
+    // Level 3: Full (skipRugCheck=false, skipCopyTrade=false)
     
-    // Check basic cache (without rug checks) - for fast initial load
-    if (skipRugCheck || cacheOnly) {
-      const basicCached = getCached(cacheKey);
-      if (basicCached) {
-        return res.json({ 
-          success: true, 
-          data: basicCached,
-          cached: true,
-          rugCheckComplete: false
-        });
-      }
+    const level2Key = `${cacheKey}_rugs`;
+    const level3Key = `${cacheKey}_full`;
+
+    if (!skipRugCheck && !skipCopyTrade) {
+       const cached = getRugCheckedCache(level3Key);
+       if (cached) return res.json({ success: true, data: cached, cached: true, rugCheckComplete: true, copyTradeComplete: true });
+    } else if (!skipRugCheck) {
+       const cached = getRugCheckedCache(level2Key);
+       if (cached) return res.json({ success: true, data: cached, cached: true, rugCheckComplete: true, copyTradeComplete: false });
+    } else {
+       const cached = getCached(cacheKey);
+       if (cached) return res.json({ success: true, data: cached, cached: true, rugCheckComplete: false, copyTradeComplete: false });
     }
     
     // If cacheOnly mode and no cache found, tell frontend to keep polling
@@ -196,7 +196,7 @@ router.get('/:wallet/:chain', async (req, res) => {
       let fullyEnrichedClosedTrades = rugCheckedClosedTrades;
       let fullyEnrichedOpenPositions = enrichedOpenPositions;
 
-      if (!skipRugCheck) { // Only run in full analysis phase
+      if (!skipCopyTrade) { 
         console.log('[Advanced Analytics] Running Copy Trade Analysis...');
         
         // Enrich closed trades
@@ -212,6 +212,8 @@ router.get('/:wallet/:chain', async (req, res) => {
           chain,
           wallet
         );
+      } else {
+        console.log('[Advanced Analytics] Skipping Copy Trade Analysis (requested)');
       }
 
       // ========================================
@@ -307,6 +309,32 @@ router.get('/:wallet/:chain', async (req, res) => {
       success: false,
       error: errorMessage
     });
+  }
+});
+
+/**
+ * POST /api/advanced-analysis/enrich-copy-trade
+ * On-demand Copy Trade Analysis for specific trades
+ */
+router.post('/enrich-copy-trade', async (req, res) => {
+  try {
+    const { wallet, chain, trades } = req.body;
+    
+    if (!trades || !Array.isArray(trades)) {
+      return res.status(400).json({ error: 'Invalid trades array' });
+    }
+    
+    console.log(`[Advanced Analytics] On-demand Copy Trade Analysis for ${trades.length} trades...`);
+    
+    const enrichedTrades = await enrichTradesWithCopyTradeAnalysis(trades, chain, wallet);
+    
+    res.json({
+      success: true,
+      data: enrichedTrades
+    });
+  } catch (error) {
+    console.error('Copy Trade Enrichment Error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

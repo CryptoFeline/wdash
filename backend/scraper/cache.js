@@ -87,6 +87,15 @@ export function setCache(key, value, ttl = CACHE_TTL) {
 }
 
 /**
+ * Delete data from cache
+ * @param {string} key - Cache key
+ */
+export function deleteCache(key) {
+  cache.del(key);
+  console.log(`[Cache] DELETED: ${key}`);
+}
+
+/**
  * Clear all cache
  */
 export function clearCache() {

@@ -1,6 +1,7 @@
 import express from 'express';
 import { fetchGMGNData } from '../scraper/fetcher.js';
 import { fetchOKXLeaderboard, fetchCMCLeaderboard } from '../scraper/leaderboard_fetchers.js';
+import { deleteCache, getCacheKey } from '../scraper/cache.js';
 import { 
   upsertWalletsBatch,
   createSnapshotsBatch,
@@ -282,6 +283,10 @@ router.post('/', async (req, res) => {
     
     console.log(`[Sync] Completed: ${successCount}/${wallets.length} wallets synced, ${snapshotsToBatch.length} snapshots created`);
     
+    // Invalidate cache so the next fetch gets fresh data
+    const cacheKey = getCacheKey(chain, timeframe, tag);
+    deleteCache(cacheKey);
+
     res.json({
       success: true,
       synced: successCount,
