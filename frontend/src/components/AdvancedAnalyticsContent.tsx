@@ -6,43 +6,34 @@ import { formatNumber, formatUSD, formatPercent } from '@/lib/utils';
 
 interface AdvancedAnalyticsContentProps {
   data: any;
-  loading: boolean;
-  error: string | null;
+  wallet: string;
+  chain: string;
+  onRunCopyTrade?: () => void;
+  copyTradeLoading?: boolean;
 }
 
-export default function AdvancedAnalyticsContent({ data, loading, error }: AdvancedAnalyticsContentProps) {
+export default function AdvancedAnalyticsContent({ 
+  data, 
+  wallet, 
+  chain,
+  onRunCopyTrade,
+  copyTradeLoading = false
+}: AdvancedAnalyticsContentProps) {
   const [showAllTokens, setShowAllTokens] = useState(false);
   const [showAllTrades, setShowAllTrades] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'tokens' | 'trades'>('overview');
   const [tradesSubTab, setTradesSubTab] = useState<'closed' | 'open'>('closed');
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading advanced analytics...</p>
-        </div>
-      </div>
-    );
-  }
+  // Helper for clipboard
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
-  if (error) {
-    return (
-      <div className="bg-red-900/20 border border-red-500 rounded-lg p-6">
-        <h3 className="text-lg font-bold text-red-400 mb-2 flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5" />
-          Error
-        </h3>
-        <p className="text-red-300">{error}</p>
-      </div>
-    );
-  }
-
-  if (!data) {
-    console.log('[AdvancedAnalyticsContent] No data provided, loading:', loading);
-    return null;
-  }
+  if (!data) return null;
 
   if (!data.overview) {
     console.error('[AdvancedAnalyticsContent] Data missing overview:', data);
@@ -72,10 +63,6 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
     if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
     if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
     return `${(seconds / 86400).toFixed(1)}d`;
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
   };
 
   const getExplorerUrl = (chain: string, address: string) => {
@@ -734,28 +721,55 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
             </div>
           </div>
 
-          {/* Sub-tabs */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTradesSubTab('closed')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                tradesSubTab === 'closed'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              Closed Trades ({closedTrades})
-            </button>
-            <button
-              onClick={() => setTradesSubTab('open')}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                tradesSubTab === 'open'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              Open Positions ({openTrades})
-            </button>
+          {/* Sub-tabs and Actions */}
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTradesSubTab('closed')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  tradesSubTab === 'closed'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                Closed Trades ({closedTrades})
+              </button>
+              <button
+                onClick={() => setTradesSubTab('open')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  tradesSubTab === 'open'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                Open Positions ({openTrades})
+              </button>
+            </div>
+            
+            {/* Copy Trade Analysis Button */}
+            {!data.meta?.copyTradeComplete && onRunCopyTrade && (
+              <button
+                onClick={onRunCopyTrade}
+                disabled={copyTradeLoading}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                  copyTradeLoading
+                    ? 'bg-blue-900/50 text-blue-300 cursor-wait'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20'
+                }`}
+              >
+                {copyTradeLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Clock className="h-4 w-4" />
+                    Run Copy Trade Analysis
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Closed Trades Table */}
@@ -770,7 +784,9 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
                     <th className="text-right p-3 font-semibold">PnL</th>
                     <th className="text-right p-3 font-semibold">ROI</th>
                     <th className="text-right p-3 font-semibold">Hold Time</th>
-                    <th className="text-center p-3 font-semibold border-l border-r border-blue-500/30 bg-blue-500/10">Copytrade</th>
+                    <th className="text-center p-3 font-semibold border-l border-r border-blue-500/30 bg-blue-500/10 min-w-[200px]">
+                      Copytrade Simulation
+                    </th>
                     <th className="text-center p-3 font-semibold">Status</th>
                   </tr>
                 </thead>
@@ -834,63 +850,47 @@ export default function AdvancedAnalyticsContent({ data, loading, error }: Advan
                         </td>
                         <td className="p-3 text-right">{formatTime(trade.holding_time_seconds)}</td>
                         
-                        {/* Copytrade Column */}
-                        <td className="p-3 border-l border-r border-blue-500/30 bg-blue-500/5">
-                          <div className="flex flex-col gap-1 text-xs">
-                            <div className="flex justify-between gap-2">
-                              <span className="text-gray-400">Entry:</span>
-                              <span className="text-blue-300 font-mono">
-                                {trade.copy_trade_analysis?.entry_price 
-                                  ? `$${trade.copy_trade_analysis.entry_price.toFixed(8)}` 
-                                  : '-'}
-                              </span>
-                            </div>
-                            
-                            {trade.copy_trade_analysis ? (
-                              <>
-                                <div className="flex justify-between gap-2">
-                                  <span className="text-gray-400">Gain:</span>
-                                  <div className="text-right">
-                                    <span className={trade.copy_trade_analysis.possible_gain_1h > 0 ? 'text-green-400' : 'text-gray-500'}>
-                                      {formatPercent(trade.copy_trade_analysis.possible_gain_1h)}
-                                    </span>
-                                    <span className="text-gray-600 mx-1">/</span>
-                                    <span className={trade.copy_trade_analysis.possible_gain_full > 0 ? 'text-green-400' : 'text-gray-500'}>
-                                      {formatPercent(trade.copy_trade_analysis.possible_gain_full)}
-                                    </span>
-                                  </div>
-                                </div>
-                                
-                                <div className="flex justify-between gap-2">
-                                  <span className="text-gray-400">Loss:</span>
-                                  <div className="text-right">
-                                    <span className={trade.copy_trade_analysis.possible_loss_1h < 0 ? 'text-red-400' : 'text-gray-500'}>
-                                      {formatPercent(trade.copy_trade_analysis.possible_loss_1h)}
-                                    </span>
-                                    <span className="text-gray-600 mx-1">/</span>
-                                    <span className={trade.copy_trade_analysis.possible_loss_full < 0 ? 'text-red-400' : 'text-gray-500'}>
-                                      {formatPercent(trade.copy_trade_analysis.possible_loss_full)}
-                                    </span>
-                                  </div>
-                                </div>
+                        {/* Copytrade Column - Redesigned */}
+                        <td className="p-3 border-l border-r border-blue-500/30 bg-blue-500/5 min-w-[240px]">
+                          {trade.copy_trade_analysis ? (
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                              {/* Header: Entry Price */}
+                              <div className="col-span-2 flex justify-between items-center border-b border-blue-500/20 pb-1">
+                                <span className="text-gray-400">Simulated Entry:</span>
+                                <span className="text-blue-300 font-mono font-bold">
+                                  ${trade.copy_trade_analysis.entry_price?.toFixed(8)}
+                                </span>
+                              </div>
+                              
+                              {/* Gains Section */}
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider">Max Gain</span>
+                                <span className={`font-medium ${trade.copy_trade_analysis.possible_gain_full > 0 ? 'text-green-400' : 'text-gray-500'}`}>
+                                  {formatPercent(trade.copy_trade_analysis.possible_gain_full)}
+                                </span>
+                              </div>
+                              <div className="flex flex-col text-right">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider">1h Gain</span>
+                                <span className={`font-medium ${trade.copy_trade_analysis.possible_gain_1h > 0 ? 'text-green-400' : 'text-gray-500'}`}>
+                                  {formatPercent(trade.copy_trade_analysis.possible_gain_1h)}
+                                </span>
+                              </div>
 
-                                <div className="flex justify-between gap-2 mt-1 pt-1 border-t border-blue-500/20">
-                                  <span className="text-gray-400">Time to:</span>
-                                  <div className="text-right text-[10px]">
-                                    <span className="text-gray-300" title="Time to 25%">
-                                      {trade.copy_trade_analysis.time_to_25_percent ? formatTime(trade.copy_trade_analysis.time_to_25_percent / 1000) : '-'}
-                                    </span>
-                                    <span className="text-gray-500 mx-1">|</span>
-                                    <span className="text-gray-300" title="Time to 50%">
-                                      {trade.copy_trade_analysis.time_to_50_percent ? formatTime(trade.copy_trade_analysis.time_to_50_percent / 1000) : '-'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              <div className="text-center text-gray-600 py-2">-</div>
-                            )}
-                          </div>
+                              {/* Time Section */}
+                              <div className="col-span-2 flex items-center justify-between bg-blue-900/20 rounded px-2 py-1 mt-1">
+                                <span className="text-[10px] text-gray-400">Time to +25%:</span>
+                                <span className="text-blue-200 font-mono">
+                                  {trade.copy_trade_analysis.time_to_25_percent 
+                                    ? formatTime(trade.copy_trade_analysis.time_to_25_percent / 1000) 
+                                    : '-'}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-gray-500 italic text-xs py-4">
+                              Not analyzed
+                            </div>
+                          )}
                         </td>
 
                         <td className="p-3 text-center">

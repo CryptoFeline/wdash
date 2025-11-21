@@ -19,6 +19,7 @@ export default function AdvancedAnalyticsModal({
   onClose
 }: AdvancedAnalyticsModalProps) {
   const [loading, setLoading] = useState(false);
+  const [copyTradeLoading, setCopyTradeLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   
@@ -92,10 +93,10 @@ export default function AdvancedAnalyticsModal({
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 26000);
           
-          // First request: trigger processing
+          // First request: trigger processing (skip copy trade for speed)
           // Subsequent requests: check for cached result only
           const url = attempt === 1 
-            ? `/api/advanced-analysis/${wallet}/${chain}`
+            ? `/api/advanced-analysis/${wallet}/${chain}?skipCopyTrade=true`
             : `/api/advanced-analysis/${wallet}/${chain}?cacheOnly=true`;
           
           console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Fetching:`, url);
@@ -195,6 +196,68 @@ export default function AdvancedAnalyticsModal({
     }
   };
 
+  const runCopyTradeAnalysis = async () => {
+    if (!data || !data.trades) return;
+    
+    setCopyTradeLoading(true);
+    try {
+      // Combine closed and open trades for analysis
+      const allTrades = [
+        ...(data.trades.closed || []),
+        ...(data.trades.open || [])
+      ];
+      
+      console.log(`[Analytics] Running Copy Trade Analysis for ${allTrades.length} trades...`);
+      
+      const response = await fetch('/api/advanced-analysis/enrich-copy-trade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet,
+          chain,
+          trades: allTrades
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to run copy trade analysis');
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Merge enriched trades back into data
+        // We need to split them back into closed and open
+        // Assuming the order is preserved or we can match by ID/txHash
+        // Actually, the backend returns the enriched array.
+        // Since we sent [closed, open], the result is [enrichedClosed, enrichedOpen]
+        
+        const enrichedTrades = result.data;
+        const closedCount = data.trades.closed?.length || 0;
+        
+        const enrichedClosed = enrichedTrades.slice(0, closedCount);
+        const enrichedOpen = enrichedTrades.slice(closedCount);
+        
+        setData((prev: any) => ({
+          ...prev,
+          trades: {
+            ...prev.trades,
+            closed: enrichedClosed,
+            open: enrichedOpen
+          },
+          meta: {
+            ...prev.meta,
+            copyTradeComplete: true
+          }
+        }));
+        console.log('[Analytics] Copy Trade Analysis complete');
+      }
+    } catch (err) {
+      console.error('[Analytics] Copy Trade Error:', err);
+      // Don't set main error, just log it? Or show toast?
+    } finally {
+      setCopyTradeLoading(false);
+    }
+  };
+
   // Handle escape key to close modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -286,11 +349,34 @@ export default function AdvancedAnalyticsModal({
 
           {/* Content */}
           <div className="overflow-y-auto max-h-[calc(90vh-100px)] p-6 bg-black/50">
-            <AdvancedAnalyticsContent 
-              data={data}
-              loading={loading}
-              error={error}
-            />
+            {loading ? (
+              // Loading state
+              <div className="flex flex-col items-center justify-center py-10">
+                <svg 
+                  className="animate-spin h-10 w-10 text-green-500 mb-4"
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24"
+                >
+                  <circle className="opacity-25" cx="12" cy="12" r="10" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v5l4.29-4.29a1 1 0 011.42 1.42L12 12l-5.71 5.71a1 1 0 01-1.42-1.42L11 12H4z" />
+                </svg>
+                <span className="text-white text-sm">Loading analytics data...</span>
+              </div>
+            ) : error ? (
+              // Error state
+              <div className="text-red-400 text-center py-10">
+                <p className="text-lg font-semibold mb-2">Error loading analytics</p>
+                <p className="text-sm">{error}</p>
+              </div>
+            ) : data ? (
+              <AdvancedAnalyticsContent 
+                data={data} 
+                wallet={wallet} 
+                chain={chain}
+                onRunCopyTrade={runCopyTradeAnalysis}
+                copyTradeLoading={copyTradeLoading}
+              />
+            ) : null}
           </div>
         </div>
       </div>
