@@ -93,8 +93,8 @@ export default function WalletSearch() {
 
       {/* Chain Selection Dropdown (Custom implementation to appear below input) */}
       {showDropdown && chains.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-popover border rounded-md shadow-md p-1 animate-in fade-in zoom-in-95">
-          <div className="text-xs font-medium text-muted-foreground px-2 py-1.5">
+        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-popover border rounded-md shadow-md p-1 animate-in fade-in zoom-in-95 max-h-60 overflow-y-auto">
+          <div className="text-xs font-medium text-muted-foreground px-2 py-1.5 sticky top-0 bg-popover z-10">
             Select Chain
           </div>
           {chains.map((chain) => (
