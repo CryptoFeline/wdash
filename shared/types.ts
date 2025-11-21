@@ -95,6 +95,10 @@ export interface Wallet {
   followers_count: number;
   is_blue_verified: boolean;
   twitch_channel_name: string | null;
+  
+  // App specific
+  is_flagged?: boolean;
+  is_saved?: boolean;
 }
 
 export interface ApiResponse {

@@ -77,6 +77,7 @@ export interface Wallet {
   twitch_channel_name: string | null;
   score?: number;
   is_flagged?: boolean;
+  is_saved?: boolean;
 }
 
 export interface PaginatedResponse {
