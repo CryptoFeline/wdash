@@ -19,9 +19,7 @@ export default function AdvancedAnalyticsModal({
   onClose
 }: AdvancedAnalyticsModalProps) {
   const [loading, setLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState<string>('');
   const [copyTradeLoading, setCopyTradeLoading] = useState(false);
-  const [copyTradeProgress, setCopyTradeProgress] = useState<{current: number, total: number} | null>(null);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   
@@ -67,15 +65,12 @@ export default function AdvancedAnalyticsModal({
       setData(null);
       setError(null);
       setLoading(true);
-      setLoadingStep('Initializing analysis...');
       fetchAnalytics();
     } else if (!isOpen) {
       // Reset state when closing
       setData(null);
       setError(null);
       setLoading(false);
-      setLoadingStep('');
-      setCopyTradeProgress(null);
     }
   }, [isOpen, wallet, chain]);
 
@@ -94,11 +89,6 @@ export default function AdvancedAnalyticsModal({
         attempt++;
         
         try {
-          // Update loading step based on attempt
-          if (attempt === 1) setLoadingStep('Fetching trade history & tokens...');
-          else if (attempt === 2) setLoadingStep('Reconstructing FIFO history...');
-          else if (attempt > 2) setLoadingStep('Analyzing profitability & risks...');
-
           // Add timeout to each individual request (26 seconds to match backend)
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 26000);
@@ -243,93 +233,8 @@ export default function AdvancedAnalyticsModal({
   };
 
   const runCopyTradeAnalysis = async () => {
-    if (!data || !data.trades) return;
-    
-    setCopyTradeLoading(true);
-    setCopyTradeProgress({ current: 0, total: 0 }); // Initialize progress
-
-    try {
-      // Combine closed and open trades for analysis
-      const allTrades = [
-        ...(data.trades.closed || []),
-        ...(data.trades.open || [])
-      ];
-      
-      console.log(`[Analytics] Running Copy Trade Analysis for ${allTrades.length} trades...`);
-      setCopyTradeProgress({ current: 0, total: allTrades.length });
-      
-      // Chunk trades to avoid timeouts (batch size 5)
-      const BATCH_SIZE = 5;
-      const enrichedTrades = [];
-      
-      for (let i = 0; i < allTrades.length; i += BATCH_SIZE) {
-        const chunk = allTrades.slice(i, i + BATCH_SIZE);
-        console.log(`[Analytics] Processing chunk ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(allTrades.length/BATCH_SIZE)}...`);
-        
-        // Update progress
-        setCopyTradeProgress({ 
-          current: Math.min(i, allTrades.length), 
-          total: allTrades.length 
-        });
-
-        const response = await fetch('/api/advanced-analysis/enrich-copy-trade', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            wallet,
-            chain,
-            trades: chunk
-          })
-        });
-        
-        if (!response.ok) {
-          console.error(`[Analytics] Failed to process chunk ${i}: ${response.statusText}`);
-          // Push original trades if failed, to avoid losing data
-          enrichedTrades.push(...chunk);
-          continue;
-        }
-        
-        const result = await response.json();
-        if (result.success && result.data) {
-          enrichedTrades.push(...result.data);
-        } else {
-          enrichedTrades.push(...chunk);
-        }
-        
-        // Small delay to be nice to the backend/rate limits
-        await new Promise(r => setTimeout(r, 500));
-      }
-      
-      // Final progress update
-      setCopyTradeProgress({ current: allTrades.length, total: allTrades.length });
-
-      // Merge enriched trades back into data
-      // We need to split them back into closed and open
-      const closedCount = data.trades.closed?.length || 0;
-      
-      const enrichedClosed = enrichedTrades.slice(0, closedCount);
-      const enrichedOpen = enrichedTrades.slice(closedCount);
-      
-      setData((prev: any) => ({
-        ...prev,
-        trades: {
-          ...prev.trades,
-          closed: enrichedClosed,
-          open: enrichedOpen
-        },
-        meta: {
-          ...prev.meta,
-          copyTradeComplete: true
-        }
-      }));
-      console.log('[Analytics] Copy Trade Analysis complete');
-
-    } catch (err) {
-      console.error('[Analytics] Copy Trade Error:', err);
-      // Don't set main error, just log it? Or show toast?
-    } finally {
-      setCopyTradeLoading(false);
-    }
+    // Deprecated: Now handled per-row
+    console.log('Global copy trade analysis is deprecated');
   };
 
   // Handle escape key to close modal
@@ -437,24 +342,27 @@ export default function AdvancedAnalyticsModal({
           </div>
 
           {/* Content */}
-          <div className="overflow-hidden flex-1 bg-black/50 flex flex-col">
+          <div className="overflow-y-auto max-h-[calc(90vh-100px)] p-6 bg-black/50">
             {loading ? (
               // Loading state
-              <div className="flex flex-col items-center justify-center h-full py-10">
-                <svg 
-                  className="animate-spin h-10 w-10 text-green-500 mb-4"
-                  xmlns="http://www.w3.org/2000/svg" 
-                  viewBox="0 0 24 24"
-                >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v5l4.29-4.29a1 1 0 011.42 1.42L12 12l-5.71 5.71a1 1 0 01-1.42-1.42L11 12H4z" />
-                </svg>
-                <span className="text-white text-sm font-medium">{loadingStep || 'Loading analytics data...'}</span>
-                <span className="text-gray-400 text-xs mt-2">This may take up to 30 seconds for new wallets</span>
+              <div className="flex flex-col items-center justify-center py-10">
+                <div className="relative mb-4">
+                  <div className="absolute inset-0 rounded-full blur-md bg-green-500/30 animate-pulse"></div>
+                  <svg 
+                    className="relative animate-spin h-12 w-12 text-green-500"
+                    xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 24 24"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                </div>
+                <span className="text-white text-lg font-medium animate-pulse">Analyzing Wallet...</span>
+                <span className="text-gray-400 text-sm mt-2">Fetching trades, checking rugs, and calculating PnL</span>
               </div>
             ) : error ? (
               // Error state
-              <div className="text-red-400 text-center py-10 overflow-y-auto">
+              <div className="text-red-400 text-center py-10">
                 <p className="text-lg font-semibold mb-2">Error loading analytics</p>
                 <p className="text-sm">{error}</p>
               </div>
@@ -463,9 +371,8 @@ export default function AdvancedAnalyticsModal({
                 data={data} 
                 wallet={wallet} 
                 chain={chain}
-                onRunCopyTrade={runCopyTradeAnalysis}
-                copyTradeLoading={copyTradeLoading}
-                copyTradeProgress={copyTradeProgress}
+                onRunCopyTrade={() => {}}
+                copyTradeLoading={false}
               />
             ) : null}
           </div>

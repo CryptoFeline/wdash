@@ -150,17 +150,11 @@ export default function TrackedWalletsPage() {
 
   // Filter to show ONLY tracked wallets
   const trackedAddresses = useMemo(() => {
-    return new Set(
-      trackedWallets
-        .filter(w => w && w.address)
-        .map(w => w.address.toLowerCase())
-    );
+    return new Set(trackedWallets.map(w => w.address.toLowerCase()));
   }, [trackedWallets]);
 
   const trackedWalletsList = useMemo(() => {
-    return allWallets.filter(w => 
-      w && w.wallet_address && trackedAddresses.has(w.wallet_address.toLowerCase())
-    );
+    return allWallets.filter(w => trackedAddresses.has(w.wallet_address.toLowerCase()));
   }, [allWallets, trackedAddresses]);
 
   // Apply DISPLAY filters (client-side only)

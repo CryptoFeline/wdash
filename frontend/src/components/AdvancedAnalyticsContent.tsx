@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BarChart3, Coins, TrendingUp, AlertTriangle, ChevronDown, ChevronUp, Copy, ExternalLink, Clock, DollarSign, Percent } from 'lucide-react';
+import { BarChart3, Coins, TrendingUp, AlertTriangle, ChevronDown, ChevronUp, Copy, ExternalLink, Clock, DollarSign, Percent, Play, Loader2 } from 'lucide-react';
 import { formatNumber, formatUSD, formatPercent } from '@/lib/utils';
 
 interface AdvancedAnalyticsContentProps {
@@ -10,7 +10,6 @@ interface AdvancedAnalyticsContentProps {
   chain: string;
   onRunCopyTrade?: () => void;
   copyTradeLoading?: boolean;
-  copyTradeProgress?: { current: number, total: number } | null;
 }
 
 export default function AdvancedAnalyticsContent({ 
@@ -18,13 +17,90 @@ export default function AdvancedAnalyticsContent({
   wallet, 
   chain,
   onRunCopyTrade,
-  copyTradeLoading = false,
-  copyTradeProgress = null
+  copyTradeLoading = false
 }: AdvancedAnalyticsContentProps) {
   const [showAllTokens, setShowAllTokens] = useState(false);
   const [showAllTrades, setShowAllTrades] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'tokens' | 'trades'>('overview');
   const [tradesSubTab, setTradesSubTab] = useState<'closed' | 'open'>('closed');
+  
+  // Local state for single-row analysis
+  const [analyzingRows, setAnalyzingRows] = useState<Set<string>>(new Set());
+  // We need to update the local data when a single row is analyzed
+  const [localData, setLocalData] = useState(data);
+
+  // Update local data when prop data changes
+  if (data !== localData && !analyzingRows.size) {
+     setLocalData(data);
+  }
+
+  const handleAnalyzeRow = async (trade: any, index: number, type: 'closed' | 'open') => {
+    const rowId = `${type}-${index}`;
+    if (analyzingRows.has(rowId)) return;
+
+    setAnalyzingRows(prev => {
+      const next = new Set(prev);
+      next.add(rowId);
+      return next;
+    });
+
+    try {
+      const response = await fetch('/api/advanced-analysis/enrich-copy-trade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet,
+          chain,
+          trades: [trade]
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data && result.data.length > 0) {
+          const enrichedTrade = result.data[0];
+          
+          // Update local data
+          setLocalData((prev: any) => {
+            const newData = { ...prev };
+            if (type === 'closed') {
+              // Find and update in closed trades
+              // Note: We are using the index from the rendered list, which might match the data list
+              // But to be safe, let's assume the order is preserved or use ID if available
+              // Since we don't have IDs, we'll rely on the fact that we passed the trade object
+              // Actually, we should update the specific array
+              if (newData.trades?.closed) {
+                 // We need to find the trade in the array. 
+                 // Since we don't have a unique ID, we'll use the index passed in.
+                 // However, the index passed in is from the *sorted/filtered* view potentially?
+                 // The `closedTradesData` variable below is derived from `data.trades.closed`.
+                 // Let's just update the `trades.closed` array at the correct index if possible.
+                 // Or better, map over it and match by properties (tx_hash, token_address, etc)
+                 newData.trades.closed = newData.trades.closed.map((t: any) => 
+                   (t.transaction_hash === trade.transaction_hash && t.token_address === trade.token_address) ? enrichedTrade : t
+                 );
+              }
+            } else {
+              if (newData.trades?.open) {
+                 newData.trades.open = newData.trades.open.map((t: any) => 
+                   (t.token_address === trade.token_address) ? enrichedTrade : t
+                 );
+              }
+            }
+            return newData;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Single row analysis failed:', error);
+    } finally {
+      setAnalyzingRows(prev => {
+        const next = new Set(prev);
+        next.delete(rowId);
+        return next;
+      });
+    }
+  };
 
   // Helper for clipboard
   const copyToClipboard = async (text: string) => {
@@ -75,9 +151,9 @@ export default function AdvancedAnalyticsContent({
   };
 
   // Basic counts
-  const totalTrades = data.overview.total_trades || 0;
-  const closedTrades = data.overview.closed_trades || 0;
-  const openTrades = data.overview.open_positions || 0;
+  const totalTrades = localData.overview.total_trades || 0;
+  const closedTrades = localData.overview.closed_trades || 0;
+  const openTrades = localData.overview.open_positions || 0;
 
   // ============================================================
   // DATA PROCESSING & RUG LOGIC
@@ -85,7 +161,7 @@ export default function AdvancedAnalyticsContent({
   
   // 1. Process Tokens with Rug Logic
   // Logic: If rugged and held, remaining investment is -100% loss.
-  const tokens = (data.tokens || []).map((t: any) => {
+  const tokens = (localData.tokens || []).map((t: any) => {
     const isRugged = t.is_rugged || t.traded_rug_token;
     
     // Calculate cost basis of held tokens
@@ -113,7 +189,7 @@ export default function AdvancedAnalyticsContent({
   });
 
   // 2. Process Open Positions with Rug Logic
-  const openPositionsData = (data.trades?.open || []).map((p: any) => {
+  const openPositionsData = (localData.trades?.open || []).map((p: any) => {
     if (p.is_rug) {
       return {
         ...p,
@@ -123,9 +199,10 @@ export default function AdvancedAnalyticsContent({
       };
     }
     return p;
-  });
+  }).sort((a: any, b: any) => b.entry_time - a.entry_time);
 
-  const closedTradesData = data.trades?.closed || [];
+  // 3. Process Closed Trades
+  const closedTradesData = (localData.trades?.closed || []).sort((a: any, b: any) => b.entry_time - a.entry_time);
 
   // ============================================================
   // AGGREGATE CALCULATIONS
@@ -268,356 +345,837 @@ export default function AdvancedAnalyticsContent({
   const ruggedLoss = realizedRugLoss + ruggedUnrealizedLoss;
   const ruggedLossPercent = startingCapital > 0 ? (ruggedLoss / startingCapital) * 100 : 0;
 
-  // ============================================================
-  // RENDER
-  // ============================================================
-
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-6 pb-0 shrink-0">
-        {/* PnL Card */}
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <div className="flex items-center gap-2 text-gray-400 mb-2">
-            <TrendingUp className="h-4 w-4" />
-            <span className="text-sm font-medium">Total PnL</span>
-          </div>
-          <div className={`text-2xl font-bold ${data.overview.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {data.overview.total_pnl >= 0 ? '+' : ''}{formatUSD(data.overview.total_pnl)}
-          </div>
-          <div className={`text-sm ${data.overview.total_roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {formatPercent(data.overview.total_roi)} ROI
-          </div>
-        </div>
-
-        {/* Win Rate Card */}
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <div className="flex items-center gap-2 text-gray-400 mb-2">
-            <BarChart3 className="h-4 w-4" />
-            <span className="text-sm font-medium">Win Rate</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {formatPercent(data.overview.win_rate)}
-          </div>
-          <div className="text-sm text-gray-400">
-            {data.overview.winning_trades}W / {data.overview.losing_trades}L
-          </div>
-        </div>
-
-        {/* Rug Detection Card */}
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <div className="flex items-center gap-2 text-gray-400 mb-2">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-medium">Rug Exposure</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {data.overview.rugDetection?.score || 0}%
-          </div>
-          <div className="text-sm text-gray-400">
-            {data.overview.rugDetection?.ruggedTokens || 0} rugged tokens found
-          </div>
-        </div>
-
-        {/* Copy Trade Potential */}
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-          <div className="flex items-center gap-2 text-gray-400 mb-2">
-            <Coins className="h-4 w-4" />
-            <span className="text-sm font-medium">Copy Trade Potential</span>
-          </div>
-          {copyTradeLoading ? (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-yellow-400">
-                <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                <span className="text-sm font-medium">Analyzing...</span>
-              </div>
-              {copyTradeProgress && (
-                <div className="w-full bg-gray-700 rounded-full h-1.5 mt-1">
-                  <div 
-                    className="bg-yellow-400 h-1.5 rounded-full transition-all duration-300" 
-                    style={{ width: `${(copyTradeProgress.current / copyTradeProgress.total) * 100}%` }}
-                  />
-                </div>
-              )}
-              {copyTradeProgress && (
-                <span className="text-xs text-gray-500">
-                  {copyTradeProgress.current} / {copyTradeProgress.total} trades
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <div className="text-2xl font-bold text-white">
-                {data.trades?.closed?.[0]?.copy_trade_analysis ? 'Ready' : 'Not Analyzed'}
-              </div>
-              {onRunCopyTrade && !data.trades?.closed?.[0]?.copy_trade_analysis && (
-                <button 
-                  onClick={onRunCopyTrade}
-                  className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded transition-colors"
-                >
-                  Run Analysis
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
+    <div className="space-y-6">
       {/* Tabs */}
-      <div className="flex border-b border-gray-700 px-6 shrink-0">
+      <div className="flex gap-2 border-b border-gray-700/50">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'overview' 
-              ? 'border-green-500 text-green-500' 
-              : 'border-transparent text-gray-400 hover:text-gray-300'
+          className={`px-6 py-3 font-medium transition-all flex items-center gap-2 ${
+            activeTab === 'overview'
+              ? 'text-blue-400 border-b-2 border-blue-400 bg-blue-500/5'
+              : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/50'
           }`}
         >
+          <BarChart3 className="h-4 w-4" />
           Overview
         </button>
         <button
           onClick={() => setActiveTab('tokens')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'tokens' 
-              ? 'border-green-500 text-green-500' 
-              : 'border-transparent text-gray-400 hover:text-gray-300'
+          className={`px-6 py-3 font-medium transition-all flex items-center gap-2 ${
+            activeTab === 'tokens'
+              ? 'text-blue-400 border-b-2 border-blue-400 bg-blue-500/5'
+              : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/50'
           }`}
         >
-          Tokens ({tokens.length})
+          <Coins className="h-4 w-4" />
+          Tokens ({totalTokens})
         </button>
         <button
           onClick={() => setActiveTab('trades')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'trades' 
-              ? 'border-green-500 text-green-500' 
-              : 'border-transparent text-gray-400 hover:text-gray-300'
+          className={`px-6 py-3 font-medium transition-all flex items-center gap-2 ${
+            activeTab === 'trades'
+              ? 'text-blue-400 border-b-2 border-blue-400 bg-blue-500/5'
+              : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/50'
           }`}
         >
+          <TrendingUp className="h-4 w-4" />
           Trades ({totalTrades})
         </button>
       </div>
 
-      {/* Tab Content - Scrollable Area */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* Recent Activity Chart Placeholder */}
-            <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
-              <h3 className="text-lg font-semibold text-white mb-4">Performance History</h3>
-              <div className="h-64 flex items-center justify-center text-gray-500 bg-black/20 rounded-lg">
-                Chart visualization coming soon
+      {/* ============================================================ */}
+      {/* OVERVIEW TAB */}
+      {/* ============================================================ */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Top 4 Sections */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. Total Trades */}
+            <div className="bg-gray-900/50 border border-gray-800 p-5 rounded-lg">
+              <p className="text-gray-400 text-sm mb-1">Total Trades</p>
+              <p className="text-3xl font-bold mb-2">{totalTrades}</p>
+              <div className="flex gap-3 text-sm">
+                <span className="text-green-400">Closed: {closedTrades}</span>
+                <span className="text-blue-400">Open: {openTrades}</span>
+              </div>
+            </div>
+
+            {/* 2. Rug Metrics */}
+            <div className="bg-gray-900/50 border border-red-500/30 p-5 rounded-lg">
+              <p className="text-gray-400 text-sm mb-1">Rug Detection</p>
+              <p className="text-3xl font-bold text-red-400">{ruggedTokens}/{totalTokens}</p>
+              <p className="text-sm text-red-300 mt-1">{formatPercent(ruggedTokens / totalTokens * 100)} Rugged</p>
+            </div>
+
+            {/* 3. Win Rates */}
+            <div className="bg-gray-900/50 border border-green-500/30 p-5 rounded-lg">
+              <p className="text-gray-400 text-sm mb-1">Win Rates</p>
+              <div className="space-y-1 mt-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Total:</span>
+                  <span className="text-green-400 font-semibold">{totalWinRate > 0 ? formatPercent(totalWinRate) : '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Avg/Token:</span>
+                  <span className="text-blue-400 font-semibold">{avgTokenWinRate > 0 ? formatPercent(avgTokenWinRate) : '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Avg/Trade:</span>
+                  <span className="text-purple-400 font-semibold">{avgTradeWinRate > 0 ? formatPercent(avgTradeWinRate) : '-'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Time Metrics */}
+            <div className="bg-gray-900/50 border border-blue-500/30 p-5 rounded-lg">
+              <p className="text-gray-400 text-sm mb-1">Holding Times</p>
+              <div className="space-y-2 mt-2">
+                <div>
+                  <p className="text-xs text-gray-500">Avg Trade Window</p>
+                  <p className="text-xl font-bold text-blue-400">{formatTime(avgTradeWindow)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Avg Hold Time</p>
+                  <p className="text-xl font-bold text-purple-400">{formatTime(avgHoldTimeSeconds)}</p>
+                </div>
               </div>
             </div>
           </div>
-        )}
 
-        {activeTab === 'tokens' && (
+          {/* Capital Metrics - Redesigned */}
+          <div className="bg-gradient-to-br from-blue-900/20 to-blue-800/10 border border-blue-500/30 p-6 rounded-lg">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-blue-400" />
+              Capital Metrics
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Capital Flow */}
+              <div className="bg-gray-900/40 p-4 rounded-lg border border-blue-500/20">
+                <div className="flex items-center gap-2 mb-2 text-blue-300">
+                  <DollarSign className="h-4 w-4" />
+                  <span className="font-semibold">Capital Flow</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Starting:</span>
+                    <span>{formatUSD(startingCapital)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Peak:</span>
+                    <span>{formatUSD(peakDeployed)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-gray-700 pt-1 mt-1">
+                    <span className="text-gray-400">Current:</span>
+                    <span className="text-blue-400 font-bold">{formatUSD(currentCapital)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: PnL Breakdown */}
+              <div className="bg-gray-900/40 p-4 rounded-lg border border-green-500/20">
+                <div className="flex items-center gap-2 mb-2 text-green-300">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="font-semibold">PnL Breakdown</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Realized:</span>
+                    <span className={totalRealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {totalRealizedPnl >= 0 ? '+' : ''}{formatUSD(totalRealizedPnl)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Unrealized:</span>
+                    <span className={totalUnrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {totalUnrealizedPnl >= 0 ? '+' : ''}{formatUSD(totalUnrealizedPnl)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-gray-700 pt-1 mt-1">
+                    <span className="text-gray-400">Net PnL:</span>
+                    <span className={`font-bold ${netPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {netPnl >= 0 ? '+' : ''}{formatUSD(netPnl)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: ROI Performance */}
+              <div className="bg-gray-900/40 p-4 rounded-lg border border-purple-500/20">
+                <div className="flex items-center gap-2 mb-2 text-purple-300">
+                  <Percent className="h-4 w-4" />
+                  <span className="font-semibold">ROI Performance</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Trading ROI:</span>
+                    <span className="text-purple-400 font-bold">{formatROI(tradingRoi)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Regular ROI:</span>
+                    <span className="text-blue-400 font-bold">{formatROI(regularRoi)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Avg ROI:</span>
+                    <span className="text-green-400 font-bold">{formatROI(avgRoi)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Risk Impact */}
+              <div className="bg-gray-900/40 p-4 rounded-lg border border-red-500/20">
+                <div className="flex items-center gap-2 mb-2 text-red-300">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="font-semibold">Risk Impact</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Rugged Loss:</span>
+                    <span className="text-red-400">-{formatUSD(ruggedLoss)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Impact:</span>
+                    <span className="text-red-400">{formatPercent(ruggedLossPercent)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-gray-700 pt-1 mt-1">
+                    <span className="text-gray-400">Rugged ROI:</span>
+                    <span className="text-yellow-400">{formatPercent(ruggedUnrealizedRoi)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Risk Analysis */}
+          <div className="bg-gradient-to-br from-red-900/20 to-red-800/10 border border-red-500/30 p-6 rounded-lg">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              Risk Analysis
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Rugged Balance Ratio */}
+              <div>
+                <p className="text-gray-400 text-sm">Rugged Balance Ratio</p>
+                <p className="text-2xl font-bold text-red-400">
+                  {ruggedOpenCount}:{nonRuggedOpenCount}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">{formatPercent(ruggedOpenPercent)} of open positions</p>
+              </div>
+
+              {/* 2. Traded Rugs */}
+              <div>
+                <p className="text-gray-400 text-sm">Traded Rugs</p>
+                <p className="text-2xl font-bold text-yellow-400">
+                  {totalTradedRugs}/{totalTokens}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">{formatPercent(tradedRugsPercent)}</p>
+              </div>
+
+              {/* 3. Exited Before Rug */}
+              <div>
+                <p className="text-gray-400 text-sm">Exited Before Rug</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {exitedBeforeRug}:{totalTokens}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">{formatPercent(escapedPercent)} escaped</p>
+              </div>
+
+              {/* 4. Rugged Losses */}
+              <div>
+                <p className="text-gray-400 text-sm">Deployed Capital Lost</p>
+                <p className="text-2xl font-bold text-red-400">
+                  -{formatUSD(ruggedLoss)}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">{formatPercent(ruggedLossPercent)} of deployed</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* TOKENS TAB */}
+      {/* ============================================================ */}
+      {activeTab === 'tokens' && (
+        <div className="space-y-6">
+          {/* Token Summary Section */}
+          <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/10 border border-purple-500/30 p-6 rounded-lg">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <Coins className="h-5 w-5 text-purple-400" />
+              Token Summary
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Profitable/Losing Tokens */}
+              <div>
+                <p className="text-gray-400 text-sm">Profitable Tokens</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {profitableTokens.length}/{totalTokens}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {formatPercent(profitableTokens.length / totalTokens * 100)}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm">Losing Tokens</p>
+                <p className="text-2xl font-bold text-red-400">
+                  {losingTokens.length}/{totalTokens}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {formatPercent(losingTokens.length / totalTokens * 100)}
+                </p>
+              </div>
+
+              {/* Averages */}
+              <div>
+                <p className="text-gray-400 text-sm">Avg PnL/Token</p>
+                <p className={`text-2xl font-bold ${avgPnlPerToken >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {avgPnlPerToken >= 0 ? '+' : ''}{formatUSD(avgPnlPerToken)}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">Avg ROI: {formatROI(avgRoiPerToken)}</p>
+              </div>
+
+              {/* Total Value Held */}
+              <div>
+                <p className="text-gray-400 text-sm">Total Value Held</p>
+                <p className="text-2xl font-bold text-blue-400">{formatUSD(nonRuggedHeldValue)}</p>
+                <p className="text-sm text-gray-500 mt-1">Non-rugged only</p>
+              </div>
+
+              {/* Avg Hold Time */}
+              <div>
+                <p className="text-gray-400 text-sm">Avg Hold Time/Token</p>
+                <p className="text-2xl font-bold text-purple-400">{formatTime(avgHoldTimePerToken)}</p>
+                <p className="text-sm text-gray-500 mt-1">Per token average</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Token Table */}
           <div className="space-y-4">
-            <div className="overflow-x-auto rounded-lg border border-gray-700">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-400 uppercase bg-gray-800/50 sticky top-0 z-10">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-bold">Token-Level Performance</h3>
+              <button
+                onClick={() => setShowAllTokens(!showAllTokens)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition-colors flex items-center gap-2"
+              >
+                {showAllTokens ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showAllTokens ? 'Show Top 20' : `Show All (${totalTokens})`}
+              </button>
+            </div>
+
+            <div className="overflow-x-auto rounded-lg border border-gray-800">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-900/80 sticky top-0">
                   <tr>
-                    <th className="px-4 py-3">Token</th>
-                    <th className="px-4 py-3 text-right">Invested</th>
-                    <th className="px-4 py-3 text-right">Realized</th>
-                    <th className="px-4 py-3 text-right">Unrealized</th>
-                    <th className="px-4 py-3 text-right">Total PnL</th>
-                    <th className="px-4 py-3 text-right">ROI</th>
-                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="text-left p-3 font-semibold">Token</th>
+                    <th className="text-right p-3 font-semibold">Trades</th>
+                    <th className="text-right p-3 font-semibold">Invested</th>
+                    <th className="text-right p-3 font-semibold">Returned</th>
+                    <th className="text-right p-3 font-semibold">Realized PnL</th>
+                    <th className="text-right p-3 font-semibold">Unrealized PnL</th>
+                    <th className="text-right p-3 font-semibold">Total PnL</th>
+                    <th className="text-right p-3 font-semibold">ROI</th>
+                    <th className="text-right p-3 font-semibold">Win Rate</th>
+                    <th className="text-center p-3 font-semibold">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {tokens.slice(0, showAllTokens ? undefined : 10).map((token: any, i: number) => (
-                    <tr key={i} className="hover:bg-gray-800/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {token.token_logo && (
-                            <img src={token.token_logo} alt="" className="w-6 h-6 rounded-full" />
-                          )}
-                          <div>
-                            <div className="font-medium text-white">{token.token_symbol}</div>
-                            <a 
-                              href={getExplorerUrl(chain, token.token_address)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-gray-500 hover:text-blue-400 flex items-center gap-1"
-                            >
-                              {token.token_address.slice(0, 4)}...{token.token_address.slice(-4)}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
+                <tbody className="divide-y divide-gray-800">
+                  {(showAllTokens ? tokens : tokens.slice(0, 20)).map((token: any, idx: number) => {
+                    const isRugged = token.is_rugged || token.traded_rug_token;
+                    const isHeld = token.is_held;
+                    return (
+                      <tr 
+                        key={idx} 
+                        className={`hover:bg-gray-800/50 transition-colors`}
+                      >
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            {/* Token Logo */}
+                            <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                              {token.token_logo_url ? (
+                                <img src={token.token_logo_url} alt={token.token_symbol} className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-bold">{token.token_symbol?.slice(0, 2)}</span>
+                              )}
+                            </div>
+                            <div className="font-mono text-sm">
+                              <div className="font-semibold flex items-center gap-2">
+                                {token.token_symbol}
+                                <div className="flex gap-1">
+                                  <button 
+                                    onClick={() => copyToClipboard(token.token_address)}
+                                    className="text-gray-500 hover:text-white transition-colors"
+                                    title="Copy Address"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                  <a 
+                                    href={getExplorerUrl(data.meta?.chain || '501', token.token_address)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-gray-500 hover:text-blue-400 transition-colors"
+                                    title="View on Explorer"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {token.token_address?.slice(0, 6)}...{token.token_address?.slice(-4)}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-300">
-                        {formatUSD(token.total_invested)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={token.total_realized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                          {formatUSD(token.total_realized_pnl)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={token.adjusted_unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                          {formatUSD(token.adjusted_unrealized_pnl)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium">
-                        <span className={token.adjusted_net_pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                          {formatUSD(token.adjusted_net_pnl)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          token.adjusted_roi >= 0 
-                            ? 'bg-green-500/10 text-green-400' 
-                            : 'bg-red-500/10 text-red-400'
-                        }`}>
-                          {formatPercent(token.adjusted_roi)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {token.is_rugged ? (
-                          <span className="text-xs text-yellow-500 flex items-center justify-center gap-1">
-                            <AlertTriangle className="h-3 w-3" /> Rug
+                        </td>
+                        <td className="p-3 text-right">{token.total_trades}</td>
+                        <td className="p-3 text-right">{formatUSD(token.total_invested)}</td>
+                        <td className="p-3 text-right">{formatUSD(token.total_returned)}</td>
+                        <td className="p-3 text-right">
+                          <span className={token.total_realized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                            {token.total_realized_pnl >= 0 ? '+' : ''}{formatUSD(token.total_realized_pnl)}
                           </span>
-                        ) : token.is_held ? (
-                          <span className="text-xs text-blue-400">Held</span>
-                        ) : (
-                          <span className="text-xs text-gray-500">Sold</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="p-3 text-right">
+                          <span className={token.total_unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                            {token.total_unrealized_pnl >= 0 ? '+' : ''}{formatUSD(token.total_unrealized_pnl)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <span className={`font-semibold ${token.net_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {token.net_pnl >= 0 ? '+' : ''}{formatUSD(token.net_pnl)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <span className={token.avg_roi >= 0 ? 'text-green-400' : 'text-red-400'}>
+                            {formatPercent(token.avg_roi)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">{formatPercent(token.win_rate || 0)}</td>
+                        <td className="p-3 text-center">
+                          {isRugged ? (
+                            <div className="flex items-center justify-center gap-1 text-yellow-400">
+                              <AlertTriangle className="h-4 w-4" />
+                              <span className="text-xs">Rugged</span>
+                            </div>
+                          ) : isHeld ? (
+                            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Held</span>
+                          ) : (
+                            <span className="text-xs bg-gray-700 text-gray-400 px-2 py-1 rounded">Sold</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-            
-            {!showAllTokens && tokens.length > 10 && (
-              <button
-                onClick={() => setShowAllTokens(true)}
-                className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm text-gray-300"
-              >
-                <ChevronDown className="h-4 w-4" />
-                Show All {tokens.length} Tokens
-              </button>
-            )}
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === 'trades' && (
-          <div className="space-y-4">
-            {/* Sub Tabs */}
-            <div className="flex gap-2 mb-4">
+      {/* ============================================================ */}
+      {/* TRADES TAB */}
+      {/* ============================================================ */}
+      {activeTab === 'trades' && (
+        <div className="space-y-6">
+          {/* Trade-Level Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400 text-sm">Avg Win Rate</p>
+              <p className="text-2xl font-bold text-green-400">{formatPercent(avgTradeWinRate)}</p>
+            </div>
+            <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400 text-sm">Avg PnL/Trade</p>
+              <p className={`text-2xl font-bold ${avgPnlPerTrade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {avgPnlPerTrade >= 0 ? '+' : ''}{formatUSD(avgPnlPerTrade)}
+              </p>
+            </div>
+            <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400 text-sm">Avg ROI/Trade</p>
+              <p className="text-2xl font-bold text-purple-400">{formatROI(avgRoiPerTrade)}</p>
+            </div>
+            <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-lg">
+              <p className="text-gray-400 text-sm">Avg Hold Time</p>
+              <p className="text-2xl font-bold text-blue-400">{formatTime(avgHoldTimeSeconds)}</p>
+            </div>
+          </div>
+
+          {/* Sub-tabs and Actions */}
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
               <button
                 onClick={() => setTradesSubTab('closed')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   tradesSubTab === 'closed'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                 }`}
               >
                 Closed Trades ({closedTrades})
               </button>
               <button
                 onClick={() => setTradesSubTab('open')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   tradesSubTab === 'open'
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                 }`}
               >
                 Open Positions ({openTrades})
               </button>
             </div>
-
-            {/* Trades Table */}
-            <div className="overflow-x-auto rounded-lg border border-gray-700">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-400 uppercase bg-gray-800/50 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-4 py-3">Token</th>
-                    <th className="px-4 py-3 text-right">Type</th>
-                    <th className="px-4 py-3 text-right">Entry</th>
-                    <th className="px-4 py-3 text-right">Exit/Curr</th>
-                    <th className="px-4 py-3 text-right">PnL</th>
-                    <th className="px-4 py-3 text-right">ROI</th>
-                    <th className="px-4 py-3 text-right">Time</th>
-                    <th className="px-4 py-3 text-center">Copy Trade</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {(tradesSubTab === 'closed' ? data.trades.closed : data.trades.open)
-                    .slice(0, showAllTrades ? undefined : 50)
-                    .map((trade: any, i: number) => {
-                      const isWin = trade.realized_pnl > 0 || trade.unrealized_pnl > 0;
-                      const pnl = tradesSubTab === 'closed' ? trade.realized_pnl : trade.unrealized_pnl;
-                      const roi = tradesSubTab === 'closed' ? trade.realized_roi : trade.unrealized_roi;
-                      
-                      return (
-                        <tr key={i} className="hover:bg-gray-800/30 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium text-white">{trade.token_symbol}</div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`text-xs px-2 py-1 rounded ${
-                              trade.direction === 'buy' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                            }`}>
-                              {trade.direction?.toUpperCase() || (tradesSubTab === 'closed' ? 'SOLD' : 'HOLD')}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-300">
-                            ${trade.entry_price?.toFixed(6) || '0'}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-300">
-                            ${(trade.exit_price || trade.current_price)?.toFixed(6) || '0'}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                              {formatUSD(pnl)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={roi >= 0 ? 'text-green-400' : 'text-red-400'}>
-                              {formatPercent(roi)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-400">
-                            {formatTime(trade.hold_time_seconds || 0)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {trade.copy_trade_analysis ? (
-                              <div className="flex flex-col items-center text-xs">
-                                <span className="text-gray-300">
-                                  Entry: ${trade.copy_trade_analysis.entry_price?.toFixed(6)}
-                                </span>
-                                <span className={trade.copy_trade_analysis.possible_roi_full >= 0 ? 'text-green-400' : 'text-red-400'}>
-                                  Max: {formatPercent(trade.copy_trade_analysis.possible_roi_full)}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-gray-600">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
             
-            {!showAllTrades && (tradesSubTab === 'closed' ? data.trades.closed : data.trades.open).length > 50 && (
+            {/* Copy Trade Analysis Button */}
+            {!data.meta?.copyTradeComplete && onRunCopyTrade && (
               <button
-                onClick={() => setShowAllTrades(true)}
-                className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm text-gray-300"
+                onClick={onRunCopyTrade}
+                disabled={copyTradeLoading}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                  copyTradeLoading
+                    ? 'bg-blue-900/50 text-blue-300 cursor-wait'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20'
+                }`}
               >
-                <ChevronDown className="h-4 w-4" />
-                Show All Trades
+                {copyTradeLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Clock className="h-4 w-4" />
+                    Run Copy Trade Analysis
+                  </>
+                )}
               </button>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Closed Trades Table */}
+          {tradesSubTab === 'closed' && (
+            <div className="overflow-x-auto rounded-lg border border-gray-800">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-900/80">
+                  <tr>
+                    <th className="text-left p-3 font-semibold">Token</th>
+                    <th className="text-right p-3 font-semibold">Entry Value</th>
+                    <th className="text-right p-3 font-semibold">Exit Value</th>
+                    <th className="text-right p-3 font-semibold">PnL</th>
+                    <th className="text-right p-3 font-semibold">ROI</th>
+                    <th className="text-right p-3 font-semibold">Hold Time</th>
+                    <th className="text-center p-3 font-semibold border-l border-r border-blue-500/30 bg-blue-500/10 min-w-[200px]">
+                      Copytrade Simulation
+                    </th>
+                    <th className="text-center p-3 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {closedTradesData.slice(0, showAllTrades ? undefined : 50).map((trade: any, idx: number) => {
+                    const isRuggedLater = trade.is_rug_now;
+                    return (
+                      <tr 
+                        key={idx}
+                        className={`hover:bg-gray-800/50 transition-colors`}
+                      >
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            {/* Token Logo */}
+                            <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                              {trade.token_logo_url ? (
+                                <img src={trade.token_logo_url} alt={trade.token_symbol} className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-bold">{trade.token_symbol?.slice(0, 2)}</span>
+                              )}
+                            </div>
+                            <div className="font-mono text-sm">
+                              <div className="font-semibold flex items-center gap-2">
+                                {trade.token_symbol}
+                                <div className="flex gap-1">
+                                  <button 
+                                    onClick={() => copyToClipboard(trade.token_address)}
+                                    className="text-gray-500 hover:text-white transition-colors"
+                                    title="Copy Address"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                  <a 
+                                    href={getExplorerUrl(data.meta?.chain || '501', trade.token_address)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-gray-500 hover:text-blue-400 transition-colors"
+                                    title="View on Explorer"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {trade.token_address?.slice(0, 6)}...{trade.token_address?.slice(-4)}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">{formatUSD(trade.entry_value_usd)}</td>
+                        <td className="p-3 text-right">{formatUSD(trade.exit_value_usd)}</td>
+                        <td className="p-3 text-right">
+                          <span className={`font-semibold ${trade.realized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {trade.realized_pnl >= 0 ? '+' : ''}{formatUSD(trade.realized_pnl)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <span className={trade.realized_roi >= 0 ? 'text-green-400' : 'text-red-400'}>
+                            {formatPercent(trade.realized_roi)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">{formatTime(trade.holding_time_seconds)}</td>
+                        
+                        {/* Copytrade Column - Redesigned */}
+                        <td className="p-3 border-l border-r border-blue-500/30 bg-blue-500/5 min-w-[240px]">
+                          {trade.copy_trade_analysis ? (
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                              {/* Header: Entry Price */}
+                              <div className="col-span-2 flex justify-between items-center border-b border-blue-500/20 pb-1">
+                                <span className="text-gray-400">Simulated Entry:</span>
+                                <span className="text-blue-300 font-mono font-bold">
+                                  ${trade.copy_trade_analysis.entry_price?.toFixed(8)}
+                                </span>
+                              </div>
+                              
+                              {/* Gains Section */}
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider">Max Gain</span>
+                                <span className={`font-medium ${trade.copy_trade_analysis.possible_gain_full > 0 ? 'text-green-400' : 'text-gray-500'}`}>
+                                  {formatPercent(trade.copy_trade_analysis.possible_gain_full)}
+                                </span>
+                              </div>
+                              <div className="flex flex-col text-right">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wider">1h Gain</span>
+                                <span className={`font-medium ${trade.copy_trade_analysis.possible_gain_1h > 0 ? 'text-green-400' : 'text-gray-500'}`}>
+                                  {formatPercent(trade.copy_trade_analysis.possible_gain_1h)}
+                                </span>
+                              </div>
+
+                              {/* Time Section */}
+                              <div className="col-span-2 flex items-center justify-between bg-blue-900/20 rounded px-2 py-1 mt-1">
+                                <span className="text-[10px] text-gray-400">Time to +25%:</span>
+                                <span className="text-blue-200 font-mono">
+                                  {trade.copy_trade_analysis.time_to_25_percent 
+                                    ? formatTime(trade.copy_trade_analysis.time_to_25_percent / 1000) 
+                                    : '-'}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center h-full py-2">
+                              <button
+                                onClick={() => handleAnalyzeRow(trade, idx, 'closed')}
+                                disabled={analyzingRows.has(`closed-${idx}`)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-md transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {analyzingRows.has(`closed-${idx}`) ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    Analyzing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="h-3 w-3 fill-current" />
+                                    Analyze
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="p-3 text-center">
+                          {isRuggedLater ? (
+                            <div className="flex items-center justify-center gap-1 text-yellow-400">
+                              <AlertTriangle className="h-4 w-4" />
+                              <span className="text-xs">Rugged Later</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs bg-gray-700 text-gray-400 px-2 py-1 rounded">Sold</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Open Positions Table */}
+          {tradesSubTab === 'open' && (
+            <div className="overflow-x-auto rounded-lg border border-gray-800">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-900/80">
+                  <tr>
+                    <th className="text-left p-3 font-semibold">Token</th>
+                    <th className="text-right p-3 font-semibold">Entry / Copy Price</th>
+                    <th className="text-right p-3 font-semibold">Potential Gain (1h/Max)</th>
+                    <th className="text-right p-3 font-semibold">Time to 25%/50%</th>
+                    <th className="text-right p-3 font-semibold">Potential Loss (1h/Max)</th>
+                    <th className="text-right p-3 font-semibold">Unrealized PnL</th>
+                    <th className="text-right p-3 font-semibold">ROI</th>
+                    <th className="text-right p-3 font-semibold">Hold Time</th>
+                    <th className="text-center p-3 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {openPositionsData.map((position: any, idx: number) => {
+                    const isRugged = position.is_rug;
+                    const holdTime = position.holding_time_seconds || (position.entry_time ? (Date.now() - position.entry_time) / 1000 : 0);
+                    return (
+                      <tr 
+                        key={idx}
+                        className={`hover:bg-gray-800/50 transition-colors`}
+                      >
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            {/* Token Logo */}
+                            <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                              {position.token_logo_url ? (
+                                <img src={position.token_logo_url} alt={position.token_symbol} className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-bold">{position.token_symbol?.slice(0, 2)}</span>
+                              )}
+                            </div>
+                            <div className="font-mono text-sm">
+                              <div className="font-semibold flex items-center gap-2">
+                                {position.token_symbol}
+                                <div className="flex gap-1">
+                                  <button 
+                                    onClick={() => copyToClipboard(position.token_address)}
+                                    className="text-gray-500 hover:text-white transition-colors"
+                                    title="Copy Address"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                  <a 
+                                    href={getExplorerUrl(data.meta?.chain || '501', position.token_address)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-gray-500 hover:text-blue-400 transition-colors"
+                                    title="View on Explorer"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {position.token_address?.slice(0, 6)}...{position.token_address?.slice(-4)}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-400">Entry: ${position.entry_price?.toFixed(8)}</span>
+                            {position.copy_trade_analysis?.entry_price ? (
+                              <span className="text-xs text-blue-400">Copy: ${position.copy_trade_analysis.entry_price.toFixed(8)}</span>
+                            ) : (
+                              <span className="text-xs text-gray-600">-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end">
+                            {position.copy_trade_analysis ? (
+                              <>
+                                <span className={position.copy_trade_analysis.possible_gain_1h > 0 ? 'text-green-400' : 'text-gray-500'}>
+                                  1h: {formatPercent(position.copy_trade_analysis.possible_gain_1h)}
+                                </span>
+                                <span className={position.copy_trade_analysis.possible_gain_full > 0 ? 'text-green-400' : 'text-gray-500'}>
+                                  Max: {formatPercent(position.copy_trade_analysis.possible_gain_full)}
+                                </span>
+                              </>
+                            ) : (
+                              <div className="flex items-center justify-end h-full py-1">
+                                <button
+                                  onClick={() => handleAnalyzeRow(position, idx, 'open')}
+                                  disabled={analyzingRows.has(`open-${idx}`)}
+                                  className="flex items-center gap-1.5 px-2 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-md transition-colors text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {analyzingRows.has(`open-${idx}`) ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Play className="h-3 w-3 fill-current" />
+                                      Analyze
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end">
+                            {position.copy_trade_analysis ? (
+                              <>
+                                <span className="text-xs text-gray-300">25%: {formatTime(position.copy_trade_analysis.time_to_25_percent / 1000)}</span>
+                                <span className="text-xs text-gray-300">50%: {formatTime(position.copy_trade_analysis.time_to_50_percent / 1000)}</span>
+                              </>
+                            ) : <span className="text-gray-600">-</span>}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex flex-col items-end">
+                            {position.copy_trade_analysis ? (
+                              <>
+                                <span className={position.copy_trade_analysis.possible_loss_1h < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                  1h: {formatPercent(position.copy_trade_analysis.possible_loss_1h)}
+                                </span>
+                                <span className={position.copy_trade_analysis.possible_loss_full < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                  Max: {formatPercent(position.copy_trade_analysis.possible_loss_full)}
+                                </span>
+                              </>
+                            ) : <span className="text-gray-600">-</span>}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          <span className={`font-semibold ${position.unrealized_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {position.unrealized_pnl >= 0 ? '+' : ''}{formatUSD(position.unrealized_pnl)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <span className={position.unrealized_roi >= 0 ? 'text-green-400' : 'text-red-400'}>
+                            {formatPercent(position.unrealized_roi)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">{formatTime(holdTime)}</td>
+                        <td className="p-3 text-center">
+                          {isRugged ? (
+                            <div className="flex items-center justify-center gap-1 text-yellow-400">
+                              <AlertTriangle className="h-4 w-4" />
+                              <span className="text-xs">Rugged</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Held</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Show more button */}
+          {tradesSubTab === 'closed' && closedTradesData.length > 50 && !showAllTrades && (
+            <button
+              onClick={() => setShowAllTrades(true)}
+              className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <ChevronDown className="h-4 w-4" />
+              Show All {closedTradesData.length} Closed Trades
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

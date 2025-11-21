@@ -145,39 +145,31 @@ export default function Home() {
         console.log('[Page] No cache found, waking backend...');
         await wakeupBackend();
 
-        // Helper to fetch from DB
-        const fetchDB = async () => {
-          console.log('[Page] Loading wallets from Supabase...');
-          const response = await fetch('/api/wallets/db?chain=sol&limit=1000', {
-            headers: { 'Content-Type': 'application/json' }
-          });
-
-          if (!response.ok) {
-            console.error('[Page] Failed to load from Supabase:', response.status);
-            return;
-          }
-
-          const { data, total } = await response.json();
-          if (data && data.length > 0) {
-            storage.mergeWallets(data);
-            console.log(`[Page] Loaded ${data.length}/${total} wallets from Supabase`);
-          }
-        };
-
-        // 1. Load existing data immediately
-        await fetchDB();
-
-        // 2. Trigger "light" sync (OKX + CMC only) and reload on completion
+        // Trigger "light" sync (OKX + CMC only) on page load to ensure some fresh data
+        // This avoids the heavy GMGN scrape but populates the leaderboard
         console.log('[Page] Triggering background sync for OKX/CMC...');
-        triggerSync('sol', '7d', 'all', ['okx', 'cmc'])
-          .then(async () => {
-            console.log('[Page] Initial sync complete. Reloading from DB...');
-            await fetchDB();
-          })
-          .catch(err => 
-            console.error('[Page] Initial sync failed:', err)
-          );
+        triggerSync('sol', '7d', 'all', ['okx', 'cmc']).catch(err => 
+          console.error('[Page] Initial sync failed:', err)
+        );
 
+        console.log('[Page] Loading initial wallets from Supabase...');
+        
+        // Fetch ALL wallets by requesting high limit (1000)
+        // Backend has 771 wallets, so 1000 will get them all
+        const response = await fetch('/api/wallets/db?chain=sol&limit=1000', {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+          console.error('[Page] Failed to load from Supabase:', response.status);
+          return;
+        }
+
+        const { data, total } = await response.json();
+        if (data && data.length > 0) {
+          storage.mergeWallets(data);
+          console.log(`[Page] Loaded ${data.length}/${total} wallets from Supabase`);
+        }
       } catch (error) {
         console.error('[Page] Supabase load error:', error);
         // Fail silently - let manual fetch handle it
@@ -212,15 +204,7 @@ export default function Home() {
       
       // Also trigger Supabase sync in background (creates snapshots for analytics)
       // Don't await this - let it run in background
-      triggerSync(chain, timeframe, tag)
-        .then(async () => {
-          console.log('[Page] Manual sync complete. Refetching...');
-          await Promise.all([
-            refetchWallets(),
-            refetchStats(),
-          ]);
-        })
-        .catch(err => console.error('Background sync failed:', err));
+      triggerSync(chain, timeframe, tag).catch(err => console.error('Background sync failed:', err));
     } catch (error) {
       console.error('Refresh failed:', error);
     }
