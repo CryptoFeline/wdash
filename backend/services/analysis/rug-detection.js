@@ -109,38 +109,42 @@ export async function enrichOpenPositions(openPositions, tokenList, chainId, ena
 // ============================================================
 
 export async function checkClosedTradesForRugs(pairedTrades, chainId) {
-  const checkedTokens = new Set();
+  const uniqueTokens = [...new Set(pairedTrades.map(t => t.token_address))];
+  const BATCH_SIZE = 5;
   
-  for (const trade of pairedTrades) {
-    if (checkedTokens.has(trade.token_address)) continue;
+  console.log(`[Rug Detection] Checking ${uniqueTokens.length} unique tokens from closed trades...`);
+
+  for (let i = 0; i < uniqueTokens.length; i += BATCH_SIZE) {
+    const batch = uniqueTokens.slice(i, i + BATCH_SIZE);
     
-    try {
-      const overview = await fetchTokenOverview(trade.token_address, chainId);
-      
-      if (!overview) continue;
-      
-      const currentLiquidity = parseFloat(overview.marketInfo?.totalLiquidity || 0);
-      const devRugCount = parseInt(overview.basicInfo?.devRugPullTokenCount || 0);
-      
-      const isRugNow = currentLiquidity < 100 || devRugCount > 0;
-      
-      // Mark all trades of this token
-      for (const t of pairedTrades) {
-        if (t.token_address === trade.token_address) {
-          t.is_rug_now = isRugNow;
-          t.rug_warning = isRugNow 
-            ? `Token later became rug (liquidity: $${currentLiquidity.toFixed(2)})` 
-            : null;
+    await Promise.all(batch.map(async (tokenAddress) => {
+      try {
+        const overview = await fetchTokenOverview(tokenAddress, chainId);
+        
+        if (!overview) return;
+        
+        const currentLiquidity = parseFloat(overview.marketInfo?.totalLiquidity || 0);
+        const devRugCount = parseInt(overview.basicInfo?.devRugPullTokenCount || 0);
+        
+        const isRugNow = currentLiquidity < 100 || devRugCount > 0;
+        
+        // Mark all trades of this token
+        for (const t of pairedTrades) {
+          if (t.token_address === tokenAddress) {
+            t.is_rug_now = isRugNow;
+            t.rug_warning = isRugNow 
+              ? `Token later became rug (liquidity: $${currentLiquidity.toFixed(2)})` 
+              : null;
+          }
         }
+      } catch (error) {
+        console.warn(`Failed to check rug status for ${tokenAddress}:`, error.message);
       }
-      
-      checkedTokens.add(trade.token_address);
-      
-      // Rate limiting
-      await new Promise(r => setTimeout(r, 100));
-    } catch (error) {
-      console.warn(`Failed to check rug status for ${trade.token_symbol}:`, error.message);
-      checkedTokens.add(trade.token_address);
+    }));
+    
+    // Rate limiting between batches
+    if (i + BATCH_SIZE < uniqueTokens.length) {
+      await new Promise(r => setTimeout(r, 200));
     }
   }
   

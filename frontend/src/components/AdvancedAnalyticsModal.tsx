@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, BarChart3, Copy, ExternalLink } from 'lucide-react';
+import { X, BarChart3, Copy, ExternalLink, Flag, Bookmark } from 'lucide-react';
 import AdvancedAnalyticsContent from './AdvancedAnalyticsContent';
 import { useWalletFlags } from '@/hooks/useWalletFlags';
 
@@ -24,7 +24,7 @@ export default function AdvancedAnalyticsModal({
   const [error, setError] = useState<string | null>(null);
   
   // Use the flag hook to auto-flag wallets
-  const { setFlag } = useWalletFlags();
+  const { isFlagged, isSaved, toggleFlag, toggleSave, setFlag, setInitialFlag, setInitialSave } = useWalletFlags();
 
   // Get chain display name
   const getChainName = (chainId: string) => {
@@ -93,10 +93,10 @@ export default function AdvancedAnalyticsModal({
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 26000);
           
-          // First request: trigger processing (skip copy trade for speed)
+          // First request: trigger processing (skip copy trade AND rug check for speed)
           // Subsequent requests: check for cached result only
           const url = attempt === 1 
-            ? `/api/advanced-analysis/${wallet}/${chain}?skipCopyTrade=true`
+            ? `/api/advanced-analysis/${wallet}/${chain}?skipCopyTrade=true&skipRugCheck=true`
             : `/api/advanced-analysis/${wallet}/${chain}?cacheOnly=true`;
           
           console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Fetching:`, url);
@@ -134,6 +134,12 @@ export default function AdvancedAnalyticsModal({
             });
             setData(json.data);
             
+            // Sync flag and save status from backend
+            if (json.data?.meta) {
+              setInitialFlag(wallet, json.data.meta.is_flagged || false);
+              setInitialSave(wallet, json.data.meta.is_saved || false);
+            }
+            
             // Check for Rug Detection > 10% and auto-flag
             // Assuming rugDetection is in json.data.overview.rugDetection or similar
             // Based on previous context, it might be in overview
@@ -145,6 +151,12 @@ export default function AdvancedAnalyticsModal({
 
             setLoading(false);
             success = true; // Mark as successful
+
+            // If we got fast data (no rug checks), trigger background update
+            if (json.data?.meta && !json.data.meta.rugCheckComplete) {
+               fetchRugChecks();
+            }
+
             break; // Exit while loop successfully
           } else if (json.processing || response.status === 202) {
             // Backend says it's still processing
@@ -193,6 +205,30 @@ export default function AdvancedAnalyticsModal({
       console.error('[Analytics] Fatal error:', err);
       setError(err.message || 'Failed to load analytics');
       setLoading(false);
+    }
+  };
+
+  const fetchRugChecks = async () => {
+    try {
+      console.log('[Analytics] Background: Fetching rug checks...');
+      // Request full data (skipCopyTrade=true, skipRugCheck=false)
+      // This will trigger Phase 2 on the backend
+      const response = await fetch(`/api/advanced-analysis/${wallet}/${chain}?skipCopyTrade=true`);
+      const json = await response.json();
+      
+      if (json.success && json.data) {
+        console.log('[Analytics] Background: Rug checks complete. Updating data.');
+        setData(json.data);
+        
+        // Check for auto-flagging
+        const rugScore = json.data?.overview?.rugDetection?.score || 0;
+        if (rugScore >= 10) {
+          console.log(`[Analytics] Auto-flagging wallet ${wallet} (Rug Score: ${rugScore}%)`);
+          setFlag(wallet, chain, true);
+        }
+      }
+    } catch (err) {
+      console.error('[Analytics] Background rug check failed:', err);
     }
   };
 
@@ -340,6 +376,21 @@ export default function AdvancedAnalyticsModal({
                 >
                   <ExternalLink className="h-4 w-4" />
                 </a>
+                <div className="w-px h-4 bg-white/20 mx-1" />
+                <button
+                  onClick={() => toggleSave(wallet, chain)}
+                  className={`transition-colors p-1.5 rounded hover:bg-white/10 ${isSaved(wallet) ? 'text-yellow-500' : 'text-white/70 hover:text-white'}`}
+                  title={isSaved(wallet) ? "Unsave wallet" : "Save wallet"}
+                >
+                  <Bookmark className={`h-4 w-4 ${isSaved(wallet) ? 'fill-yellow-500' : ''}`} />
+                </button>
+                <button
+                  onClick={() => toggleFlag(wallet, chain)}
+                  className={`transition-colors p-1.5 rounded hover:bg-white/10 ${isFlagged(wallet) ? 'text-red-500' : 'text-white/70 hover:text-white'}`}
+                  title={isFlagged(wallet) ? "Unflag wallet" : "Flag wallet (Rug Suspect)"}
+                >
+                  <Flag className={`h-4 w-4 ${isFlagged(wallet) ? 'fill-red-500' : ''}`} />
+                </button>
               </div>
 
               {/* Chain and Native Balance */}

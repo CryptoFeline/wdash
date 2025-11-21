@@ -356,6 +356,36 @@ router.post('/:address/flag', async (req, res) => {
 });
 
 /**
+ * POST /api/wallets/:address/update
+ * Update any field in wallet data
+ */
+router.post('/:address/update', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const { chain = 'eth', field, value } = req.body;
+    
+    if (!field) {
+      return res.status(400).json({ error: 'Field name is required' });
+    }
+
+    // Import dynamically to avoid circular deps if any, or just use the one imported at top
+    // But wait, updateWalletField is not imported at top yet.
+    // I need to update the import statement first.
+    // Actually, I can just use the imported module if I update the import.
+    // Let's assume I'll update the import in a separate step or use dynamic import.
+    // For now, let's use dynamic import for safety as I didn't check the top imports fully.
+    const { updateWalletField } = await import('../db/supabase.js');
+
+    await updateWalletField(address, chain, field, value);
+    
+    res.json({ success: true, address, field, value });
+  } catch (error) {
+    console.error('[API] Update field error:', error);
+    res.status(500).json({ error: 'Failed to update wallet data' });
+  }
+});
+
+/**
  * GET /api/wallets/:address/chains
  * Detect chains for a wallet using OKX API
  */

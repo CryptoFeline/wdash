@@ -22,6 +22,7 @@ import {
   aggregateToOverview
 } from '../services/analysis/aggregations.js';
 import { enrichTradesWithCopyTradeAnalysis } from '../services/analysis/copy-trade.js';
+import { getWallet } from '../db/supabase.js';
 
 const router = express.Router();
 
@@ -108,10 +109,11 @@ router.get('/:wallet/:chain', async (req, res) => {
       // However, if the first request failed but the frontend thinks it started, we might be stuck.
       // For now, let's assume the frontend will retry without cacheOnly if it gets 404 or similar.
       // But here we return 202 to keep it polling if it expects it.
-      return res.status(202).json({
+      // FIX: If no job is running, return 404 so frontend knows to retry with full request
+      return res.status(404).json({
         success: false,
-        processing: true,
-        message: 'Data is still being processed. Please retry.'
+        processing: false,
+        message: 'No analysis job found. Please start a new analysis.'
       });
     }
 
@@ -148,10 +150,11 @@ router.get('/:wallet/:chain', async (req, res) => {
       // STEP 1: FETCH DATA
       // ========================================
       
-      const [trades, tokenList, profileSummary] = await Promise.all([
+      const [trades, tokenList, profileSummary, dbWallet] = await Promise.all([
         fetchTradeHistory(wallet, chain),
         fetchTokenList(wallet, chain),
-        fetchWalletProfileSummary(wallet, chain)
+        fetchWalletProfileSummary(wallet, chain),
+        getWallet(wallet, chain).catch(() => null)
       ]);
       
       // ========================================
@@ -262,6 +265,8 @@ router.get('/:wallet/:chain', async (req, res) => {
           timestamp: Date.now(),
           period: '7_days',
           rugCheckComplete: !skipRugCheck,
+          is_flagged: dbWallet?.data?.is_flagged || false,
+          is_saved: dbWallet?.data?.is_saved || false,
           nativeBalance: {
             amount: profileSummary?.nativeTokenBalanceAmount || '0',
             usd: profileSummary?.nativeTokenBalanceUsd || '0',
@@ -271,14 +276,18 @@ router.get('/:wallet/:chain', async (req, res) => {
       };
       
       // Cache response
-      if (skipRugCheck) {
+      if (!skipRugCheck && !skipCopyTrade) {
+        // Phase 3: Full cache (Rug Checks + Copy Trade)
+        setRugCheckedCache(level3Key, response);
+        console.log('[Advanced Analytics] ✅ Phase 3 complete (Full: Rugs + CopyTrade)');
+      } else if (!skipRugCheck) {
+        // Phase 2: Rug Checked cache (Rugs only)
+        setRugCheckedCache(level2Key, response);
+        console.log('[Advanced Analytics] ✅ Phase 2 complete (Rugs only)');
+      } else {
         // Phase 1: Basic cache (fast load)
         setCache(cacheKey, response);
-        console.log('[Advanced Analytics] ✅ Phase 1 complete (no rug checks)');
-      } else {
-        // Phase 2: Full cache (with rug checks)
-        setRugCheckedCache(cacheKey, response);
-        console.log('[Advanced Analytics] ✅ Phase 2 complete (with rug checks)');
+        console.log('[Advanced Analytics] ✅ Phase 1 complete (Basic)');
       }
       
       return response;

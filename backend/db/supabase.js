@@ -201,21 +201,82 @@ export async function getSnapshots(wallet_address, chain = 'eth', limit = 30) {
 
 /**
  * Update wallet flag status
+ * Note: Updates the 'is_flagged' field inside the 'data' JSONB column
+ * to avoid schema migration issues if the top-level column is missing.
  */
 export async function updateWalletFlag(wallet_address, chain, is_flagged) {
   const supabaseClient = initSupabase();
   try {
-    const { error } = await supabaseClient
+    // 1. Fetch current data
+    const { data: current, error: fetchError } = await supabaseClient
       .from('wallets')
-      .update({ is_flagged })
+      .select('data')
       .eq('wallet_address', wallet_address)
-      .eq('chain', chain);
+      .eq('chain', chain)
+      .single();
+      
+    if (fetchError) throw fetchError;
     
-    if (error) throw error;
-    console.log(`[Supabase] Updated flag for ${wallet_address}: ${is_flagged}`);
-    return { success: true };
+    if (current) {
+      // 2. Update the flag inside the data object
+      const newData = { ...current.data, is_flagged };
+      
+      // 3. Write back
+      const { error: updateError } = await supabaseClient
+        .from('wallets')
+        .update({ data: newData })
+        .eq('wallet_address', wallet_address)
+        .eq('chain', chain);
+        
+      if (updateError) throw updateError;
+      
+      console.log(`[Supabase] Updated flag for ${wallet_address}: ${is_flagged}`);
+      return { success: true };
+    } else {
+      throw new Error('Wallet not found');
+    }
   } catch (error) {
     console.error('[Supabase] Update flag failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update any field inside the wallet's data JSONB column
+ */
+export async function updateWalletField(wallet_address, chain, field, value) {
+  const supabaseClient = initSupabase();
+  try {
+    // 1. Fetch current data
+    const { data: current, error: fetchError } = await supabaseClient
+      .from('wallets')
+      .select('data')
+      .eq('wallet_address', wallet_address)
+      .eq('chain', chain)
+      .single();
+      
+    if (fetchError) throw fetchError;
+    
+    if (current) {
+      // 2. Update the field inside the data object
+      const newData = { ...current.data, [field]: value };
+      
+      // 3. Write back
+      const { error: updateError } = await supabaseClient
+        .from('wallets')
+        .update({ data: newData })
+        .eq('wallet_address', wallet_address)
+        .eq('chain', chain);
+        
+      if (updateError) throw updateError;
+      
+      console.log(`[Supabase] Updated ${field} for ${wallet_address}: ${value}`);
+      return { success: true };
+    } else {
+      throw new Error('Wallet not found');
+    }
+  } catch (error) {
+    console.error(`[Supabase] Update ${field} failed:`, error);
     throw error;
   }
 }
@@ -229,4 +290,5 @@ export default {
   createSnapshotsBatch,
   getSnapshots,
   updateWalletFlag,
+  updateWalletField,
 };
