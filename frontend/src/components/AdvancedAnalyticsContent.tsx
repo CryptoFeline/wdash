@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { BarChart3, Coins, TrendingUp, AlertTriangle, ChevronDown, ChevronUp, Copy, ExternalLink, Clock, DollarSign, Percent, Play, Loader2, HelpCircle } from 'lucide-react';
 
-// Simple tooltip component using title attribute
+// Simple tooltip component using title attribute on wrapper span
 const Tip = ({ text }: { text: string }) => (
-  <HelpCircle className="h-3 w-3 text-gray-500 hover:text-gray-300 cursor-help inline ml-1" title={text} />
+  <span title={text} className="inline cursor-help ml-1">
+    <HelpCircle className="h-3 w-3 text-gray-500 hover:text-gray-300 inline" />
+  </span>
 );
 import { formatNumber, formatUSD, formatPercent } from '@/lib/utils';
 

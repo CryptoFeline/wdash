@@ -47,6 +47,54 @@ import { WalletDetailsModal } from './WalletDetailsModal';
 import AdvancedAnalyticsModal from './AdvancedAnalyticsModal';
 import { useTrackedWallets } from '@/hooks/useTrackedWallets';
 import { useWalletFlags } from '@/hooks/useWalletFlags';
+import Image from 'next/image';
+
+/**
+ * Source Icons Component - Shows which data source(s) a wallet came from
+ */
+function SourceIcons({ wallet }: { wallet: Wallet }) {
+  // Get sources from wallet data
+  const sources: string[] = wallet._sources || (wallet.source ? [wallet.source] : []);
+  
+  if (sources.length === 0) {
+    // Default to GMGN if no source specified (legacy data)
+    return (
+      <div className="flex items-center" title="GMGN">
+        <Image src="/gmgn.svg" alt="GMGN" width={16} height={16} className="opacity-70" />
+      </div>
+    );
+  }
+
+  if (sources.length === 1) {
+    const source = sources[0];
+    const iconMap: Record<string, { src: string; alt: string }> = {
+      gmgn: { src: '/gmgn.svg', alt: 'GMGN' },
+      okx: { src: '/okx.svg', alt: 'OKX' },
+      cmc: { src: '/cmc.svg', alt: 'CoinMarketCap' },
+    };
+    const icon = iconMap[source] || iconMap.gmgn;
+    return (
+      <div className="flex items-center" title={icon.alt}>
+        <Image src={icon.src} alt={icon.alt} width={16} height={16} className="opacity-70" />
+      </div>
+    );
+  }
+
+  // Multiple sources - show overlapping icons
+  return (
+    <div className="flex items-center -space-x-1" title={sources.join(' + ')}>
+      {sources.includes('gmgn') && (
+        <Image src="/gmgn.svg" alt="GMGN" width={14} height={14} className="opacity-80 ring-1 ring-background rounded-full" />
+      )}
+      {sources.includes('okx') && (
+        <Image src="/okx.svg" alt="OKX" width={14} height={14} className="opacity-80 ring-1 ring-background rounded-full" />
+      )}
+      {sources.includes('cmc') && (
+        <Image src="/cmc.svg" alt="CMC" width={14} height={14} className="opacity-80 ring-1 ring-background rounded-full" />
+      )}
+    </div>
+  );
+}
 
 interface WalletTableProps {
   wallets: Wallet[];
@@ -173,7 +221,11 @@ export default function WalletTable({
         const flagged = isFlagged(address);
         
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {/* Source Icons */}
+            <SourceIcons wallet={row.original} />
+            
+            {/* Bookmark */}
             <Button
               variant="ghost"
               size="icon"
@@ -190,6 +242,8 @@ export default function WalletTable({
                 }`}
               />
             </Button>
+            
+            {/* Flag */}
             <Button
               variant="ghost"
               size="icon"

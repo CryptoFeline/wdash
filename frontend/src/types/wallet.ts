@@ -78,6 +78,9 @@ export interface Wallet {
   score?: number;
   is_flagged?: boolean;
   is_saved?: boolean;
+  // Data source tracking
+  source?: 'gmgn' | 'okx' | 'cmc';     // Single source
+  _sources?: string[];                  // Multiple sources array (e.g., ['gmgn', 'okx'])
 }
 
 export interface PaginatedResponse {
