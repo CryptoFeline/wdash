@@ -37,9 +37,11 @@ router.get('/', async (req, res) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch all wallets from database (with chain filter if specified)
+    // Note: Supabase has a default limit of 1000, we need to override it
     let query = supabase
       .from('wallets')
-      .select('*');
+      .select('*')
+      .limit(10000); // Override Supabase default limit
 
     if (chain && chain !== 'all') {
       query = query.eq('chain', chain);

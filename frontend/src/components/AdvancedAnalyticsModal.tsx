@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, BarChart3, Copy, ExternalLink, Flag, Bookmark } from 'lucide-react';
 import AdvancedAnalyticsContent from './AdvancedAnalyticsContent';
 import { useWalletFlags } from '@/hooks/useWalletFlags';
@@ -22,6 +22,9 @@ export default function AdvancedAnalyticsModal({
   const [copyTradeLoading, setCopyTradeLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // AbortController ref to cancel requests when modal closes
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Use the flag hook to auto-flag wallets
   const { isFlagged, isSaved, toggleFlag, toggleSave, setFlag, setInitialFlag, setInitialSave } = useWalletFlags();
@@ -67,11 +70,25 @@ export default function AdvancedAnalyticsModal({
       setLoading(true);
       fetchAnalytics();
     } else if (!isOpen) {
+      // Abort any in-flight requests when modal closes
+      if (abortControllerRef.current) {
+        console.log('[Analytics] Modal closed - aborting pending requests');
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       // Reset state when closing
       setData(null);
       setError(null);
       setLoading(false);
     }
+    
+    // Cleanup on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [isOpen, wallet, chain]);
 
   const fetchAnalytics = async () => {
@@ -83,16 +100,16 @@ export default function AdvancedAnalyticsModal({
     const maxAttempts = 15; // Poll for up to 15 attempts (45 seconds with 3s intervals)
     let attempt = 0;
     let success = false; // Track if we successfully loaded data
+    
+    // Create a new AbortController for this fetch session
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
 
     try {
-      while (attempt < maxAttempts) {
+      while (attempt < maxAttempts && !signal.aborted) {
         attempt++;
         
         try {
-          // Add timeout to each individual request (26 seconds to match backend)
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 26000);
-          
           // First request: trigger processing (skip copy trade AND rug check for speed)
           // Subsequent requests: check for cached result only
           const url = attempt === 1 
@@ -100,14 +117,13 @@ export default function AdvancedAnalyticsModal({
             : `/api/advanced-analysis/${wallet}/${chain}?cacheOnly=true`;
           
           console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Fetching:`, url);
-          const response = await fetch(url, { signal: controller.signal });
-          
-          clearTimeout(timeoutId);
+          const response = await fetch(url, { signal });
           
           if (response.status === 504 || response.status === 202) {
             // Still processing - wait and check cache again
             console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Still processing, checking cache in 2s...`);
             await new Promise(resolve => setTimeout(resolve, 2000));
+            if (signal.aborted) return; // Check if aborted during sleep
             continue;
           }
           
@@ -116,6 +132,7 @@ export default function AdvancedAnalyticsModal({
             if (attempt === 1) {
               console.log('[Analytics] First request failed, polling for cached result...');
               await new Promise(resolve => setTimeout(resolve, 2000));
+              if (signal.aborted) return; // Check if aborted during sleep
               continue;
             }
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -162,6 +179,7 @@ export default function AdvancedAnalyticsModal({
             // Backend says it's still processing
             console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Still processing, checking cache in 3s...`);
             await new Promise(resolve => setTimeout(resolve, 3000));
+            if (signal.aborted) return; // Check if aborted during sleep
             continue;
           } else {
             console.error('[Analytics] Unexpected response:', json);
@@ -170,21 +188,15 @@ export default function AdvancedAnalyticsModal({
             break;
           }
         } catch (err: any) {
-          // Handle abort/timeout
+          // Handle abort - modal was closed
           if (err.name === 'AbortError') {
-            console.warn(`[Analytics] Attempt ${attempt}/${maxAttempts} - Request timed out after 26s`);
-            if (attempt < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 3000));
-              continue;
-            } else {
-              setError('Request timed out. The wallet analysis is taking longer than expected.');
-              setLoading(false);
-              break;
-            }
+            console.log('[Analytics] Request aborted (modal closed)');
+            // Don't set error state if aborted - modal is closed anyway
+            return;
           }
           
-          // Other errors
-          if (attempt < maxAttempts) {
+          // Other errors - retry if we have attempts left
+          if (attempt < maxAttempts && !signal.aborted) {
             console.log(`[Analytics] Attempt ${attempt}/${maxAttempts} - Error, retrying in 3s:`, err.message);
             await new Promise(resolve => setTimeout(resolve, 3000));
             continue;
