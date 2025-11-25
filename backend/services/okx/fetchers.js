@@ -3,9 +3,8 @@
 // ============================================================
 // Clean, reusable OKX API data fetchers with caching
 // All endpoints tested and validated in Test Scripts 01-05
+// Uses native fetch (Node.js 18+)
 // ============================================================
-
-import fetch from 'node-fetch';
 
 // ============================================================
 // CACHING
