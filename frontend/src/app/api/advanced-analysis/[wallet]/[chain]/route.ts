@@ -121,3 +121,44 @@ export async function GET(
     );
   }
 }
+
+/**
+ * DELETE /api/advanced-analysis/[wallet]/[chain]
+ * Cancel an in-progress analysis job
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ wallet: string; chain: string }> }
+) {
+  try {
+    const { wallet, chain } = await params;
+
+    // Proxy DELETE to backend
+    const backendUrl = `${BACKEND_URL}/advanced-analysis/${wallet}/${chain}`;
+    
+    console.log(`[Frontend API] Cancelling job: ${backendUrl}`);
+
+    const response = await fetch(backendUrl, {
+      method: 'DELETE',
+      headers: {
+        'x-api-key': API_KEY,
+        'Accept': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    return NextResponse.json(data);
+
+  } catch (error: any) {
+    console.error('[Frontend API] Cancel error:', error);
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to cancel',
+        message: error.message 
+      },
+      { status: 500 }
+    );
+  }
+}

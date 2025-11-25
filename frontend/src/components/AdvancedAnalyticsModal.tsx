@@ -61,6 +61,16 @@ export default function AdvancedAnalyticsModal({
     }
   };
 
+  // Cancel backend job
+  const cancelBackendJob = async () => {
+    try {
+      await fetch(`/api/advanced-analysis/${wallet}/${chain}`, { method: 'DELETE' });
+      console.log('[Analytics] Backend job cancelled');
+    } catch (err) {
+      console.warn('[Analytics] Failed to cancel backend job:', err);
+    }
+  };
+
   // Load analytics when modal opens
   useEffect(() => {
     if (isOpen && wallet && chain) {
@@ -69,12 +79,15 @@ export default function AdvancedAnalyticsModal({
       setError(null);
       setLoading(true);
       fetchAnalytics();
-    } else if (!isOpen) {
+    } else if (!isOpen && wallet && chain) {
       // Abort any in-flight requests when modal closes
       if (abortControllerRef.current) {
         console.log('[Analytics] Modal closed - aborting pending requests');
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
+        
+        // Also cancel the backend job
+        cancelBackendJob();
       }
       // Reset state when closing
       setData(null);
@@ -87,6 +100,10 @@ export default function AdvancedAnalyticsModal({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
+        // Cancel backend job on unmount too
+        if (wallet && chain) {
+          cancelBackendJob();
+        }
       }
     };
   }, [isOpen, wallet, chain]);

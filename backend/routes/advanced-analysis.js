@@ -33,6 +33,19 @@ const router = express.Router();
 const routeCache = new Map();
 const rugCheckCache = new Map(); // Separate cache for rug-checked data
 const processingJobs = new Map(); // Track in-flight requests to prevent duplicates
+const cancelledJobs = new Set(); // Track cancelled jobs
+
+// Helper to check if a job was cancelled
+function isJobCancelled(cacheKey) {
+  return cancelledJobs.has(cacheKey);
+}
+
+// Helper to mark a job as cancelled
+function cancelJob(cacheKey) {
+  cancelledJobs.add(cacheKey);
+  // Clean up after 30 seconds
+  setTimeout(() => cancelledJobs.delete(cacheKey), 30000);
+}
 
 function getCached(key) {
   const cached = routeCache.get(key);
@@ -57,6 +70,24 @@ function getRugCheckedCache(key) {
 function setRugCheckedCache(key, data) {
   rugCheckCache.set(key, { data, timestamp: Date.now() });
 }
+
+// ============================================================
+// DELETE /api/advanced-analysis/:wallet/:chain - CANCEL JOB
+// ============================================================
+
+router.delete('/:wallet/:chain', (req, res) => {
+  const { wallet, chain } = req.params;
+  const cacheKey = `advanced_${wallet}_${chain}`;
+  
+  if (processingJobs.has(cacheKey)) {
+    cancelJob(cacheKey);
+    processingJobs.delete(cacheKey);
+    console.log(`[Advanced Analytics] ❌ Cancelled job for ${wallet}`);
+    return res.json({ success: true, message: 'Job cancelled' });
+  }
+  
+  return res.json({ success: true, message: 'No active job found' });
+});
 
 // ============================================================
 // GET /api/advanced-analysis/:wallet/:chain
@@ -157,6 +188,12 @@ router.get('/:wallet/:chain', async (req, res) => {
         getWallet(wallet, chain).catch(() => null)
       ]);
       
+      // Check if cancelled after data fetch
+      if (isJobCancelled(cacheKey)) {
+        console.log(`[Advanced Analytics] ⏹️ Job cancelled after data fetch for ${wallet}`);
+        throw new Error('Job cancelled');
+      }
+      
       // ========================================
       // STEP 2: FIFO RECONSTRUCTION
       // ========================================
@@ -175,6 +212,12 @@ router.get('/:wallet/:chain', async (req, res) => {
         !skipRugCheck // Only do rug detection if not skipping
       );
       
+      // Check if cancelled after enrichment
+      if (isJobCancelled(cacheKey)) {
+        console.log(`[Advanced Analytics] ⏹️ Job cancelled after enrichment for ${wallet}`);
+        throw new Error('Job cancelled');
+      }
+      
       // ========================================
       // STEP 4: CHECK CLOSED TRADES FOR RUGS (SLOW)
       // ========================================
@@ -182,6 +225,11 @@ router.get('/:wallet/:chain', async (req, res) => {
       
       let rugCheckedClosedTrades = pairedTrades;
       if (!skipRugCheck) {
+        // Check cancellation before slow operation
+        if (isJobCancelled(cacheKey)) {
+          console.log(`[Advanced Analytics] ⏹️ Job cancelled before rug checks for ${wallet}`);
+          throw new Error('Job cancelled');
+        }
         console.log('[Advanced Analytics] Running rug checks on closed trades...');
         rugCheckedClosedTrades = await checkClosedTradesForRugs(
           pairedTrades,
@@ -200,6 +248,11 @@ router.get('/:wallet/:chain', async (req, res) => {
       let fullyEnrichedOpenPositions = enrichedOpenPositions;
 
       if (!skipCopyTrade) { 
+        // Check cancellation before slow operation
+        if (isJobCancelled(cacheKey)) {
+          console.log(`[Advanced Analytics] ⏹️ Job cancelled before copy trade analysis for ${wallet}`);
+          throw new Error('Job cancelled');
+        }
         console.log('[Advanced Analytics] Running Copy Trade Analysis...');
         
         // Enrich closed trades
@@ -217,6 +270,12 @@ router.get('/:wallet/:chain', async (req, res) => {
         );
       } else {
         console.log('[Advanced Analytics] Skipping Copy Trade Analysis (requested)');
+      }
+      
+      // Final cancellation check before aggregation
+      if (isJobCancelled(cacheKey)) {
+        console.log(`[Advanced Analytics] ⏹️ Job cancelled before aggregation for ${wallet}`);
+        throw new Error('Job cancelled');
       }
 
       // ========================================
