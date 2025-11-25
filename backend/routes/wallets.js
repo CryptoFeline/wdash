@@ -413,4 +413,129 @@ router.get('/:address/chains', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/wallets/add
+ * Add a new wallet manually to the database
+ * This allows users to add their own wallets for tracking
+ * 
+ * Body:
+ * {
+ *   "address": "wallet_address_here",
+ *   "chain": "sol" (optional, defaults to sol)
+ * }
+ */
+router.post('/add', async (req, res) => {
+  try {
+    const { address, chain = 'sol' } = req.body;
+    
+    if (!address) {
+      return res.status(400).json({
+        error: 'Missing required parameter: address'
+      });
+    }
+
+    // Validate address format (basic check)
+    if (address.length < 32 || address.length > 64) {
+      return res.status(400).json({
+        error: 'Invalid wallet address format'
+      });
+    }
+
+    console.log(`[API] POST /api/wallets/add - address: ${address.substring(0, 8)}..., chain: ${chain}`);
+
+    // Check if wallet already exists
+    const { getWallet, upsertWallet } = await import('../db/supabase.js');
+    const existingWallet = await getWallet(address, chain);
+    
+    if (existingWallet) {
+      console.log(`[API] Wallet already exists: ${address.substring(0, 8)}...`);
+      return res.json({
+        success: true,
+        message: 'Wallet already exists in database',
+        wallet: existingWallet,
+        isNew: false
+      });
+    }
+
+    // Fetch initial wallet data from OKX API to get some basic stats
+    let walletData = {
+      wallet_address: address,
+      address: address,
+      chain: chain,
+      tags: ['manual'],
+      pnl_7d: 0,
+      realized_profit_7d: 0,
+      winrate_7d: 0,
+      token_num_7d: 0,
+      balance: 0,
+      _sources: ['manual']
+    };
+
+    try {
+      // Try to get wallet profile from OKX
+      const chainId = chain === 'sol' ? '501' : chain === 'eth' ? '1' : chain === 'bsc' ? '56' : '501';
+      const okxUrl = `https://web3.okx.com/priapi/v1/dx/market/v2/pnl/wallet-profile?walletAddress=${address}&chainId=${chainId}`;
+      
+      const okxResponse = await axios.get(okxUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.okx.com/',
+          'Origin': 'https://www.okx.com'
+        },
+        timeout: 10000
+      });
+
+      if (okxResponse.data?.code === 0 && okxResponse.data?.data) {
+        const okxData = okxResponse.data.data;
+        walletData = {
+          ...walletData,
+          wallet_address: address,
+          address: address,
+          pnl_7d: parseFloat(okxData.pnl7d || 0),
+          realized_profit_7d: parseFloat(okxData.pnlUsd7d || 0),
+          winrate_7d: parseFloat(okxData.winRatio || 0) / 100, // OKX returns percentage
+          token_num_7d: parseInt(okxData.tradeCount7d || 0),
+          balance: parseFloat(okxData.walletBalance || 0),
+          last_active: Date.now() / 1000,
+          _sources: ['manual', 'okx']
+        };
+        console.log(`[API] Enriched wallet data from OKX for ${address.substring(0, 8)}...`);
+      }
+    } catch (okxError) {
+      console.log(`[API] OKX enrichment failed (not critical): ${okxError.message}`);
+      // Continue with basic wallet data
+    }
+
+    // Store in database
+    await upsertWallet({
+      wallet_address: address,
+      chain: chain,
+      data: walletData,
+      metadata: {
+        pnl_7d: walletData.pnl_7d,
+        realized_profit_7d: walletData.realized_profit_7d,
+        winrate_7d: walletData.winrate_7d,
+        token_num_7d: walletData.token_num_7d,
+        tags: walletData.tags,
+        sources: walletData._sources
+      }
+    });
+
+    console.log(`[API] Successfully added wallet: ${address.substring(0, 8)}...`);
+
+    res.json({
+      success: true,
+      message: 'Wallet added successfully',
+      wallet: walletData,
+      isNew: true
+    });
+  } catch (error) {
+    console.error('[API] Add wallet error:', error);
+    res.status(500).json({
+      error: 'Failed to add wallet',
+      message: error.message
+    });
+  }
+});
+
 export default router;

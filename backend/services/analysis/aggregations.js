@@ -62,7 +62,8 @@ export function aggregateToTokenLevel(pairedTrades, openPositions) {
       token.total_returned += trade.exit_value_usd;
       token.total_realized_pnl += trade.realized_pnl;
       
-      if (trade.realized_pnl > 0) {
+      // Changed: >= 0 for wins (break-even counts as win)
+      if (trade.realized_pnl >= 0) {
         token.winning_trades++;
       } else {
         token.losing_trades++;
@@ -176,7 +177,8 @@ export function aggregateToOverview(pairedTrades, openPositions, tokens, capital
   const net_pnl = total_realized_pnl - total_confirmed_loss;
   
   // Win rate (includes rugged as losses)
-  const closed_winning = pairedTrades.filter(t => (t.realized_pnl || 0) > 0).length;
+  // Changed: >= 0 for wins (break-even counts as win), < 0 for losses
+  const closed_winning = pairedTrades.filter(t => (t.realized_pnl || 0) >= 0).length;
   const closed_losing = pairedTrades.filter(t => (t.realized_pnl || 0) < 0).length;
   const rugged_count = ruggedPositions.length;
   

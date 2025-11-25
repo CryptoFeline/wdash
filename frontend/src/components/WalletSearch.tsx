@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Loader2, ChevronDown } from 'lucide-react';
+import { Search, Loader2, Plus, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-/* import { Button } from '@/components/ui/button';
-import {
+import { Button } from '@/components/ui/button';
+/* import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,6 +22,8 @@ interface ChainInfo {
 export default function WalletSearch() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [addingToDb, setAddingToDb] = useState(false);
+  const [addedToDb, setAddedToDb] = useState(false);
   const [chains, setChains] = useState<ChainInfo[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   
@@ -37,6 +39,7 @@ export default function WalletSearch() {
     setLoading(true);
     setChains([]);
     setShowDropdown(false);
+    setAddedToDb(false);
 
     try {
       const response = await fetch(`/api/wallets/${query.trim()}/chains`);
@@ -65,6 +68,41 @@ export default function WalletSearch() {
     }
   };
 
+  const handleAddToDatabase = async () => {
+    if (!query.trim()) return;
+    
+    setAddingToDb(true);
+    try {
+      // Determine chain from selected chain or default to sol
+      const chain = selectedChain === '501' ? 'sol' : selectedChain === '1' ? 'eth' : 'sol';
+      
+      const response = await fetch('/api/wallets/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: query.trim(),
+          chain: chain
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setAddedToDb(true);
+        console.log('[WalletSearch] Added wallet to database:', result);
+        // Reset after 3 seconds
+        setTimeout(() => setAddedToDb(false), 3000);
+      } else {
+        alert(result.error || 'Failed to add wallet');
+      }
+    } catch (error) {
+      console.error('Add to database failed:', error);
+      alert('Failed to add wallet to database');
+    } finally {
+      setAddingToDb(false);
+    }
+  };
+
   const openAnalytics = (address: string, chainId: string) => {
     setSelectedWallet(address);
     setSelectedChain(chainId);
@@ -75,19 +113,39 @@ export default function WalletSearch() {
 
   return (
     <div className="relative w-full max-w-md">
-      <form onSubmit={handleSearch} className="relative flex items-center">
-        <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Search wallet address..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="pl-9 pr-12"
-        />
+      <form onSubmit={handleSearch} className="relative flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search wallet address..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9 pr-4"
+          />
+        </div>
         {loading && (
-          <div className="absolute right-3">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        )}
+        {/* Add to Database Button */}
+        {query.trim().length >= 32 && (
+          <Button
+            type="button"
+            variant={addedToDb ? "default" : "outline"}
+            size="icon"
+            onClick={handleAddToDatabase}
+            disabled={addingToDb}
+            title={addedToDb ? "Added to database" : "Add wallet to database"}
+            className={addedToDb ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            {addingToDb ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : addedToDb ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+          </Button>
         )}
       </form>
 
@@ -98,18 +156,52 @@ export default function WalletSearch() {
             Select Chain
           </div>
           {chains.map((chain) => (
-            <button
-              key={chain.chainId}
-              onClick={() => openAnalytics(query.trim(), chain.chainId.toString())}
-              className="w-full flex items-center gap-2 px-2 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors text-left"
-            >
-              <img 
-                src={chain.chainLogo} 
-                alt={chain.chainName} 
-                className="w-5 h-5 rounded-full"
-              />
-              <span>{chain.chainName}</span>
-            </button>
+            <div key={chain.chainId} className="flex items-center gap-1">
+              <button
+                onClick={() => openAnalytics(query.trim(), chain.chainId.toString())}
+                className="flex-1 flex items-center gap-2 px-2 py-2 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors text-left"
+              >
+                <img 
+                  src={chain.chainLogo} 
+                  alt={chain.chainName} 
+                  className="w-5 h-5 rounded-full"
+                />
+                <span>{chain.chainName}</span>
+              </button>
+              {/* Add to DB button per chain */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  setAddingToDb(true);
+                  try {
+                    const chainSlug = chain.chainId === 501 ? 'sol' : chain.chainId === 1 ? 'eth' : chain.chainId === 56 ? 'bsc' : 'sol';
+                    const response = await fetch('/api/wallets/add', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        address: query.trim(),
+                        chain: chainSlug
+                      })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                      setAddedToDb(true);
+                      setTimeout(() => setAddedToDb(false), 3000);
+                    }
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setAddingToDb(false);
+                  }
+                }}
+                title="Add to database"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
           ))}
         </div>
       )}

@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { BarChart3, Coins, TrendingUp, AlertTriangle, ChevronDown, ChevronUp, Copy, ExternalLink, Clock, DollarSign, Percent, Play, Loader2 } from 'lucide-react';
+import { BarChart3, Coins, TrendingUp, AlertTriangle, ChevronDown, ChevronUp, Copy, ExternalLink, Clock, DollarSign, Percent, Play, Loader2, HelpCircle } from 'lucide-react';
+
+// Simple tooltip component using title attribute
+const Tip = ({ text }: { text: string }) => (
+  <HelpCircle className="h-3 w-3 text-gray-500 hover:text-gray-300 cursor-help inline ml-1" title={text} />
+);
 import { formatNumber, formatUSD, formatPercent } from '@/lib/utils';
 
 interface AdvancedAnalyticsContentProps {
@@ -144,10 +149,19 @@ export default function AdvancedAnalyticsContent({
   };
 
   const getExplorerUrl = (chain: string, address: string) => {
-    // Simple mapping, can be expanded
-    if (chain === '501') return `https://solscan.io/token/${address}`;
-    if (chain === '1') return `https://etherscan.io/token/${address}`;
-    return `https://solscan.io/token/${address}`; // Default to Solscan for now
+    // Link to GMGN for token/wallet analysis
+    if (chain === '501' || chain === 'sol') return `https://gmgn.ai/sol/token/${address}`;
+    if (chain === '1' || chain === 'eth') return `https://gmgn.ai/eth/token/${address}`;
+    if (chain === '56' || chain === 'bsc') return `https://gmgn.ai/bsc/token/${address}`;
+    if (chain === '8453' || chain === 'base') return `https://gmgn.ai/base/token/${address}`;
+    if (chain === '42161' || chain === 'arb') return `https://gmgn.ai/arb/token/${address}`;
+    return `https://gmgn.ai/sol/token/${address}`; // Default to Solana GMGN
+  };
+
+  // Helper to get GMGN URL with maker (wallet) context
+  const getGMGNWithMaker = (chain: string, tokenAddress: string, walletAddress: string) => {
+    const chainSlug = chain === '501' ? 'sol' : chain === '1' ? 'eth' : chain === '56' ? 'bsc' : chain === '8453' ? 'base' : chain === '42161' ? 'arb' : 'sol';
+    return `https://gmgn.ai/${chainSlug}/token/${tokenAddress}?maker=${walletAddress}`;
   };
 
   // Basic counts
@@ -393,7 +407,7 @@ export default function AdvancedAnalyticsContent({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* 1. Total Trades */}
             <div className="bg-gray-900/50 border border-gray-800 p-5 rounded-lg">
-              <p className="text-gray-400 text-sm mb-1">Total Trades</p>
+              <p className="text-gray-400 text-sm mb-1">Total Positions <Tip text="FIFO-paired positions. May differ from raw TX count." /></p>
               <p className="text-3xl font-bold mb-2">{totalTrades}</p>
               <div className="flex gap-3 text-sm">
                 <span className="text-green-400">Closed: {closedTrades}</span>
@@ -403,14 +417,14 @@ export default function AdvancedAnalyticsContent({
 
             {/* 2. Rug Metrics */}
             <div className="bg-gray-900/50 border border-red-500/30 p-5 rounded-lg">
-              <p className="text-gray-400 text-sm mb-1">Rug Detection</p>
+              <p className="text-gray-400 text-sm mb-1">Rug Detection <Tip text="Tokens with liquidity pulled or price crashed >99%" /></p>
               <p className="text-3xl font-bold text-red-400">{ruggedTokens}/{totalTokens}</p>
               <p className="text-sm text-red-300 mt-1">{formatPercent(ruggedTokens / totalTokens * 100)} Rugged</p>
             </div>
 
             {/* 3. Win Rates */}
             <div className="bg-gray-900/50 border border-green-500/30 p-5 rounded-lg">
-              <p className="text-gray-400 text-sm mb-1">Win Rates</p>
+              <p className="text-gray-400 text-sm mb-1">Win Rates <Tip text="% of trades with PnL >= 0 (break-even counts as win)" /></p>
               <div className="space-y-1 mt-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Total:</span>
@@ -429,14 +443,14 @@ export default function AdvancedAnalyticsContent({
 
             {/* 4. Time Metrics */}
             <div className="bg-gray-900/50 border border-blue-500/30 p-5 rounded-lg">
-              <p className="text-gray-400 text-sm mb-1">Holding Times</p>
+              <p className="text-gray-400 text-sm mb-1">Holding Times <Tip text="How long positions are held before selling" /></p>
               <div className="space-y-2 mt-2">
                 <div>
-                  <p className="text-xs text-gray-500">Avg Trade Window</p>
+                  <p className="text-xs text-gray-500">Avg Trade Window <Tip text="Time from first buy to last sell per token" /></p>
                   <p className="text-xl font-bold text-blue-400">{formatTime(avgTradeWindow)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Avg Hold Time</p>
+                  <p className="text-xs text-gray-500">Avg Hold Time <Tip text="Average time holding each position" /></p>
                   <p className="text-xl font-bold text-purple-400">{formatTime(avgHoldTimeSeconds)}</p>
                 </div>
               </div>
@@ -456,6 +470,7 @@ export default function AdvancedAnalyticsContent({
                 <div className="flex items-center gap-2 mb-2 text-blue-300">
                   <DollarSign className="h-4 w-4" />
                   <span className="font-semibold">Capital Flow</span>
+                  <Tip text="Tracks capital deployed over time" />
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -478,6 +493,7 @@ export default function AdvancedAnalyticsContent({
                 <div className="flex items-center gap-2 mb-2 text-green-300">
                   <TrendingUp className="h-4 w-4" />
                   <span className="font-semibold">PnL Breakdown</span>
+                  <Tip text="Realized = sold, Unrealized = still held" />
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -506,6 +522,7 @@ export default function AdvancedAnalyticsContent({
                 <div className="flex items-center gap-2 mb-2 text-purple-300">
                   <Percent className="h-4 w-4" />
                   <span className="font-semibold">ROI Performance</span>
+                  <Tip text="Return on investment as % of capital used" />
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -528,6 +545,7 @@ export default function AdvancedAnalyticsContent({
                 <div className="flex items-center gap-2 mb-2 text-red-300">
                   <AlertTriangle className="h-4 w-4" />
                   <span className="font-semibold">Risk Impact</span>
+                  <Tip text="Losses from rugged tokens" />
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -552,11 +570,12 @@ export default function AdvancedAnalyticsContent({
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-400" />
               Risk Analysis
+              <Tip text="Detailed breakdown of rug exposure" />
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* 1. Rugged Balance Ratio */}
               <div>
-                <p className="text-gray-400 text-sm">Rugged Balance Ratio</p>
+                <p className="text-gray-400 text-sm">Rugged Balance Ratio <Tip text="Rugged vs non-rugged open positions" /></p>
                 <p className="text-2xl font-bold text-red-400">
                   {ruggedOpenCount}:{nonRuggedOpenCount}
                 </p>
@@ -565,7 +584,7 @@ export default function AdvancedAnalyticsContent({
 
               {/* 2. Traded Rugs */}
               <div>
-                <p className="text-gray-400 text-sm">Traded Rugs</p>
+                <p className="text-gray-400 text-sm">Traded Rugs <Tip text="Tokens that rugged after wallet traded" /></p>
                 <p className="text-2xl font-bold text-yellow-400">
                   {totalTradedRugs}/{totalTokens}
                 </p>
@@ -574,7 +593,7 @@ export default function AdvancedAnalyticsContent({
 
               {/* 3. Exited Before Rug */}
               <div>
-                <p className="text-gray-400 text-sm">Exited Before Rug</p>
+                <p className="text-gray-400 text-sm">Exited Before Rug <Tip text="Sold before liquidity was pulled" /></p>
                 <p className="text-2xl font-bold text-green-400">
                   {exitedBeforeRug}:{totalTokens}
                 </p>
@@ -604,6 +623,7 @@ export default function AdvancedAnalyticsContent({
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
               <Coins className="h-5 w-5 text-purple-400" />
               Token Summary
+              <Tip text="Aggregated stats per unique token traded" />
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Profitable/Losing Tokens */}
@@ -711,11 +731,11 @@ export default function AdvancedAnalyticsContent({
                                     <Copy className="h-3 w-3" />
                                   </button>
                                   <a 
-                                    href={getExplorerUrl(data.meta?.chain || '501', token.token_address)}
+                                    href={getGMGNWithMaker(data.meta?.chain || '501', token.token_address, wallet)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-gray-500 hover:text-blue-400 transition-colors"
-                                    title="View on Explorer"
+                                    title="View on GMGN"
                                   >
                                     <ExternalLink className="h-3 w-3" />
                                   </a>
@@ -899,11 +919,11 @@ export default function AdvancedAnalyticsContent({
                                     <Copy className="h-3 w-3" />
                                   </button>
                                   <a 
-                                    href={getExplorerUrl(data.meta?.chain || '501', trade.token_address)}
+                                    href={getGMGNWithMaker(data.meta?.chain || '501', trade.token_address, wallet)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-gray-500 hover:text-blue-400 transition-colors"
-                                    title="View on Explorer"
+                                    title="View on GMGN"
                                   >
                                     <ExternalLink className="h-3 w-3" />
                                   </a>
@@ -1054,11 +1074,11 @@ export default function AdvancedAnalyticsContent({
                                     <Copy className="h-3 w-3" />
                                   </button>
                                   <a 
-                                    href={getExplorerUrl(data.meta?.chain || '501', position.token_address)}
+                                    href={getGMGNWithMaker(data.meta?.chain || '501', position.token_address, wallet)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-gray-500 hover:text-blue-400 transition-colors"
-                                    title="View on Explorer"
+                                    title="View on GMGN"
                                   >
                                     <ExternalLink className="h-3 w-3" />
                                   </a>

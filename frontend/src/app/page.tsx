@@ -28,10 +28,12 @@ const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   tokensMin: 0,
   tokensMax: 1000, // Increase from 500 to 1000
   holdTimeMin: 0,
-  holdTimeMax: 168,
+  holdTimeMax: 10080, // 7 days in minutes (was 168 hours)
   rugPullMax: 10,
   winRateMin: 0,
   winRateMax: 100,
+  mevMax: 5, // Default: exclude wallets with >5% same-block transactions
+  sellRatioMin: 30, // Default: exclude wallets selling <30% of buys (serial buyers)
 };
 
 export default function Home() {
@@ -154,9 +156,8 @@ export default function Home() {
 
         console.log('[Page] Loading initial wallets from Supabase...');
         
-        // Fetch ALL wallets by requesting high limit (1000)
-        // Backend has 771 wallets, so 1000 will get them all
-        const response = await fetch('/api/wallets/db?chain=sol&limit=1000', {
+        // Fetch ALL wallets - use high limit to get everything
+        const response = await fetch('/api/wallets/db?chain=sol&limit=5000', {
           headers: { 'Content-Type': 'application/json' }
         });
 
@@ -262,9 +263,9 @@ export default function Home() {
       const tokens = w.token_num_7d || 0;
       const tokensValid = tokens >= advancedFilters.tokensMin && tokens <= advancedFilters.tokensMax;
 
-      // Hold time filter (convert to hours - matches "Avg Hold" column)
-      const holdTime = (w.avg_holding_period_7d || 0) / 3600; // seconds to hours
-      const holdTimeValid = holdTime >= advancedFilters.holdTimeMin && holdTime <= advancedFilters.holdTimeMax;
+      // Hold time filter (convert to MINUTES - matches "Avg Hold" column)
+      const holdTimeMinutes = (w.avg_holding_period_7d || 0) / 60; // seconds to minutes
+      const holdTimeValid = holdTimeMinutes >= advancedFilters.holdTimeMin && holdTimeMinutes <= advancedFilters.holdTimeMax;
 
       // Rug pull filter (matches "Rug Pull %" column)
       const rugPullRatio = (w.risk?.sell_pass_buy_ratio || 0) * 100;
@@ -273,6 +274,18 @@ export default function Home() {
       // Win rate filter (matches "Win Rate %" - convert decimal to percentage)
       const winRatePercent = (w.winrate_7d || 0) * 100;
       const winRateValid = winRatePercent >= advancedFilters.winRateMin && winRatePercent <= advancedFilters.winRateMax;
+
+      // MEV filter (same-block buy/sell - uses fast_tx_ratio as proxy)
+      // fast_tx_ratio measures fast transactions which correlates with MEV/bot behavior
+      const mevRatio = (w.risk?.fast_tx_ratio || 0) * 100;
+      const mevValid = mevRatio <= advancedFilters.mevMax;
+
+      // Sell ratio filter (filters out serial buyers who buy many tokens but rarely sell)
+      // Uses buy/sell counts from wallet data
+      const buyCount = w.buy || 0;
+      const sellCount = w.sell || 0;
+      const sellRatio = buyCount > 0 ? (sellCount / buyCount) * 100 : 100;
+      const sellRatioValid = sellRatio >= advancedFilters.sellRatioMin;
 
       // Debug first wallet that fails
       /* if (index === 0) {
@@ -290,7 +303,7 @@ export default function Home() {
           tokens,
           tokensValid,
           tokensRange: [advancedFilters.tokensMin, advancedFilters.tokensMax],
-          holdTime,
+          holdTimeMinutes,
           holdTimeValid,
           holdTimeRange: [advancedFilters.holdTimeMin, advancedFilters.holdTimeMax],
           rugPullRatio,
@@ -299,10 +312,13 @@ export default function Home() {
           winRatePercent,
           winRateValid,
           winRateRange: [advancedFilters.winRateMin, advancedFilters.winRateMax],
+          mevRatio,
+          mevValid,
+          mevMax: advancedFilters.mevMax,
         });
       } */
 
-      return pnlValid && profitValid && tokensValid && holdTimeValid && rugPullValid && winRateValid;
+      return pnlValid && profitValid && tokensValid && holdTimeValid && rugPullValid && winRateValid && mevValid && sellRatioValid;
     });
 
     // console.log('[Debug] After filtering:', filtered.length, 'of', allWallets.length);

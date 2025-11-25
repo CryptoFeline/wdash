@@ -22,7 +22,7 @@ import {
   aggregateToOverview
 } from '../services/analysis/aggregations.js';
 import { enrichTradesWithCopyTradeAnalysis } from '../services/analysis/copy-trade.js';
-import { getWallet } from '../db/supabase.js';
+import { getWallet, upsertWallet, updateWalletFlag } from '../db/supabase.js';
 
 const router = express.Router();
 
@@ -252,8 +252,36 @@ router.get('/:wallet/:chain', async (req, res) => {
       // RESPONSE STRUCTURE
       // ========================================
       
+      // Calculate rug detection percentage for auto-flagging
+      const totalTokens = tokens.length;
+      const ruggedTokens = tokens.filter(t => t.is_rugged || t.traded_rug_token).length;
+      const rugDetectionPercent = totalTokens > 0 ? (ruggedTokens / totalTokens) * 100 : 0;
+      
+      // Auto-flag if rug detection > 10%
+      const shouldAutoFlag = rugDetectionPercent >= 10;
+      const existingFlag = dbWallet?.data?.is_flagged || false;
+      
+      // Only auto-flag if not already flagged (don't remove flags)
+      if (shouldAutoFlag && !existingFlag) {
+        console.log(`[Advanced Analytics] 🚩 Auto-flagging wallet ${wallet} (Rug Detection: ${rugDetectionPercent.toFixed(1)}%)`);
+        try {
+          await updateWalletFlag(wallet, chain, true);
+        } catch (flagError) {
+          console.error('[Advanced Analytics] Failed to auto-flag wallet:', flagError.message);
+        }
+      }
+      
       const response = {
-        overview,
+        overview: {
+          ...overview,
+          // Add rug detection summary at overview level for easy access
+          rug_detection: {
+            total_tokens: totalTokens,
+            rugged_tokens: ruggedTokens,
+            percent: rugDetectionPercent,
+            auto_flagged: shouldAutoFlag && !existingFlag
+          }
+        },
         tokens,
         trades: {
           closed: fullyEnrichedClosedTrades,
@@ -265,7 +293,8 @@ router.get('/:wallet/:chain', async (req, res) => {
           timestamp: Date.now(),
           period: '7_days',
           rugCheckComplete: !skipRugCheck,
-          is_flagged: dbWallet?.data?.is_flagged || false,
+          copyTradeComplete: !skipCopyTrade,
+          is_flagged: shouldAutoFlag || existingFlag, // Return updated flag status
           is_saved: dbWallet?.data?.is_saved || false,
           nativeBalance: {
             amount: profileSummary?.nativeTokenBalanceAmount || '0',
@@ -274,6 +303,67 @@ router.get('/:wallet/:chain', async (req, res) => {
           }
         }
       };
+      
+      // ========================================
+      // SAVE ANALYSIS DATA TO DATABASE
+      // ========================================
+      // Update wallet in DB with latest analysis metrics
+      try {
+        const analysisMetadata = {
+          // Performance metrics
+          pnl_7d: overview.capital_metrics?.wallet_growth_roi || 0,
+          realized_profit_7d: overview.total_realized_pnl || 0,
+          winrate_7d: (overview.win_rate || 0) / 100, // Convert to decimal
+          token_num_7d: totalTokens,
+          
+          // Risk metrics (for filtering)
+          rug_detection_percent: rugDetectionPercent,
+          rugged_tokens: ruggedTokens,
+          total_trades: overview.total_trades || 0,
+          closed_trades: overview.closed_trades || 0,
+          open_positions: overview.open_positions || 0,
+          
+          // Capital tracking
+          starting_capital: overview.capital_metrics?.starting_capital || 0,
+          peak_deployed: overview.capital_metrics?.peak_deployed || 0,
+          net_pnl: overview.capital_metrics?.net_pnl || 0,
+          
+          // Timestamps
+          last_analysis: Date.now(),
+          analysis_version: '2.0'
+        };
+        
+        // Update existing wallet or create new entry
+        await upsertWallet({
+          wallet_address: wallet,
+          chain: chain,
+          data: {
+            ...(dbWallet?.data || {}),
+            wallet_address: wallet,
+            address: wallet,
+            // Merge in new analysis data
+            pnl_7d: analysisMetadata.pnl_7d,
+            realized_profit_7d: analysisMetadata.realized_profit_7d,
+            winrate_7d: analysisMetadata.winrate_7d,
+            token_num_7d: analysisMetadata.token_num_7d,
+            is_flagged: shouldAutoFlag || existingFlag,
+            // Add risk metrics for table display
+            risk: {
+              ...(dbWallet?.data?.risk || {}),
+              rug_detection_percent: rugDetectionPercent,
+              rugged_tokens: ruggedTokens,
+              total_tokens: totalTokens
+            },
+            _analysis_updated: Date.now()
+          },
+          metadata: analysisMetadata
+        });
+        
+        console.log(`[Advanced Analytics] 💾 Saved analysis data for ${wallet}`);
+      } catch (saveError) {
+        console.error('[Advanced Analytics] Failed to save analysis data:', saveError.message);
+        // Don't fail the request if save fails
+      }
       
       // Cache response
       if (!skipRugCheck && !skipCopyTrade) {

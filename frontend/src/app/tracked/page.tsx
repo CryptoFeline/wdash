@@ -35,10 +35,12 @@ const DEFAULT_ADVANCED_FILTERS: AdvancedFilterValues = {
   tokensMin: 0,
   tokensMax: 1000,
   holdTimeMin: 0,
-  holdTimeMax: 168,
+  holdTimeMax: 10080, // 7 days in minutes
   rugPullMax: 10,
   winRateMin: 0,
   winRateMax: 100,
+  mevMax: 5, // Default: exclude wallets with >5% same-block transactions
+  sellRatioMin: 30, // Default: exclude wallets selling <30% of buys (serial buyers)
 };
 
 export default function TrackedWalletsPage() {
@@ -185,9 +187,9 @@ export default function TrackedWalletsPage() {
       const tokens = w.token_num_7d || 0;
       const tokensValid = tokens >= advancedFilters.tokensMin && tokens <= advancedFilters.tokensMax;
 
-      // Hold time filter
-      const holdTime = (w.avg_holding_period_7d || 0) / 3600;
-      const holdTimeValid = holdTime >= advancedFilters.holdTimeMin && holdTime <= advancedFilters.holdTimeMax;
+      // Hold time filter (convert to MINUTES)
+      const holdTimeMinutes = (w.avg_holding_period_7d || 0) / 60; // seconds to minutes
+      const holdTimeValid = holdTimeMinutes >= advancedFilters.holdTimeMin && holdTimeMinutes <= advancedFilters.holdTimeMax;
 
       // Rug pull filter
       const rugPullRatio = (w.risk?.sell_pass_buy_ratio || 0) * 100;
@@ -197,7 +199,17 @@ export default function TrackedWalletsPage() {
       const winRatePercent = (w.winrate_7d || 0) * 100;
       const winRateValid = winRatePercent >= advancedFilters.winRateMin && winRatePercent <= advancedFilters.winRateMax;
 
-      return pnlValid && profitValid && tokensValid && holdTimeValid && rugPullValid && winRateValid;
+      // MEV filter (same-block buy/sell - uses fast_tx_ratio as proxy)
+      const mevRatio = (w.risk?.fast_tx_ratio || 0) * 100;
+      const mevValid = mevRatio <= advancedFilters.mevMax;
+
+      // Sell ratio filter (filters out serial buyers who buy many tokens but rarely sell)
+      const buyCount = w.buy || 0;
+      const sellCount = w.sell || 0;
+      const sellRatio = buyCount > 0 ? (sellCount / buyCount) * 100 : 100;
+      const sellRatioValid = sellRatio >= advancedFilters.sellRatioMin;
+
+      return pnlValid && profitValid && tokensValid && holdTimeValid && rugPullValid && winRateValid && mevValid && sellRatioValid;
     });
 
     // Strip last_updated field for table
